@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../lib/supabase";
 
 type FormState = {
   ownerEmail: string;
@@ -126,13 +126,11 @@ export default function OnboardingPage() {
     setSaving(true);
 
     try {
-      const {
-        data: signupData,
-        error: signupError,
-      } = await supabase.auth.signUp({
-        email: form.ownerEmail,
-        password: form.ownerPassword,
-      });
+      const { data: signupData, error: signupError } =
+        await supabase.auth.signUp({
+          email: form.ownerEmail,
+          password: form.ownerPassword,
+        });
 
       if (signupError) {
         throw signupError;
@@ -147,10 +145,7 @@ export default function OnboardingPage() {
       const baseSlug = makeSlug(form.restaurantName);
       const uniqueSlug = `${baseSlug}-${user.id.slice(0, 6)}`;
 
-      const {
-        data: restaurant,
-        error: restaurantError,
-      } = await supabase
+      const { data: restaurant, error: restaurantError } = await supabase
         .from("restaurants")
         .insert({
           owner_user_id: user.id,
@@ -234,7 +229,10 @@ export default function OnboardingPage() {
       router.push(`/owner?restaurant=${restaurantId}`);
     } catch (err: any) {
       console.error(err);
-      setError(err?.message || "Something went wrong while creating the restaurant.");
+      setError(
+        err?.message ||
+          "Something went wrong while creating the restaurant."
+      );
     } finally {
       setSaving(false);
     }
@@ -462,7 +460,9 @@ export default function OnboardingPage() {
                 label="ONLINE ORDERING LINK"
                 placeholder="DoorDash, Uber Eats, direct ordering URL..."
                 value={form.onlineOrderingUrl}
-                onChange={(value) => update("onlineOrderingUrl", value)}
+                onChange={(value) =>
+                  update("onlineOrderingUrl", value)
+                }
               />
             </>
           )}
@@ -492,28 +492,36 @@ export default function OnboardingPage() {
                 label="VIP CLUB NAME"
                 placeholder="Maria's VIP Club"
                 value={form.vipClubName}
-                onChange={(value) => update("vipClubName", value)}
+                onChange={(value) =>
+                  update("vipClubName", value)
+                }
               />
 
               <Field
                 label="SIGNUP OFFER"
                 placeholder="10% off your next visit"
                 value={form.signupOffer}
-                onChange={(value) => update("signupOffer", value)}
+                onChange={(value) =>
+                  update("signupOffer", value)
+                }
               />
 
               <Field
                 label="BIRTHDAY OFFER"
                 placeholder="Free dessert on your birthday"
                 value={form.birthdayOffer}
-                onChange={(value) => update("birthdayOffer", value)}
+                onChange={(value) =>
+                  update("birthdayOffer", value)
+                }
               />
 
               <Field
                 label="CATERING EMAIL"
                 placeholder="catering@restaurant.com"
                 value={form.cateringEmail}
-                onChange={(value) => update("cateringEmail", value)}
+                onChange={(value) =>
+                  update("cateringEmail", value)
+                }
               />
             </>
           )}
@@ -542,9 +550,13 @@ export default function OnboardingPage() {
                   border: "1px solid #334155",
                 }}
               >
-                Restaurant: <strong>{form.restaurantName || "Not entered"}</strong>
+                Restaurant:{" "}
+                <strong>
+                  {form.restaurantName || "Not entered"}
+                </strong>
                 <br />
-                Owner: <strong>{form.ownerEmail || "Not entered"}</strong>
+                Owner:{" "}
+                <strong>{form.ownerEmail || "Not entered"}</strong>
               </div>
             </>
           )}
@@ -568,7 +580,9 @@ export default function OnboardingPage() {
                 color: step === 1 ? "#475569" : "#fff",
                 fontWeight: 800,
                 cursor:
-                  step === 1 || saving ? "default" : "pointer",
+                  step === 1 || saving
+                    ? "default"
+                    : "pointer",
               }}
             >
               BACK
