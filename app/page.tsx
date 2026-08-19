@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function HomePage() {
   return (
     <main
@@ -62,8 +64,8 @@ export default function HomePage() {
             marginTop: "28px",
           }}
         >
-          A restaurant website, menu manager, VIP system, offers engine and owner
-          portal — built for independent restaurants.
+          A restaurant website, menu manager, VIP system, offers engine and
+          owner portal — built for independent restaurants.
         </p>
 
         <div
@@ -74,22 +76,24 @@ export default function HomePage() {
             marginTop: "34px",
           }}
         >
-          <button
+          <Link
+            href="/onboarding"
             style={{
               background: "#f5b82e",
               color: "#08111f",
-              border: 0,
               borderRadius: "12px",
               padding: "16px 24px",
               fontWeight: 900,
               fontSize: "15px",
-              cursor: "pointer",
+              textDecoration: "none",
+              display: "inline-block",
             }}
           >
             BUILD MY RESTAURANT SITE
-          </button>
+          </Link>
 
-          <button
+          <Link
+            href="/login"
             style={{
               background: "transparent",
               color: "#ffffff",
@@ -98,11 +102,12 @@ export default function HomePage() {
               padding: "16px 24px",
               fontWeight: 900,
               fontSize: "15px",
-              cursor: "pointer",
+              textDecoration: "none",
+              display: "inline-block",
             }}
           >
             OWNER LOGIN
-          </button>
+          </Link>
         </div>
 
         <div
@@ -114,8 +119,8 @@ export default function HomePage() {
             fontSize: "14px",
           }}
         >
-          Donation-supported software. Hosting, domains, messaging and third-party
-          services are separate.
+          Donation-supported software. Hosting, domains, messaging and
+          third-party services are separate.
         </div>
       </section>
     </main>
