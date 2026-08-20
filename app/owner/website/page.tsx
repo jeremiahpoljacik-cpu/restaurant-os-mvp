@@ -219,17 +219,49 @@ export default function WebsiteManagerPage() {
             </p>
           </div>
 
-          <button
-            style={secondaryButtonStyle}
-            onClick={() =>
-              (window.location.href = `/owner?restaurant=${restaurantId}`)
-            }
-          >
-            BACK TO DASHBOARD
-          </button>
+          <div style={headerActionsStyle}>
+            <button
+              style={primaryOutlineButtonStyle}
+              onClick={() =>
+                (window.location.href = `/owner/pages?restaurant=${restaurantId}`)
+              }
+            >
+              PAGES & SOCIALS
+            </button>
+
+            <button
+              style={secondaryButtonStyle}
+              onClick={() =>
+                (window.location.href = `/owner?restaurant=${restaurantId}`)
+              }
+            >
+              BACK TO DASHBOARD
+            </button>
+          </div>
         </header>
 
         {message && <div style={messageStyle}>{message}</div>}
+
+        <section style={quickControlStyle}>
+          <div>
+            <div style={eyebrowStyle}>SITE STRUCTURE</div>
+            <h2 style={quickControlTitleStyle}>Pages, Navigation & Socials</h2>
+            <p style={quickControlTextStyle}>
+              Add catering, locations, contact and custom pages. Control what
+              appears in navigation and connect Facebook, Instagram, TikTok,
+              Google Business and more.
+            </p>
+          </div>
+
+          <button
+            style={quickControlButtonStyle}
+            onClick={() =>
+              (window.location.href = `/owner/pages?restaurant=${restaurantId}`)
+            }
+          >
+            MANAGE PAGES & SOCIALS →
+          </button>
+        </section>
 
         <div style={layoutStyle}>
           <div>
@@ -354,11 +386,7 @@ export default function WebsiteManagerPage() {
               >
                 <div style={previewTopStyle}>
                   {settings.logo_url ? (
-                    <img
-                      src={settings.logo_url}
-                      alt=""
-                      style={logoStyle}
-                    />
+                    <img src={settings.logo_url} alt="" style={logoStyle} />
                   ) : (
                     <div style={previewBrandStyle}>{restaurant.name}</div>
                   )}
@@ -417,9 +445,7 @@ export default function WebsiteManagerPage() {
               )}
 
               <div style={miniGridStyle}>
-                {settings.show_menu && (
-                  <div style={miniCardStyle}>🍽️ MENU</div>
-                )}
+                {settings.show_menu && <div style={miniCardStyle}>🍽️ MENU</div>}
                 {settings.show_ordering && (
                   <div style={miniCardStyle}>🛍️ ORDER ONLINE</div>
                 )}
@@ -429,8 +455,8 @@ export default function WebsiteManagerPage() {
               </div>
 
               <div style={hintStyle}>
-                This is the content manager preview. Next we connect these
-                settings to the actual public restaurant-site template.
+                Use Pages & Socials for extra pages, navigation and social
+                profiles. This preview shows the core home-page content.
               </div>
             </div>
           </div>
@@ -541,6 +567,12 @@ const headerStyle = {
   marginBottom: "24px",
 };
 
+const headerActionsStyle = {
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap" as const,
+};
+
 const eyebrowStyle = {
   color: "#f5b82e",
   fontSize: "11px",
@@ -559,6 +591,51 @@ const titleStyle = {
 const subStyle = {
   color: "#94a3b8",
   fontSize: "16px",
+};
+
+const quickControlStyle = {
+  background: "#13263b",
+  border: "1px solid #2d4661",
+  borderRadius: "18px",
+  padding: "22px",
+  marginBottom: "20px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "24px",
+  flexWrap: "wrap" as const,
+};
+
+const quickControlTitleStyle = {
+  margin: "6px 0 8px",
+  fontSize: "26px",
+};
+
+const quickControlTextStyle = {
+  color: "#94a3b8",
+  margin: 0,
+  maxWidth: "760px",
+  lineHeight: 1.5,
+};
+
+const quickControlButtonStyle = {
+  background: "#f5b82e",
+  color: "#08111f",
+  border: 0,
+  borderRadius: "10px",
+  padding: "14px 18px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const primaryOutlineButtonStyle = {
+  background: "#f5b82e",
+  color: "#08111f",
+  border: 0,
+  borderRadius: "10px",
+  padding: "12px 16px",
+  fontWeight: 900,
+  cursor: "pointer",
 };
 
 const layoutStyle = {
