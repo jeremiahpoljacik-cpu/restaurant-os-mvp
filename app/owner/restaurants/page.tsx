@@ -98,7 +98,9 @@ export default function OwnerRestaurantsPage() {
           <div style={headerActionsStyle}>
             <button
               style={primaryButtonStyle}
-              onClick={() => (window.location.href = "/onboarding")}
+              onClick={() =>
+                (window.location.href = "/owner/restaurants/new")
+              }
             >
               + ADD RESTAURANT
             </button>
@@ -125,7 +127,9 @@ export default function OwnerRestaurantsPage() {
 
             <button
               style={primaryButtonStyle}
-              onClick={() => (window.location.href = "/onboarding")}
+              onClick={() =>
+                (window.location.href = "/owner/restaurants/new")
+              }
             >
               CREATE RESTAURANT
             </button>
