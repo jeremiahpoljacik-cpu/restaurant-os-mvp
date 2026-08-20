@@ -22,6 +22,7 @@ export default function OwnerDashboardPage() {
   const [message, setMessage] = useState("");
   const [setupPercent, setSetupPercent] = useState(0);
   const [setupReady, setSetupReady] = useState(false);
+  const [restaurantCount, setRestaurantCount] = useState(1);
 
   useEffect(() => {
     load();
@@ -62,6 +63,13 @@ export default function OwnerDashboardPage() {
     }
 
     setRestaurant(data);
+
+    const { count: ownerRestaurantCount } = await supabase
+      .from("restaurants")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_user_id", user.id);
+
+    setRestaurantCount(ownerRestaurantCount || 1);
 
     const [
       brandingResult,
@@ -210,9 +218,22 @@ export default function OwnerDashboardPage() {
             </p>
           </div>
 
-          <button style={secondaryButtonStyle} onClick={signOut}>
-            SIGN OUT
-          </button>
+          <div style={headerButtonGroupStyle}>
+            {restaurantCount > 1 && (
+              <button
+                style={secondaryButtonStyle}
+                onClick={() => {
+                  window.location.href = "/owner/restaurants";
+                }}
+              >
+                SWITCH RESTAURANT
+              </button>
+            )}
+
+            <button style={secondaryButtonStyle} onClick={signOut}>
+              SIGN OUT
+            </button>
+          </div>
         </header>
 
         {message && <div style={messageStyle}>{message}</div>}
@@ -535,6 +556,12 @@ const statusPillStyle = {
   fontSize: "10px",
   fontWeight: 900,
   color: "#cbd5e1",
+};
+
+const headerButtonGroupStyle = {
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap" as const,
 };
 
 const launchPanelStyle = {
