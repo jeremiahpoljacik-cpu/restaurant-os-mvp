@@ -42,8 +42,6 @@ type WebsiteSettings = {
   logo_url: string | null;
   about_title: string | null;
   about_body: string | null;
-  primary_cta_label: string | null;
-  secondary_cta_label: string | null;
   show_about: boolean;
   show_menu: boolean;
   show_ordering: boolean;
@@ -51,15 +49,16 @@ type WebsiteSettings = {
   published: boolean;
 };
 
-type Hours = {
-  monday: string | null;
-  tuesday: string | null;
-  wednesday: string | null;
-  thursday: string | null;
-  friday: string | null;
-  saturday: string | null;
-  sunday: string | null;
-};
+type Hours = Record<
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday"
+  | "sunday",
+  string | null
+>;
 
 type Ordering = {
   online_ordering_url: string | null;
@@ -136,6 +135,7 @@ export default function PublicRestaurantPage() {
       .maybeSingle();
 
     if (!restaurantData) {
+      setRestaurant(null);
       setLoading(false);
       return;
     }
@@ -215,10 +215,7 @@ export default function PublicRestaurantPage() {
     setLoading(false);
   }
 
-  const featuredItems = useMemo(
-    () => items.filter((item) => item.featured).slice(0, 3),
-    [items]
-  );
+  const navPages = pages.filter((page) => page.show_in_nav);
 
   const menuGroups = useMemo(
     () =>
@@ -227,6 +224,11 @@ export default function PublicRestaurantPage() {
         items: items.filter((item) => item.category_id === category.id),
       })),
     [categories, items]
+  );
+
+  const featured = useMemo(
+    () => items.filter((item) => item.featured).slice(0, 5),
+    [items]
   );
 
   if (loading) {
@@ -243,18 +245,17 @@ export default function PublicRestaurantPage() {
         <div style={loadingCardStyle}>
           <div style={eyebrowStyle}>RESTAURANT OS</div>
           <h1>Site not available</h1>
-          <p style={{ color: "#777" }}>
-            This restaurant website has not been published yet.
-          </p>
+          <p>This restaurant website has not been published yet.</p>
         </div>
       </main>
     );
   }
 
-  const cream = "#f0e5d2";
-  const ink = "#101417";
-  const deep = branding?.primary_color || "#0f2530";
-  const accent = branding?.secondary_color || "#d98a18";
+  const forest = branding?.primary_color || "#0d513e";
+  const tan = "#f1c98f";
+  const cream = "#f8f1e3";
+  const ink = "#131313";
+  const accent = branding?.secondary_color || "#c66b2c";
 
   const address = [
     restaurant.address_line_1,
@@ -265,20 +266,15 @@ export default function PublicRestaurantPage() {
     .filter(Boolean)
     .join(", ");
 
-  const navPages = pages.filter((page) => page.show_in_nav);
-
-  const heroPhoto =
+  const heroFood =
     website.hero_image_url ||
-    "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1800&q=85";
+    "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1800&q=86";
 
-  const lodgePhoto =
-    "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=1600&q=85";
-
-  const foodPhoto =
-    "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1400&q=85";
+  const secondFood =
+    "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1800&q=84";
 
   const barPhoto =
-    "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1400&q=85";
+    "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1800&q=84";
 
   function scrollTo(id: string) {
     document.getElementById(id)?.scrollIntoView({
@@ -293,185 +289,199 @@ export default function PublicRestaurantPage() {
         html { scroll-behavior: smooth; }
         body { margin: 0; }
         * { box-sizing: border-box; }
-        @media (max-width: 760px) {
+
+        @media (max-width: 860px) {
           .desktop-nav { display: none !important; }
-          .hero-grid { grid-template-columns: 1fr !important; }
-          .feature-grid { grid-template-columns: 1fr !important; }
-          .story-grid { grid-template-columns: 1fr !important; }
-          .menu-grid { grid-template-columns: 1fr !important; }
-          .visit-grid { grid-template-columns: 1fr !important; }
+          .info-grid,
+          .story-grid,
+          .visit-grid,
           .footer-grid { grid-template-columns: 1fr !important; }
-          .hero-copy { padding: 58px 22px !important; }
-          .hero-title { font-size: clamp(60px, 18vw, 100px) !important; }
+          .featured-grid { grid-template-columns: 1fr 1fr !important; }
+          .menu-grid { grid-template-columns: 1fr !important; }
+        }
+
+        @media (max-width: 560px) {
+          .featured-grid { grid-template-columns: 1fr !important; }
+          .hero-logo { font-size: clamp(62px, 20vw, 110px) !important; }
+          .nav-logo { font-size: 22px !important; }
+          .hang-buttons { grid-template-columns: 1fr !important; }
         }
       `}</style>
 
-      <header style={headerStyle}>
-        <div style={headerInnerStyle}>
-          <button style={brandButtonStyle} onClick={() => scrollTo("top")}>
-            <div style={brandMarkStyle}>{restaurant.name}</div>
-            <div style={brandSubStyle}>
-              {restaurant.cuisine_category || "MOUNTAIN KITCHEN"}
+      <section id="top" style={heroStageStyle}>
+        <header style={headerStyle}>
+          <div style={headerInnerStyle}>
+            <button onClick={() => scrollTo("top")} style={brandButtonStyle}>
+              <div className="nav-logo" style={navLogoStyle}>
+                802
+              </div>
+              <div style={navLogoSubStyle}>PIZZA</div>
+            </button>
+
+            <nav className="desktop-nav" style={navStyle}>
+              <button style={navLinkStyle} onClick={() => scrollTo("menu")}>
+                MENU
+              </button>
+              <button style={navLinkStyle} onClick={() => scrollTo("story")}>
+                OUR STORY
+              </button>
+              {navPages.slice(0, 2).map((page) => (
+                <a
+                  key={page.id}
+                  href={`/r/${restaurant.slug}/${page.slug}`}
+                  style={navAnchorStyle}
+                >
+                  {(page.nav_label || page.title).toUpperCase()}
+                </a>
+              ))}
+              {website.show_vip && (
+                <a href={`/r/${restaurant.slug}/vip`} style={navAnchorStyle}>
+                  REWARDS
+                </a>
+              )}
+              {ordering?.online_ordering_url && (
+                <a
+                  href={ordering.online_ordering_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ ...orderNavButtonStyle, background: tan }}
+                >
+                  ORDER
+                </a>
+              )}
+            </nav>
+          </div>
+        </header>
+
+        <div style={blueprintLayerStyle}>
+          <div style={blueprintLinesStyle} />
+          <div style={heroCenterStyle}>
+            <div style={heroSmallStyle}>EST. IN THE MOUNTAINS</div>
+            <div className="hero-logo" style={heroLogoStyle}>
+              802
             </div>
-          </button>
-
-          <nav className="desktop-nav" style={navStyle}>
-            <button style={navLinkStyle} onClick={() => scrollTo("story")}>
-              OUR STORY
-            </button>
-            <button style={navLinkStyle} onClick={() => scrollTo("menu")}>
-              MENU
-            </button>
-
-            {navPages.slice(0, 2).map((page) => (
-              <a
-                key={page.id}
-                href={`/r/${restaurant.slug}/${page.slug}`}
-                style={navAnchorStyle}
-              >
-                {(page.nav_label || page.title).toUpperCase()}
-              </a>
-            ))}
-
-            {website.show_vip && (
-              <a href={`/r/${restaurant.slug}/vip`} style={navAnchorStyle}>
-                REWARDS
-              </a>
-            )}
-
-            {ordering?.online_ordering_url && (
-              <a
-                href={ordering.online_ordering_url}
-                target="_blank"
-                rel="noreferrer"
-                style={{ ...orderButtonStyle, background: accent }}
-              >
-                ORDER ONLINE
-              </a>
-            )}
-          </nav>
-        </div>
-      </header>
-
-      <section id="top" className="hero-grid" style={heroGridStyle}>
-        <div className="hero-copy" style={{ ...heroCopyStyle, background: deep }}>
-          <div style={heroKickerStyle}>WOOD • FIRE • MOUNTAIN</div>
-          <h1 className="hero-title" style={heroTitleStyle}>
-            {website.hero_headline || "COME HUNGRY. STAY AWHILE."}
-          </h1>
-          <p style={heroTextStyle}>
-            {website.hero_subheadline ||
-              branding?.tagline ||
-              "A warm mountain-lodge restaurant built around bold food, cold drinks, and a room people actually want to hang out in."}
-          </p>
-
-          <div style={heroActionsStyle}>
-            {ordering?.online_ordering_url && (
-              <a
-                href={ordering.online_ordering_url}
-                target="_blank"
-                rel="noreferrer"
-                style={{ ...heroPrimaryStyle, background: accent }}
-              >
-                ORDER ONLINE
-              </a>
-            )}
-            <button style={heroSecondaryStyle} onClick={() => scrollTo("menu")}>
-              VIEW MENU
-            </button>
+            <div style={heroPizzaStyle}>PIZZA</div>
+            <div style={heroTaglineStyle}>
+              {branding?.tagline || "WOOD-FIRED • LOCAL • GOOD"}
+            </div>
           </div>
         </div>
-
-        <div
-          style={{
-            ...heroImageStyle,
-            background: `url("${heroPhoto}") center/cover`,
-          }}
-        />
       </section>
 
-      <section style={lodgeStripStyle}>
-        <div style={lodgeStripInnerStyle}>
-          <span>WOOD-FIRED</span>
-          <span>•</span>
-          <span>SCRATCH KITCHEN</span>
-          <span>•</span>
-          <span>LOCAL BEER</span>
-          <span>•</span>
-          <span>APRÈS ENERGY</span>
+      <section style={foodHeroStyle}>
+        <img src={heroFood} alt="Featured food" style={fullImageStyle} />
+      </section>
+
+      <section className="info-grid" style={{ ...infoGridStyle, background: forest }}>
+        <div style={infoBlockStyle}>
+          <div style={infoLabelStyle}>HOURS OF OPERATION</div>
+          {hours && (
+            <div style={hoursCompactStyle}>
+              <HoursLine day="MON" value={hours.monday} />
+              <HoursLine day="TUE" value={hours.tuesday} />
+              <HoursLine day="WED" value={hours.wednesday} />
+              <HoursLine day="THU" value={hours.thursday} />
+              <HoursLine day="FRI" value={hours.friday} />
+              <HoursLine day="SAT" value={hours.saturday} />
+              <HoursLine day="SUN" value={hours.sunday} />
+            </div>
+          )}
+        </div>
+
+        <div style={centerInfoStyle}>
+          <div style={wheatLineStyle}>╱╲</div>
+          <div style={addressBigStyle}>{address || "COME FIND US"}</div>
+          {restaurant.phone && (
+            <a href={`tel:${restaurant.phone}`} style={phoneStyle}>
+              {restaurant.phone}
+            </a>
+          )}
+          <div style={wheatLineStyle}>╲╱</div>
+        </div>
+
+        <div className="hang-buttons" style={hangButtonsStyle}>
+          {ordering?.catering_email && (
+            <a
+              href={`mailto:${ordering.catering_email}`}
+              style={{ ...hangingButtonStyle, background: tan }}
+            >
+              EVENT INQUIRIES
+            </a>
+          )}
+
+          {ordering?.online_ordering_url && (
+            <a
+              href={ordering.online_ordering_url}
+              target="_blank"
+              rel="noreferrer"
+              style={{ ...hangingButtonStyle, background: tan }}
+            >
+              ORDER TAKEOUT
+            </a>
+          )}
+
+          <a
+            href={`/r/${restaurant.slug}/offers`}
+            style={{ ...hangingButtonStyle, background: tan }}
+          >
+            OFFERS
+          </a>
+
+          {website.show_vip && (
+            <a
+              href={`/r/${restaurant.slug}/vip`}
+              style={{ ...hangingButtonStyle, background: tan }}
+            >
+              JOIN THE CLUB
+            </a>
+          )}
         </div>
       </section>
 
       <section id="story" className="story-grid" style={storyGridStyle}>
-        <div
-          style={{
-            ...storyImageStyle,
-            background: `url("${lodgePhoto}") center/cover`,
-          }}
-        />
-
         <div style={storyCopyStyle}>
-          <div style={eyebrowStyle}>THE VIBE</div>
+          <div style={eyebrowStyle}>THE 802 STORY</div>
           <h2 style={storyTitleStyle}>
-            {website.about_title || "A PLACE WITH SOME SOUL."}
+            {website.about_title || "GOOD FOOD. GOOD PEOPLE. NO PRETENSE."}
           </h2>
           <p style={storyTextStyle}>
             {website.about_body ||
               branding?.short_description ||
-              "Think old timber, a real bar, mountain-town energy and food that can hold its own. 802 Pizza is built to feel like the kind of place you discover once and keep coming back to."}
+              "802 Pizza is a neighborhood restaurant built around wood-fired favorites, generous plates, a lively bar, and the kind of room that feels better the longer you stay."}
           </p>
+        </div>
 
-          <div style={storyStatsStyle}>
-            <div>
-              <div style={statNumberStyle}>01</div>
-              <div style={statLabelStyle}>WOOD-FIRED FAVORITES</div>
-            </div>
-            <div>
-              <div style={statNumberStyle}>02</div>
-              <div style={statLabelStyle}>BURGERS • WINGS • PASTA</div>
-            </div>
-            <div>
-              <div style={statNumberStyle}>03</div>
-              <div style={statLabelStyle}>BEER • COCKTAILS • GOOD TIMES</div>
-            </div>
-          </div>
+        <div style={storyPhotoWrapStyle}>
+          <img src={barPhoto} alt="Restaurant bar" style={fullImageStyle} />
         </div>
       </section>
 
-      {featuredItems.length > 0 && (
-        <section style={featureSectionStyle}>
+      {featured.length > 0 && (
+        <section style={featuredSectionStyle}>
           <div style={contentStyle}>
-            <div style={eyebrowStyle}>FEATURED FROM THE KITCHEN</div>
-            <div style={sectionHeaderRowStyle}>
-              <h2 style={sectionTitleStyle}>NOT JUST PIZZA.</h2>
-              <button style={textButtonStyle} onClick={() => scrollTo("menu")}>
-                VIEW FULL MENU →
-              </button>
-            </div>
+            <div style={eyebrowStyle}>FEATURED FAVORITES</div>
+            <h2 style={sectionTitleStyle}>OUR MENU</h2>
 
-            <div className="feature-grid" style={featureGridStyle}>
-              {featuredItems.map((item, index) => (
-                <article key={item.id} style={featureCardStyle}>
+            <div className="featured-grid" style={featuredGridStyle}>
+              {featured.map((item, index) => (
+                <article key={item.id} style={featuredCardStyle}>
                   <div
                     style={{
-                      ...featurePhotoStyle,
-                      background:
-                        index === 0
-                          ? `url("${foodPhoto}") center/cover`
-                          : index === 1
-                          ? `url("${barPhoto}") center/cover`
-                          : `url("${heroPhoto}") center/cover`,
+                      ...featuredImageStyle,
+                      backgroundImage: `url("${
+                        index % 2 === 0 ? heroFood : secondFood
+                      }")`,
                     }}
                   />
-
-                  <div style={featureBodyStyle}>
-                    <div style={featureLabelStyle}>FEATURED</div>
-                    <h3 style={featureTitleStyle}>{item.name}</h3>
+                  <div style={featuredBodyStyle}>
+                    <div style={featuredNameStyle}>{item.name}</div>
                     {item.description && (
-                      <p style={featureTextStyle}>{item.description}</p>
+                      <div style={featuredDescriptionStyle}>
+                        {item.description}
+                      </div>
                     )}
                     {item.price !== null && (
-                      <div style={featurePriceStyle}>
+                      <div style={featuredPriceStyle}>
                         ${Number(item.price).toFixed(2)}
                       </div>
                     )}
@@ -483,36 +493,18 @@ export default function PublicRestaurantPage() {
         </section>
       )}
 
-      <section style={{ ...barSceneStyle, background: deep }}>
-        <div
-          style={{
-            ...barSceneImageStyle,
-            background: `url("${barPhoto}") center/cover`,
-          }}
-        />
-
-        <div style={barSceneCopyStyle}>
-          <div style={barEyebrowStyle}>THE BAR</div>
-          <h2 style={barTitleStyle}>POUR SOMETHING GOOD.</h2>
-          <p style={barTextStyle}>
-            Cold beer, warm wood, easy conversation. Build out a real bar
-            program and this becomes part of the experience, not an afterthought.
-          </p>
-        </div>
-      </section>
-
       {website.show_menu && (
         <section id="menu" style={menuSectionStyle}>
           <div style={contentStyle}>
-            <div style={eyebrowStyle}>MENU</div>
+            <div style={eyebrowStyle}>FULL MENU</div>
             <h2 style={menuTitleStyle}>COME HUNGRY.</h2>
 
             <div className="menu-grid" style={menuGridStyle}>
-              {menuGroups.map((category) => (
-                <article key={category.id} style={menuCategoryStyle}>
-                  <h3 style={menuCategoryTitleStyle}>{category.name}</h3>
+              {menuGroups.map((group) => (
+                <article key={group.id} style={menuCategoryStyle}>
+                  <h3 style={menuCategoryTitleStyle}>{group.name}</h3>
 
-                  {category.items.map((item) => (
+                  {group.items.map((item) => (
                     <div key={item.id} style={menuItemStyle}>
                       <div>
                         <div style={menuItemNameStyle}>{item.name}</div>
@@ -538,39 +530,40 @@ export default function PublicRestaurantPage() {
       )}
 
       {website.show_vip && (
-        <section style={{ ...vipSectionStyle, background: accent }}>
-          <div style={vipInnerStyle}>
+        <section style={{ ...clubSectionStyle, background: forest }}>
+          <div style={clubInnerStyle}>
             <div>
-              <div style={vipEyebrowStyle}>REWARDS + OFFERS</div>
-              <h2 style={vipTitleStyle}>
-                {growth?.vip_club_name || "JOIN THE 802 CLUB"}
+              <div style={clubEyebrowStyle}>802 CLUB</div>
+              <h2 style={clubTitleStyle}>
+                {growth?.vip_club_name || "JOIN THE REGULARS."}
               </h2>
-              <p style={vipTextStyle}>
+              <p style={clubTextStyle}>
                 {growth?.signup_offer ||
-                  "Get restaurant news, offers and member-only perks without the spam."}
+                  "Get offers, restaurant news, and member-only perks."}
               </p>
             </div>
 
-            <a
-              href={`/r/${restaurant.slug}/vip`}
-              style={vipButtonStyle}
-            >
+            <a href={`/r/${restaurant.slug}/vip`} style={{ ...clubButtonStyle, background: tan }}>
               JOIN NOW
             </a>
           </div>
         </section>
       )}
 
-      <section id="visit" className="visit-grid" style={visitGridStyle}>
-        <div style={visitMainStyle}>
-          <div style={eyebrowStyle}>COME SEE US</div>
-          <h2 style={visitTitleStyle}>{restaurant.name}</h2>
-          {address && <p style={visitAddressStyle}>{address}</p>}
+      <section className="visit-grid" style={visitGridStyle}>
+        <div style={visitPhotoStyle}>
+          <img src={secondFood} alt="Restaurant food" style={fullImageStyle} />
+        </div>
 
-          <div style={visitLinksStyle}>
+        <div style={visitCopyStyle}>
+          <div style={eyebrowStyle}>VISIT 802</div>
+          <h2 style={visitTitleStyle}>{restaurant.name}</h2>
+          <p style={visitAddressStyle}>{address}</p>
+
+          <div style={visitButtonsStyle}>
             {restaurant.phone && (
-              <a href={`tel:${restaurant.phone}`} style={visitLinkStyle}>
-                CALL {restaurant.phone}
+              <a href={`tel:${restaurant.phone}`} style={outlineButtonStyle}>
+                CALL US
               </a>
             )}
             {ordering?.online_ordering_url && (
@@ -578,49 +571,24 @@ export default function PublicRestaurantPage() {
                 href={ordering.online_ordering_url}
                 target="_blank"
                 rel="noreferrer"
-                style={visitLinkStyle}
+                style={{ ...solidButtonStyle, background: accent }}
               >
                 ORDER ONLINE
               </a>
             )}
-            {ordering?.catering_email && (
-              <a
-                href={`mailto:${ordering.catering_email}`}
-                style={visitLinkStyle}
-              >
-                CATERING
-              </a>
-            )}
           </div>
-        </div>
-
-        <div style={hoursPanelStyle}>
-          <div style={hoursTitleStyle}>HOURS</div>
-          {hours && (
-            <>
-              <HoursRow day="MON" value={hours.monday} />
-              <HoursRow day="TUE" value={hours.tuesday} />
-              <HoursRow day="WED" value={hours.wednesday} />
-              <HoursRow day="THU" value={hours.thursday} />
-              <HoursRow day="FRI" value={hours.friday} />
-              <HoursRow day="SAT" value={hours.saturday} />
-              <HoursRow day="SUN" value={hours.sunday} />
-            </>
-          )}
         </div>
       </section>
 
       <footer style={footerStyle}>
         <div className="footer-grid" style={footerGridStyle}>
           <div>
-            <div style={footerBrandStyle}>{restaurant.name}</div>
-            <div style={footerSmallStyle}>
-              {restaurant.cuisine_category || "MOUNTAIN KITCHEN"}
-            </div>
+            <div style={footerLogoStyle}>802</div>
+            <div style={footerLogoSubStyle}>PIZZA</div>
           </div>
 
           <div style={footerLinksStyle}>
-            <button style={footerLinkButtonStyle} onClick={() => scrollTo("menu")}>
+            <button style={footerButtonStyle} onClick={() => scrollTo("menu")}>
               MENU
             </button>
             <a href={`/r/${restaurant.slug}/offers`} style={footerLinkStyle}>
@@ -644,7 +612,7 @@ export default function PublicRestaurantPage() {
 
           <div>
             <div style={footerSmallStyle}>FOLLOW</div>
-            <div style={footerSocialsStyle}>
+            <div style={footerLinksStyle}>
               {socials.map((social) => (
                 <a
                   key={social.id}
@@ -661,21 +629,14 @@ export default function PublicRestaurantPage() {
         </div>
 
         <div style={footerBottomStyle}>
-          <span>© {new Date().getFullYear()} {restaurant.name}</span>
-          <span>Powered by Restaurant OS</span>
+          © {new Date().getFullYear()} {restaurant.name} • Powered by Restaurant OS
         </div>
       </footer>
     </main>
   );
 }
 
-function HoursRow({
-  day,
-  value,
-}: {
-  day: string;
-  value: string | null;
-}) {
+function HoursLine({ day, value }: { day: string; value: string | null }) {
   return (
     <div style={hoursRowStyle}>
       <span>{day}</span>
@@ -693,36 +654,38 @@ const loadingPageStyle = {
   minHeight: "100vh",
   display: "grid",
   placeItems: "center",
-  background: "#f0e5d2",
-  color: "#111",
+  background: "#f8f1e3",
   fontFamily: "Arial, Helvetica, sans-serif",
 };
 
 const loadingCardStyle = {
   padding: "28px",
-  border: "2px solid #111",
 };
 
 const eyebrowStyle = {
-  fontSize: "11px",
+  color: "#b06a28",
+  fontSize: "10px",
   fontWeight: 900,
   letterSpacing: "2px",
-  color: "#b77410",
+};
+
+const heroStageStyle = {
+  background: "#f4ead7",
 };
 
 const headerStyle = {
   position: "sticky" as const,
   top: 0,
-  zIndex: 30,
-  background: "#0c1216",
-  borderBottom: "1px solid #2b3135",
+  zIndex: 40,
+  background: "#fffaf0",
+  borderBottom: "1px solid #c8bda8",
 };
 
 const headerInnerStyle = {
   maxWidth: "1440px",
   margin: "0 auto",
-  minHeight: "84px",
-  padding: "12px 24px",
+  minHeight: "82px",
+  padding: "10px 24px",
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
@@ -732,330 +695,313 @@ const headerInnerStyle = {
 const brandButtonStyle = {
   border: 0,
   background: "transparent",
-  color: "#fff",
-  padding: 0,
   cursor: "pointer",
   textAlign: "left" as const,
 };
 
-const brandMarkStyle = {
+const navLogoStyle = {
   fontSize: "29px",
   fontWeight: 1000,
-  letterSpacing: "-1.5px",
-  textTransform: "uppercase" as const,
+  letterSpacing: "-2px",
+  lineHeight: 0.8,
 };
 
-const brandSubStyle = {
-  color: "#d6a24d",
-  fontSize: "8px",
+const navLogoSubStyle = {
+  color: "#c66b2c",
+  fontSize: "9px",
   fontWeight: 900,
-  letterSpacing: "2px",
-  marginTop: "2px",
+  letterSpacing: "4px",
+  marginTop: "5px",
 };
 
 const navStyle = {
   display: "flex",
+  gap: "18px",
   alignItems: "center",
-  gap: "22px",
 };
 
 const navLinkStyle = {
   border: 0,
   background: "transparent",
-  color: "#fff",
-  cursor: "pointer",
-  fontSize: "11px",
+  color: "#111",
+  fontSize: "10px",
   fontWeight: 900,
   letterSpacing: "1px",
+  cursor: "pointer",
 };
 
 const navAnchorStyle = {
-  color: "#fff",
+  color: "#111",
   textDecoration: "none",
-  fontSize: "11px",
-  fontWeight: 900,
-  letterSpacing: "1px",
-};
-
-const orderButtonStyle = {
-  color: "#101417",
-  textDecoration: "none",
-  padding: "13px 16px",
-  fontSize: "11px",
-  fontWeight: 900,
-  letterSpacing: "1px",
-};
-
-const heroGridStyle = {
-  minHeight: "700px",
-  display: "grid",
-  gridTemplateColumns: "0.9fr 1.1fr",
-};
-
-const heroCopyStyle = {
-  color: "#fff",
-  padding: "90px 7vw",
-  display: "flex",
-  flexDirection: "column" as const,
-  justifyContent: "center",
-};
-
-const heroKickerStyle = {
-  fontSize: "11px",
-  fontWeight: 900,
-  letterSpacing: "2.5px",
-  marginBottom: "24px",
-  color: "#e9b151",
-};
-
-const heroTitleStyle = {
-  fontSize: "clamp(72px, 9vw, 138px)",
-  lineHeight: ".8",
-  fontWeight: 1000,
-  letterSpacing: "-7px",
-  textTransform: "uppercase" as const,
-  margin: "0 0 30px",
-};
-
-const heroTextStyle = {
-  fontSize: "19px",
-  lineHeight: 1.55,
-  maxWidth: "560px",
-  marginBottom: "28px",
-};
-
-const heroActionsStyle = {
-  display: "flex",
-  gap: "12px",
-  flexWrap: "wrap" as const,
-};
-
-const heroPrimaryStyle = {
-  color: "#101417",
-  padding: "15px 20px",
-  fontSize: "11px",
-  fontWeight: 900,
-  textDecoration: "none",
-};
-
-const heroSecondaryStyle = {
-  color: "#fff",
-  background: "transparent",
-  border: "1px solid #fff",
-  padding: "15px 20px",
-  fontSize: "11px",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const heroImageStyle = {
-  minHeight: "620px",
-};
-
-const lodgeStripStyle = {
-  background: "#111",
-  color: "#fff",
-};
-
-const lodgeStripInnerStyle = {
-  minHeight: "48px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "18px",
-  flexWrap: "wrap" as const,
-  padding: "10px 18px",
   fontSize: "10px",
   fontWeight: 900,
-  letterSpacing: "1.5px",
-};
-
-const storyGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  minHeight: "560px",
-};
-
-const storyImageStyle = {
-  minHeight: "500px",
-};
-
-const storyCopyStyle = {
-  background: "#eadfce",
-  padding: "80px 7vw",
-  display: "flex",
-  flexDirection: "column" as const,
-  justifyContent: "center",
-};
-
-const storyTitleStyle = {
-  fontSize: "clamp(56px,7vw,96px)",
-  lineHeight: ".86",
-  letterSpacing: "-4px",
-  margin: "10px 0 24px",
-};
-
-const storyTextStyle = {
-  maxWidth: "670px",
-  fontSize: "19px",
-  lineHeight: 1.65,
-};
-
-const storyStatsStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3,1fr)",
-  gap: "16px",
-  marginTop: "30px",
-};
-
-const statNumberStyle = {
-  fontSize: "22px",
-  fontWeight: 900,
-  color: "#b77410",
-};
-
-const statLabelStyle = {
-  fontSize: "9px",
-  fontWeight: 900,
   letterSpacing: "1px",
-  marginTop: "4px",
 };
 
-const contentStyle = {
-  maxWidth: "1240px",
-  margin: "0 auto",
-  padding: "82px 24px",
+const orderNavButtonStyle = {
+  color: "#111",
+  textDecoration: "none",
+  padding: "12px 16px",
+  borderRadius: "3px",
+  fontSize: "10px",
+  fontWeight: 900,
 };
 
-const featureSectionStyle = {
-  background: "#f0e5d2",
+const blueprintLayerStyle = {
+  position: "relative" as const,
+  minHeight: "560px",
+  overflow: "hidden",
+  background:
+    "linear-gradient(rgba(225,209,181,.35),rgba(225,209,181,.35)), #f2e5cd",
 };
 
-const sectionHeaderRowStyle = {
+const blueprintLinesStyle = {
+  position: "absolute" as const,
+  inset: 0,
+  opacity: 0.45,
+  backgroundImage:
+    "linear-gradient(90deg, rgba(128,108,76,.22) 1px, transparent 1px), linear-gradient(rgba(128,108,76,.18) 1px, transparent 1px), repeating-linear-gradient(35deg, transparent 0 78px, rgba(128,108,76,.13) 79px 80px)",
+  backgroundSize: "88px 88px, 88px 88px, auto",
+};
+
+const heroCenterStyle = {
+  position: "relative" as const,
+  zIndex: 2,
+  minHeight: "560px",
   display: "flex",
-  justifyContent: "space-between",
-  alignItems: "end",
-  gap: "20px",
-  flexWrap: "wrap" as const,
-  marginBottom: "32px",
-};
-
-const sectionTitleStyle = {
-  fontSize: "clamp(54px,7vw,92px)",
-  lineHeight: ".86",
-  letterSpacing: "-4px",
-  margin: "8px 0 0",
-};
-
-const textButtonStyle = {
-  border: 0,
-  background: "transparent",
-  padding: 0,
-  fontSize: "11px",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const featureGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3,1fr)",
-  gap: "18px",
-};
-
-const featureCardStyle = {
-  background: "#fff",
-  border: "1px solid #c8baa6",
-};
-
-const featurePhotoStyle = {
-  minHeight: "240px",
-};
-
-const featureBodyStyle = {
-  padding: "20px",
-};
-
-const featureLabelStyle = {
-  fontSize: "9px",
-  fontWeight: 900,
-  letterSpacing: "1.4px",
-  color: "#b77410",
-};
-
-const featureTitleStyle = {
-  fontSize: "27px",
-  lineHeight: 1,
-  margin: "8px 0 10px",
-};
-
-const featureTextStyle = {
-  color: "#555",
-  lineHeight: 1.5,
-  fontSize: "13px",
-};
-
-const featurePriceStyle = {
-  marginTop: "14px",
-  fontWeight: 900,
-};
-
-const barSceneStyle = {
-  display: "grid",
-  gridTemplateColumns: "1.2fr .8fr",
-  color: "#fff",
-};
-
-const barSceneImageStyle = {
-  minHeight: "420px",
-};
-
-const barSceneCopyStyle = {
-  padding: "60px 6vw",
-  display: "flex",
-  justifyContent: "center",
   flexDirection: "column" as const,
+  justifyContent: "center",
+  alignItems: "center",
+  textAlign: "center" as const,
+  padding: "40px 20px",
 };
 
-const barEyebrowStyle = {
-  color: "#e9b151",
+const heroSmallStyle = {
+  fontSize: "10px",
+  fontWeight: 900,
+  letterSpacing: "5px",
+  marginBottom: "8px",
+};
+
+const heroLogoStyle = {
+  fontSize: "clamp(100px, 16vw, 220px)",
+  lineHeight: 0.72,
+  fontWeight: 1000,
+  letterSpacing: "-12px",
+};
+
+const heroPizzaStyle = {
+  marginTop: "18px",
+  fontSize: "24px",
+  fontWeight: 1000,
+  letterSpacing: "12px",
+  color: "#c66b2c",
+};
+
+const heroTaglineStyle = {
+  marginTop: "18px",
   fontSize: "10px",
   fontWeight: 900,
   letterSpacing: "2px",
 };
 
-const barTitleStyle = {
-  fontSize: "clamp(48px,6vw,82px)",
-  lineHeight: ".9",
-  letterSpacing: "-3px",
-  margin: "8px 0 18px",
+const foodHeroStyle = {
+  height: "520px",
+  overflow: "hidden",
 };
 
-const barTextStyle = {
-  color: "#dbe3e6",
-  fontSize: "17px",
-  lineHeight: 1.6,
+const fullImageStyle = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover" as const,
+  display: "block",
+};
+
+const infoGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr 1fr",
+  color: "#fff",
+  padding: "70px 6vw",
+  gap: "34px",
+};
+
+const infoBlockStyle = {
+  padding: "10px 20px",
+};
+
+const infoLabelStyle = {
+  color: "#efc98f",
+  fontSize: "11px",
+  fontWeight: 900,
+  letterSpacing: "1.5px",
+  marginBottom: "14px",
+};
+
+const hoursCompactStyle = {
+  display: "grid",
+  gap: "8px",
+};
+
+const hoursRowStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: "18px",
+  fontSize: "12px",
+};
+
+const centerInfoStyle = {
+  textAlign: "center" as const,
+  display: "flex",
+  flexDirection: "column" as const,
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "16px",
+  borderLeft: "1px solid rgba(255,255,255,.35)",
+  borderRight: "1px solid rgba(255,255,255,.35)",
+  padding: "10px 24px",
+};
+
+const wheatLineStyle = {
+  color: "#efc98f",
+  fontSize: "24px",
+};
+
+const addressBigStyle = {
+  fontSize: "22px",
+  lineHeight: 1.35,
+  fontWeight: 900,
+  letterSpacing: "1px",
+};
+
+const phoneStyle = {
+  color: "#fff",
+  fontWeight: 900,
+  letterSpacing: "1px",
+};
+
+const hangButtonsStyle = {
+  display: "grid",
+  gap: "14px",
+  alignContent: "center",
+};
+
+const hangingButtonStyle = {
+  color: "#111",
+  textDecoration: "none",
+  textAlign: "center" as const,
+  padding: "17px 18px",
+  borderRadius: "4px",
+  boxShadow: "0 4px 0 rgba(0,0,0,.24)",
+  fontSize: "11px",
+  fontWeight: 900,
+  letterSpacing: "1px",
+};
+
+const storyGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  background: "#fffaf0",
+};
+
+const storyCopyStyle = {
+  padding: "88px 7vw",
+};
+
+const storyTitleStyle = {
+  fontSize: "clamp(46px,6vw,82px)",
+  lineHeight: ".95",
+  letterSpacing: "-3px",
+  margin: "10px 0 24px",
+};
+
+const storyTextStyle = {
+  fontSize: "18px",
+  lineHeight: 1.7,
+  maxWidth: "680px",
+};
+
+const storyPhotoWrapStyle = {
+  minHeight: "520px",
+};
+
+const contentStyle = {
+  maxWidth: "1240px",
+  margin: "0 auto",
+  padding: "78px 24px",
+};
+
+const featuredSectionStyle = {
+  background: "#efe2cd",
+};
+
+const sectionTitleStyle = {
+  fontSize: "clamp(58px,7vw,96px)",
+  lineHeight: ".9",
+  letterSpacing: "-4px",
+  margin: "8px 0 34px",
+};
+
+const featuredGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(5,1fr)",
+  gap: "14px",
+};
+
+const featuredCardStyle = {
+  background: "#fffaf0",
+  border: "1px solid #c8bda8",
+};
+
+const featuredImageStyle = {
+  height: "170px",
+  backgroundSize: "cover",
+  backgroundPosition: "center",
+};
+
+const featuredBodyStyle = {
+  padding: "14px",
+};
+
+const featuredNameStyle = {
+  fontSize: "16px",
+  fontWeight: 900,
+  textTransform: "uppercase" as const,
+};
+
+const featuredDescriptionStyle = {
+  fontSize: "11px",
+  lineHeight: 1.5,
+  color: "#5f584e",
+  marginTop: "6px",
+};
+
+const featuredPriceStyle = {
+  fontSize: "13px",
+  fontWeight: 900,
+  marginTop: "10px",
+  color: "#b06a28",
 };
 
 const menuSectionStyle = {
-  background: "#f0e5d2",
+  background: "#fffaf0",
 };
 
 const menuTitleStyle = {
   fontSize: "clamp(58px,8vw,104px)",
-  lineHeight: ".86",
-  letterSpacing: "-5px",
+  lineHeight: ".9",
+  letterSpacing: "-4px",
   margin: "10px 0 42px",
 };
 
 const menuGridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(2, minmax(0,1fr))",
-  gap: "0 56px",
+  gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+  gap: "0 54px",
 };
 
 const menuCategoryStyle = {
-  padding: "24px 0 16px",
-  borderTop: "3px solid #111",
+  borderTop: "2px solid #111",
+  padding: "22px 0 14px",
 };
 
 const menuCategoryTitleStyle = {
@@ -1067,134 +1013,126 @@ const menuCategoryTitleStyle = {
 const menuItemStyle = {
   display: "grid",
   gridTemplateColumns: "1fr auto",
-  gap: "20px",
-  padding: "15px 0",
-  borderTop: "1px solid #bbae9a",
+  gap: "18px",
+  padding: "14px 0",
+  borderTop: "1px solid #c8bda8",
 };
 
 const menuItemNameStyle = {
-  fontSize: "15px",
+  fontSize: "14px",
   fontWeight: 900,
   textTransform: "uppercase" as const,
 };
 
 const menuDescriptionStyle = {
-  marginTop: "5px",
-  color: "#5d574e",
   fontSize: "12px",
-  lineHeight: 1.45,
+  lineHeight: 1.5,
+  color: "#625b52",
+  marginTop: "5px",
 };
 
 const menuPriceStyle = {
-  fontSize: "14px",
+  fontSize: "13px",
   fontWeight: 900,
 };
 
-const vipSectionStyle = {
-  color: "#101417",
+const clubSectionStyle = {
+  color: "#fff",
 };
 
-const vipInnerStyle = {
+const clubInnerStyle = {
   maxWidth: "1240px",
   margin: "0 auto",
-  padding: "65px 24px",
+  padding: "62px 24px",
   display: "flex",
   justifyContent: "space-between",
+  gap: "24px",
   alignItems: "center",
-  gap: "28px",
   flexWrap: "wrap" as const,
 };
 
-const vipEyebrowStyle = {
+const clubEyebrowStyle = {
+  color: "#efc98f",
   fontSize: "10px",
   fontWeight: 900,
   letterSpacing: "2px",
 };
 
-const vipTitleStyle = {
-  fontSize: "clamp(44px,6vw,80px)",
+const clubTitleStyle = {
+  fontSize: "clamp(42px,5vw,72px)",
   lineHeight: ".9",
-  letterSpacing: "-3px",
   margin: "8px 0 12px",
 };
 
-const vipTextStyle = {
-  maxWidth: "680px",
-  fontSize: "16px",
-  lineHeight: 1.5,
+const clubTextStyle = {
+  color: "#e5eee9",
+  fontSize: "15px",
 };
 
-const vipButtonStyle = {
-  color: "#fff",
-  background: "#101417",
-  padding: "15px 20px",
+const clubButtonStyle = {
+  color: "#111",
   textDecoration: "none",
+  padding: "15px 20px",
   fontSize: "11px",
   fontWeight: 900,
 };
 
 const visitGridStyle = {
   display: "grid",
-  gridTemplateColumns: "1.2fr .8fr",
+  gridTemplateColumns: "1fr 1fr",
+  background: "#efe2cd",
 };
 
-const visitMainStyle = {
-  padding: "78px 8vw",
-  background: "#efe4d1",
+const visitPhotoStyle = {
+  minHeight: "480px",
+};
+
+const visitCopyStyle = {
+  padding: "78px 7vw",
+  display: "flex",
+  flexDirection: "column" as const,
+  justifyContent: "center",
 };
 
 const visitTitleStyle = {
-  fontSize: "clamp(52px,7vw,94px)",
+  fontSize: "clamp(48px,6vw,82px)",
   lineHeight: ".9",
-  letterSpacing: "-4px",
-  margin: "10px 0 22px",
+  margin: "8px 0 18px",
 };
 
 const visitAddressStyle = {
-  fontSize: "18px",
+  fontSize: "17px",
   lineHeight: 1.6,
-  maxWidth: "560px",
 };
 
-const visitLinksStyle = {
+const visitButtonsStyle = {
   display: "flex",
-  gap: "18px",
+  gap: "12px",
   flexWrap: "wrap" as const,
-  marginTop: "28px",
+  marginTop: "22px",
 };
 
-const visitLinkStyle = {
+const outlineButtonStyle = {
   color: "#111",
-  fontSize: "11px",
+  textDecoration: "none",
+  border: "1px solid #111",
+  padding: "13px 16px",
+  fontSize: "10px",
   fontWeight: 900,
-  letterSpacing: "1px",
 };
 
-const hoursPanelStyle = {
-  padding: "78px 7vw",
-  background: "#ded0bc",
-};
-
-const hoursTitleStyle = {
-  fontSize: "25px",
+const solidButtonStyle = {
+  color: "#fff",
+  textDecoration: "none",
+  padding: "13px 16px",
+  fontSize: "10px",
   fontWeight: 900,
-  marginBottom: "18px",
-};
-
-const hoursRowStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: "18px",
-  padding: "12px 0",
-  borderTop: "1px solid #aaa190",
-  fontSize: "12px",
-  fontWeight: 800,
 };
 
 const footerStyle = {
-  background: "#0c1216",
+  background: "#111",
   color: "#fff",
-  padding: "60px 24px 24px",
+  padding: "58px 24px 22px",
 };
 
 const footerGridStyle = {
@@ -1202,21 +1140,22 @@ const footerGridStyle = {
   margin: "0 auto",
   display: "grid",
   gridTemplateColumns: "1.2fr 1fr .8fr",
-  gap: "50px",
+  gap: "40px",
 };
 
-const footerBrandStyle = {
-  fontSize: "38px",
+const footerLogoStyle = {
+  fontSize: "54px",
   fontWeight: 1000,
-  textTransform: "uppercase" as const,
+  letterSpacing: "-4px",
+  lineHeight: .75,
 };
 
-const footerSmallStyle = {
-  fontSize: "9px",
-  color: "#aaa",
+const footerLogoSubStyle = {
+  color: "#d78637",
+  fontSize: "10px",
   fontWeight: 900,
-  letterSpacing: "1.5px",
-  marginTop: "6px",
+  letterSpacing: "6px",
+  marginTop: "8px",
 };
 
 const footerLinksStyle = {
@@ -1224,39 +1163,37 @@ const footerLinksStyle = {
   gap: "10px",
 };
 
-const footerSocialsStyle = {
-  display: "grid",
-  gap: "10px",
-  marginTop: "12px",
+const footerSmallStyle = {
+  color: "#aaa",
+  fontSize: "9px",
+  fontWeight: 900,
+  letterSpacing: "1px",
+  marginBottom: "10px",
 };
 
 const footerLinkStyle = {
   color: "#fff",
   textDecoration: "none",
-  fontSize: "11px",
+  fontSize: "10px",
   fontWeight: 900,
 };
 
-const footerLinkButtonStyle = {
+const footerButtonStyle = {
   color: "#fff",
   border: 0,
   background: "transparent",
   padding: 0,
   textAlign: "left" as const,
   cursor: "pointer",
-  fontSize: "11px",
+  fontSize: "10px",
   fontWeight: 900,
 };
 
 const footerBottomStyle = {
   maxWidth: "1240px",
-  margin: "50px auto 0",
-  paddingTop: "18px",
+  margin: "44px auto 0",
+  paddingTop: "16px",
   borderTop: "1px solid #333",
-  display: "flex",
-  justifyContent: "space-between",
-  gap: "16px",
-  flexWrap: "wrap" as const,
   color: "#777",
   fontSize: "10px",
 };
