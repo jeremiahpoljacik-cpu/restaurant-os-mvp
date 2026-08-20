@@ -23,6 +23,7 @@ export default function OwnerDashboardPage() {
   const [setupPercent, setSetupPercent] = useState(0);
   const [setupReady, setSetupReady] = useState(false);
   const [restaurantCount, setRestaurantCount] = useState(1);
+  const [blockers, setBlockers] = useState<string[]>([]);
 
   useEffect(() => {
     load();
@@ -169,6 +170,38 @@ export default function OwnerDashboardPage() {
 
     setSetupPercent(percent);
     setSetupReady(completeCount === checks.length);
+
+    const nextBlockers: string[] = [];
+
+    if (!subscriptionComplete) {
+      if (subscription?.status === "past_due") {
+        nextBlockers.push("Billing is past due.");
+      } else if (subscription?.status === "canceled") {
+        nextBlockers.push("Subscription is canceled.");
+      } else if (subscription?.status === "paused") {
+        nextBlockers.push("Subscription is paused.");
+      } else {
+        nextBlockers.push("Subscription access is not active.");
+      }
+    }
+
+    if (!menuComplete) {
+      nextBlockers.push("No menu items have been added.");
+    }
+
+    if (!websiteComplete) {
+      nextBlockers.push("Website content is incomplete.");
+    }
+
+    if (!website?.published) {
+      nextBlockers.push("Public website is not published.");
+    }
+
+    if (!businessComplete) {
+      nextBlockers.push("Business profile is incomplete.");
+    }
+
+    setBlockers(nextBlockers);
     setLoading(false);
   }
 
@@ -261,6 +294,35 @@ export default function OwnerDashboardPage() {
             </span>
           </div>
         </section>
+
+        {blockers.length > 0 && (
+          <section style={alertPanelStyle}>
+            <div style={alertTopStyle}>
+              <div>
+                <div style={alertEyebrowStyle}>ACTION REQUIRED</div>
+                <div style={alertTitleStyle}>
+                  {blockers.length} launch blocker{blockers.length === 1 ? "" : "s"}
+                </div>
+              </div>
+
+              <button
+                style={alertButtonStyle}
+                onClick={() => go("/owner/setup")}
+              >
+                FIX NOW
+              </button>
+            </div>
+
+            <div style={alertListStyle}>
+              {blockers.map((blocker) => (
+                <div key={blocker} style={alertItemStyle}>
+                  <span style={alertDotStyle}>!</span>
+                  <span>{blocker}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section style={launchPanelStyle}>
           <div>
@@ -577,6 +639,73 @@ const headerButtonGroupStyle = {
   display: "flex",
   gap: "10px",
   flexWrap: "wrap" as const,
+};
+
+const alertPanelStyle = {
+  background: "#3a1717",
+  border: "1px solid #7f3333",
+  borderRadius: "18px",
+  padding: "20px",
+  marginBottom: "18px",
+};
+
+const alertTopStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "16px",
+  flexWrap: "wrap" as const,
+};
+
+const alertEyebrowStyle = {
+  color: "#fca5a5",
+  fontSize: "10px",
+  fontWeight: 900,
+  letterSpacing: "1.5px",
+};
+
+const alertTitleStyle = {
+  color: "#ffffff",
+  fontSize: "26px",
+  fontWeight: 900,
+  marginTop: "4px",
+};
+
+const alertButtonStyle = {
+  background: "#f5b82e",
+  color: "#08111f",
+  border: 0,
+  borderRadius: "10px",
+  padding: "11px 14px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const alertListStyle = {
+  display: "grid",
+  gap: "8px",
+  marginTop: "16px",
+};
+
+const alertItemStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  color: "#fecaca",
+  fontSize: "13px",
+};
+
+const alertDotStyle = {
+  display: "inline-grid",
+  placeItems: "center",
+  width: "22px",
+  height: "22px",
+  borderRadius: "999px",
+  background: "#7f1d1d",
+  color: "#ffffff",
+  fontSize: "11px",
+  fontWeight: 900,
+  flexShrink: 0,
 };
 
 const launchPanelStyle = {
