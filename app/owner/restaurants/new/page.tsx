@@ -96,10 +96,42 @@ export default function AddRestaurantPage() {
     const trialEnd = new Date();
     trialEnd.setDate(trialEnd.getDate() + 14);
 
-    const { error: subscriptionError } = await supabase
-      .from("restaurant_subscriptions")
-      .insert({
-        restaurant_id: restaurant.id,
+    const restaurantId = restaurant.id;
+
+    const defaults = await Promise.all([
+      supabase.from("restaurant_branding").insert({
+        restaurant_id: restaurantId,
+        primary_color: "#111827",
+        secondary_color: "#f59e0b",
+        tagline: null,
+        short_description: null,
+      }),
+
+      supabase.from("restaurant_hours").insert({
+        restaurant_id: restaurantId,
+      }),
+
+      supabase.from("restaurant_ordering").insert({
+        restaurant_id: restaurantId,
+        online_ordering_url: null,
+        catering_email: null,
+      }),
+
+      supabase.from("restaurant_growth_settings").insert({
+        restaurant_id: restaurantId,
+        vip_club_name: "VIP Club",
+        signup_offer: null,
+      }),
+
+      supabase.from("restaurant_website_settings").insert({
+        restaurant_id: restaurantId,
+        hero_headline: name.trim(),
+        about_body: null,
+        published: false,
+      }),
+
+      supabase.from("restaurant_subscriptions").insert({
+        restaurant_id: restaurantId,
         plan: "founder",
         status: "trial",
         provider: null,
@@ -107,17 +139,20 @@ export default function AddRestaurantPage() {
         provider_subscription_id: null,
         current_period_end: null,
         trial_ends_at: trialEnd.toISOString(),
-      });
+      }),
+    ]);
 
-    if (subscriptionError) {
+    const failedDefault = defaults.find((result) => result.error);
+
+    if (failedDefault?.error) {
       setMessage(
-        `Restaurant created, but trial setup failed: ${subscriptionError.message}`
+        `Restaurant created, but default setup failed: ${failedDefault.error.message}`
       );
       setSaving(false);
       return;
     }
 
-    window.location.href = `/owner/setup?restaurant=${restaurant.id}`;
+    window.location.href = `/owner/setup?restaurant=${restaurantId}`;
   }
 
   if (checking) {
