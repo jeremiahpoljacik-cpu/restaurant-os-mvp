@@ -46,6 +46,11 @@ export default function OwnerLoginPage() {
       return;
     }
 
+    if (restaurants.length > 1) {
+      window.location.href = "/owner/restaurants";
+      return;
+    }
+
     const restaurant = restaurants[0];
     const restaurantId = restaurant.id;
 
