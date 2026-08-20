@@ -230,6 +230,13 @@ export default function OwnerDashboardPage() {
               </button>
             )}
 
+            <button
+              style={secondaryButtonStyle}
+              onClick={() => go("/owner/qa")}
+            >
+              SYSTEM CHECK
+            </button>
+
             <button style={secondaryButtonStyle} onClick={signOut}>
               SIGN OUT
             </button>
@@ -349,6 +356,14 @@ export default function OwnerDashboardPage() {
             text="Manage Restaurant OS billing, trial access and payment settings."
             button="MANAGE BILLING"
             onClick={() => go("/owner/billing")}
+          />
+
+          <DashboardCard
+            kicker="FOUNDER QA"
+            title="System Check"
+            text="Run automated checks across setup, billing, website, growth tools and attribution."
+            button="RUN SYSTEM CHECK"
+            onClick={() => go("/owner/qa")}
           />
         </section>
 
