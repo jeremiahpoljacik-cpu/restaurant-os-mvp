@@ -58,6 +58,15 @@ export default function AdminCommandCenterPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [actionRestaurant, setActionRestaurant] = useState<RestaurantRow | null>(null);
+  const [actionMode, setActionMode] = useState<
+    "" | "extend_trial" | "support" | "note" | "suspend" | "reactivate"
+  >("");
+  const [trialDays, setTrialDays] = useState(14);
+  const [supportStatus, setSupportStatus] = useState("normal");
+  const [note, setNote] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionMessage, setActionMessage] = useState("");
 
   useEffect(() => {
     loadAdmin();
@@ -99,6 +108,68 @@ export default function AdminCommandCenterPage() {
     setRestaurants(data.restaurants || []);
     setAdminRole(data.admin_role || "");
     setLoading(false);
+  }
+
+  async function runAdminAction(
+    restaurant: RestaurantRow,
+    action: string,
+    extra: Record<string, unknown> = {}
+  ) {
+    setActionLoading(true);
+    setActionMessage("");
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      window.location.href = "/login";
+      return;
+    }
+
+    const response = await fetch("/api/admin/actions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        restaurant_id: restaurant.id,
+        action,
+        ...extra,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setActionMessage(data.error || "Admin action failed.");
+      setActionLoading(false);
+      return;
+    }
+
+    setActionMessage(data.message || "Action completed.");
+    await loadAdmin();
+    setActionLoading(false);
+  }
+
+  function openAction(
+    restaurant: RestaurantRow,
+    mode: "" | "extend_trial" | "support" | "note" | "suspend" | "reactivate"
+  ) {
+    setActionRestaurant(restaurant);
+    setActionMode(mode);
+    setTrialDays(14);
+    setSupportStatus(restaurant.admin_support_status || "normal");
+    setNote("");
+    setActionMessage("");
+  }
+
+  function closeAction() {
+    if (actionLoading) return;
+    setActionRestaurant(null);
+    setActionMode("");
+    setActionMessage("");
   }
 
   const filteredRestaurants = useMemo(() => {
@@ -383,6 +454,43 @@ export default function AdminCommandCenterPage() {
                           >
                             QA
                           </button>
+
+                          <button
+                            style={smallDangerButtonStyle}
+                            onClick={() =>
+                              openAction(
+                                restaurant,
+                                restaurant.admin_suspended
+                                  ? "reactivate"
+                                  : "suspend"
+                              )
+                            }
+                          >
+                            {restaurant.admin_suspended
+                              ? "REACTIVATE"
+                              : "SUSPEND"}
+                          </button>
+
+                          <button
+                            style={smallSecondaryButtonStyle}
+                            onClick={() => openAction(restaurant, "extend_trial")}
+                          >
+                            EXTEND TRIAL
+                          </button>
+
+                          <button
+                            style={smallSecondaryButtonStyle}
+                            onClick={() => openAction(restaurant, "support")}
+                          >
+                            SUPPORT
+                          </button>
+
+                          <button
+                            style={smallSecondaryButtonStyle}
+                            onClick={() => openAction(restaurant, "note")}
+                          >
+                            NOTE
+                          </button>
                         </div>
                       </Td>
                     </tr>
@@ -392,6 +500,160 @@ export default function AdminCommandCenterPage() {
             </table>
           </div>
         </section>
+
+        {actionRestaurant && actionMode && (
+          <div style={modalBackdropStyle} onClick={closeAction}>
+            <div
+              style={modalCardStyle}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div style={modalEyebrowStyle}>SUPER ADMIN ACTION</div>
+              <h2 style={modalTitleStyle}>{actionRestaurant.name}</h2>
+
+              {actionMessage && (
+                <div style={actionMessageStyle}>{actionMessage}</div>
+              )}
+
+              {actionMode === "extend_trial" && (
+                <>
+                  <p style={modalTextStyle}>
+                    Extend this restaurant's trial. Maximum extension per action is 90 days.
+                  </p>
+
+                  <label style={fieldLabelStyle}>DAYS TO ADD</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={90}
+                    value={trialDays}
+                    onChange={(event) =>
+                      setTrialDays(
+                        Math.max(1, Math.min(90, Number(event.target.value) || 1))
+                      )
+                    }
+                    style={modalInputStyle}
+                  />
+
+                  <button
+                    style={modalPrimaryButtonStyle}
+                    disabled={actionLoading}
+                    onClick={() =>
+                      runAdminAction(actionRestaurant, "extend_trial", {
+                        days: trialDays,
+                      })
+                    }
+                  >
+                    {actionLoading ? "UPDATING..." : `EXTEND ${trialDays} DAYS`}
+                  </button>
+                </>
+              )}
+
+              {actionMode === "support" && (
+                <>
+                  <p style={modalTextStyle}>
+                    Set the internal support status for this restaurant.
+                  </p>
+
+                  <label style={fieldLabelStyle}>SUPPORT STATUS</label>
+                  <select
+                    value={supportStatus}
+                    onChange={(event) => setSupportStatus(event.target.value)}
+                    style={modalInputStyle}
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="watch">Watch</option>
+                    <option value="needs_attention">Needs Attention</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+
+                  <button
+                    style={modalPrimaryButtonStyle}
+                    disabled={actionLoading}
+                    onClick={() =>
+                      runAdminAction(actionRestaurant, "set_support_status", {
+                        status: supportStatus,
+                      })
+                    }
+                  >
+                    {actionLoading ? "UPDATING..." : "SAVE SUPPORT STATUS"}
+                  </button>
+                </>
+              )}
+
+              {actionMode === "note" && (
+                <>
+                  <p style={modalTextStyle}>
+                    Add an internal admin note. Restaurant owners will not see this.
+                  </p>
+
+                  <label style={fieldLabelStyle}>ADMIN NOTE</label>
+                  <textarea
+                    value={note}
+                    onChange={(event) => setNote(event.target.value)}
+                    placeholder="Account history, support issue, follow-up..."
+                    style={modalTextareaStyle}
+                  />
+
+                  <button
+                    style={modalPrimaryButtonStyle}
+                    disabled={actionLoading || !note.trim()}
+                    onClick={() =>
+                      runAdminAction(actionRestaurant, "add_note", {
+                        note,
+                      })
+                    }
+                  >
+                    {actionLoading ? "SAVING..." : "ADD NOTE"}
+                  </button>
+                </>
+              )}
+
+              {actionMode === "suspend" && (
+                <>
+                  <div style={dangerPanelStyle}>
+                    Suspend this restaurant's platform access? This does not cancel Stripe billing automatically.
+                  </div>
+
+                  <button
+                    style={modalDangerButtonStyle}
+                    disabled={actionLoading}
+                    onClick={() =>
+                      runAdminAction(actionRestaurant, "suspend")
+                    }
+                  >
+                    {actionLoading ? "SUSPENDING..." : "YES — SUSPEND RESTAURANT"}
+                  </button>
+                </>
+              )}
+
+              {actionMode === "reactivate" && (
+                <>
+                  <p style={modalTextStyle}>
+                    Restore this restaurant's platform access and return support status to normal.
+                  </p>
+
+                  <button
+                    style={modalPrimaryButtonStyle}
+                    disabled={actionLoading}
+                    onClick={() =>
+                      runAdminAction(actionRestaurant, "reactivate")
+                    }
+                  >
+                    {actionLoading ? "REACTIVATING..." : "REACTIVATE RESTAURANT"}
+                  </button>
+                </>
+              )}
+
+              <button
+                style={modalCancelButtonStyle}
+                disabled={actionLoading}
+                onClick={closeAction}
+              >
+                CLOSE
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
@@ -787,4 +1049,142 @@ const errorTitleStyle = {
 
 const errorTextStyle = {
   color: "#fecaca",
+};
+
+
+const smallDangerButtonStyle = {
+  background: "#3b1d1d",
+  color: "#fecaca",
+  border: "1px solid #7f3333",
+  borderRadius: "8px",
+  padding: "8px 10px",
+  fontSize: "9px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const modalBackdropStyle = {
+  position: "fixed" as const,
+  inset: 0,
+  zIndex: 1000,
+  background: "rgba(0,0,0,.72)",
+  display: "grid",
+  placeItems: "center",
+  padding: "20px",
+};
+
+const modalCardStyle = {
+  width: "100%",
+  maxWidth: "520px",
+  background: "#0f1d2e",
+  border: "1px solid #334155",
+  borderRadius: "18px",
+  padding: "24px",
+  boxShadow: "0 24px 80px rgba(0,0,0,.45)",
+};
+
+const modalEyebrowStyle = {
+  color: "#f5b82e",
+  fontSize: "10px",
+  fontWeight: 900,
+  letterSpacing: "1.5px",
+};
+
+const modalTitleStyle = {
+  fontSize: "30px",
+  margin: "7px 0 14px",
+};
+
+const modalTextStyle = {
+  color: "#cbd5e1",
+  fontSize: "13px",
+  lineHeight: 1.55,
+};
+
+const fieldLabelStyle = {
+  display: "block",
+  color: "#94a3b8",
+  fontSize: "9px",
+  fontWeight: 900,
+  letterSpacing: "1px",
+  margin: "16px 0 7px",
+};
+
+const modalInputStyle = {
+  width: "100%",
+  background: "#08111f",
+  color: "#fff",
+  border: "1px solid #334155",
+  borderRadius: "9px",
+  padding: "12px",
+  fontSize: "14px",
+};
+
+const modalTextareaStyle = {
+  width: "100%",
+  minHeight: "120px",
+  resize: "vertical" as const,
+  background: "#08111f",
+  color: "#fff",
+  border: "1px solid #334155",
+  borderRadius: "9px",
+  padding: "12px",
+  fontSize: "14px",
+  lineHeight: 1.5,
+};
+
+const modalPrimaryButtonStyle = {
+  width: "100%",
+  marginTop: "16px",
+  background: "#f5b82e",
+  color: "#08111f",
+  border: 0,
+  borderRadius: "9px",
+  padding: "13px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const modalDangerButtonStyle = {
+  width: "100%",
+  marginTop: "16px",
+  background: "#7f1d1d",
+  color: "#fff",
+  border: "1px solid #b91c1c",
+  borderRadius: "9px",
+  padding: "13px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const modalCancelButtonStyle = {
+  width: "100%",
+  marginTop: "10px",
+  background: "transparent",
+  color: "#94a3b8",
+  border: "1px solid #334155",
+  borderRadius: "9px",
+  padding: "11px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const dangerPanelStyle = {
+  background: "#3b1d1d",
+  border: "1px solid #7f3333",
+  color: "#fecaca",
+  borderRadius: "10px",
+  padding: "14px",
+  fontSize: "13px",
+  lineHeight: 1.5,
+};
+
+const actionMessageStyle = {
+  background: "#13263b",
+  border: "1px solid #2d4661",
+  color: "#dbeafe",
+  borderRadius: "9px",
+  padding: "11px",
+  fontSize: "12px",
+  marginBottom: "12px",
 };
