@@ -23,7 +23,9 @@ export default function OwnerDashboardPage() {
   const [setupPercent, setSetupPercent] = useState(0);
   const [setupReady, setSetupReady] = useState(false);
   const [restaurantCount, setRestaurantCount] = useState(1);
-  const [blockers, setBlockers] = useState<string[]>([]);
+  const [blockers, setBlockers] = useState<
+    { label: string; path: string; action: string }[]
+  >([]);
 
   useEffect(() => {
     load();
@@ -171,34 +173,70 @@ export default function OwnerDashboardPage() {
     setSetupPercent(percent);
     setSetupReady(completeCount === checks.length);
 
-    const nextBlockers: string[] = [];
+    const nextBlockers: {
+      label: string;
+      path: string;
+      action: string;
+    }[] = [];
 
     if (!subscriptionComplete) {
       if (subscription?.status === "past_due") {
-        nextBlockers.push("Billing is past due.");
+        nextBlockers.push({
+          label: "Billing is past due.",
+          path: "/owner/billing",
+          action: "FIX BILLING",
+        });
       } else if (subscription?.status === "canceled") {
-        nextBlockers.push("Subscription is canceled.");
+        nextBlockers.push({
+          label: "Subscription is canceled.",
+          path: "/owner/billing",
+          action: "REACTIVATE",
+        });
       } else if (subscription?.status === "paused") {
-        nextBlockers.push("Subscription is paused.");
+        nextBlockers.push({
+          label: "Subscription is paused.",
+          path: "/owner/billing",
+          action: "RESUME",
+        });
       } else {
-        nextBlockers.push("Subscription access is not active.");
+        nextBlockers.push({
+          label: "Subscription access is not active.",
+          path: "/owner/billing",
+          action: "VIEW BILLING",
+        });
       }
     }
 
     if (!menuComplete) {
-      nextBlockers.push("No menu items have been added.");
+      nextBlockers.push({
+        label: "No menu items have been added.",
+        path: "/owner/menu",
+        action: "BUILD MENU",
+      });
     }
 
     if (!websiteComplete) {
-      nextBlockers.push("Website content is incomplete.");
+      nextBlockers.push({
+        label: "Website content is incomplete.",
+        path: "/owner/website",
+        action: "EDIT WEBSITE",
+      });
     }
 
     if (!website?.published) {
-      nextBlockers.push("Public website is not published.");
+      nextBlockers.push({
+        label: "Public website is not published.",
+        path: "/owner/website",
+        action: "PUBLISH SITE",
+      });
     }
 
     if (!businessComplete) {
-      nextBlockers.push("Business profile is incomplete.");
+      nextBlockers.push({
+        label: "Business profile is incomplete.",
+        path: "/owner/settings",
+        action: "EDIT PROFILE",
+      });
     }
 
     setBlockers(nextBlockers);
@@ -309,16 +347,26 @@ export default function OwnerDashboardPage() {
                 style={alertButtonStyle}
                 onClick={() => go("/owner/setup")}
               >
-                FIX NOW
+                VIEW FULL CHECKLIST
               </button>
             </div>
 
             <div style={alertListStyle}>
               {blockers.map((blocker) => (
-                <div key={blocker} style={alertItemStyle}>
-                  <span style={alertDotStyle}>!</span>
-                  <span>{blocker}</span>
-                </div>
+                <button
+                  key={`${blocker.path}-${blocker.label}`}
+                  style={alertItemButtonStyle}
+                  onClick={() => go(blocker.path)}
+                >
+                  <span style={alertItemLeftStyle}>
+                    <span style={alertDotStyle}>!</span>
+                    <span>{blocker.label}</span>
+                  </span>
+
+                  <span style={alertItemActionStyle}>
+                    {blocker.action} →
+                  </span>
+                </button>
               ))}
             </div>
           </section>
@@ -685,6 +733,36 @@ const alertListStyle = {
   display: "grid",
   gap: "8px",
   marginTop: "16px",
+};
+
+const alertItemButtonStyle = {
+  width: "100%",
+  background: "#2c1515",
+  border: "1px solid #633030",
+  borderRadius: "10px",
+  padding: "12px 13px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "14px",
+  color: "#fecaca",
+  cursor: "pointer",
+  textAlign: "left" as const,
+};
+
+const alertItemLeftStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  minWidth: 0,
+};
+
+const alertItemActionStyle = {
+  color: "#f5b82e",
+  fontSize: "10px",
+  fontWeight: 900,
+  letterSpacing: ".5px",
+  whiteSpace: "nowrap" as const,
 };
 
 const alertItemStyle = {
