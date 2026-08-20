@@ -12,6 +12,8 @@ type Restaurant = {
   state: string | null;
   status: string | null;
   created_at: string;
+  readiness_percent?: number;
+  readiness_label?: string;
 };
 
 export default function OwnerRestaurantsPage() {
@@ -50,7 +52,122 @@ export default function OwnerRestaurantsPage() {
       return;
     }
 
-    setRestaurants(data || []);
+    const baseRestaurants = data || [];
+
+    const enriched = await Promise.all(
+      baseRestaurants.map(async (restaurant) => {
+        const [
+          brandingResult,
+          hoursResult,
+          websiteResult,
+          menuResult,
+          subscriptionResult,
+        ] = await Promise.all([
+          supabase
+            .from("restaurant_branding")
+            .select("primary_color,secondary_color,tagline,short_description")
+            .eq("restaurant_id", restaurant.id)
+            .maybeSingle(),
+
+          supabase
+            .from("restaurant_hours")
+            .select("*")
+            .eq("restaurant_id", restaurant.id)
+            .maybeSingle(),
+
+          supabase
+            .from("restaurant_website_settings")
+            .select("hero_headline,about_body,published")
+            .eq("restaurant_id", restaurant.id)
+            .maybeSingle(),
+
+          supabase
+            .from("restaurant_menu_items")
+            .select("id")
+            .eq("restaurant_id", restaurant.id)
+            .limit(1),
+
+          supabase
+            .from("restaurant_subscriptions")
+            .select("status,trial_ends_at")
+            .eq("restaurant_id", restaurant.id)
+            .maybeSingle(),
+        ]);
+
+        const businessComplete = Boolean(
+          restaurant.phone &&
+            restaurant.city &&
+            restaurant.state
+        );
+
+        const branding = brandingResult.data;
+        const brandingComplete = Boolean(
+          branding?.primary_color &&
+            branding?.secondary_color &&
+            (branding?.tagline || branding?.short_description)
+        );
+
+        const hours = hoursResult.data;
+        const hoursComplete = Boolean(
+          hours &&
+            [
+              hours.monday,
+              hours.tuesday,
+              hours.wednesday,
+              hours.thursday,
+              hours.friday,
+              hours.saturday,
+              hours.sunday,
+            ].some(Boolean)
+        );
+
+        const website = websiteResult.data;
+        const websiteComplete = Boolean(
+          website?.hero_headline && website?.about_body
+        );
+
+        const menuComplete = Boolean(menuResult.data?.length);
+
+        const subscription = subscriptionResult.data;
+        const subscriptionComplete = Boolean(
+          subscription &&
+            (subscription.status === "active" ||
+              (subscription.status === "trial" &&
+                (!subscription.trial_ends_at ||
+                  new Date(subscription.trial_ends_at).getTime() > Date.now())))
+        );
+
+        const checks = [
+          businessComplete,
+          brandingComplete,
+          hoursComplete,
+          websiteComplete,
+          menuComplete,
+          subscriptionComplete,
+          Boolean(website?.published),
+        ];
+
+        const completeCount = checks.filter(Boolean).length;
+        const percent = Math.round((completeCount / checks.length) * 100);
+
+        const label =
+          percent === 100
+            ? "READY"
+            : percent >= 70
+            ? "ALMOST READY"
+            : percent >= 40
+            ? "IN PROGRESS"
+            : "NEEDS SETUP";
+
+        return {
+          ...restaurant,
+          readiness_percent: percent,
+          readiness_label: label,
+        };
+      })
+    );
+
+    setRestaurants(enriched);
     setLoading(false);
   }
 
@@ -153,6 +270,26 @@ export default function OwnerRestaurantsPage() {
                     </div>
                   </div>
 
+                  <div style={readinessWrapStyle}>
+                    <div style={readinessTopStyle}>
+                      <span style={readinessLabelStyle}>
+                        {restaurant.readiness_label || "NEEDS SETUP"}
+                      </span>
+                      <span style={readinessPercentStyle}>
+                        {restaurant.readiness_percent || 0}%
+                      </span>
+                    </div>
+
+                    <div style={readinessTrackStyle}>
+                      <div
+                        style={{
+                          ...readinessBarStyle,
+                          width: `${restaurant.readiness_percent || 0}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+
                   <h2 style={restaurantNameStyle}>{restaurant.name}</h2>
 
                   <div style={metaStyle}>
@@ -183,6 +320,16 @@ export default function OwnerRestaurantsPage() {
                       }
                     >
                       VIEW LAUNCH CHECKLIST
+                    </button>
+
+                    <button
+                      style={secondaryButtonStyle}
+                      onClick={() =>
+                        (window.location.href =
+                          `/owner/qa?restaurant=${restaurant.id}`)
+                      }
+                    >
+                      RUN SYSTEM CHECK
                     </button>
                   </div>
                 </article>
@@ -324,6 +471,48 @@ const statusBadgeStyle = {
   color: "#cbd5e1",
   fontSize: "9px",
   fontWeight: 900,
+};
+
+const readinessWrapStyle = {
+  marginTop: "18px",
+  padding: "13px",
+  background: "#0b1726",
+  border: "1px solid #23364d",
+  borderRadius: "12px",
+};
+
+const readinessTopStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "10px",
+  marginBottom: "9px",
+};
+
+const readinessLabelStyle = {
+  color: "#cbd5e1",
+  fontSize: "9px",
+  fontWeight: 900,
+  letterSpacing: "1px",
+};
+
+const readinessPercentStyle = {
+  color: "#f5b82e",
+  fontSize: "13px",
+  fontWeight: 900,
+};
+
+const readinessTrackStyle = {
+  height: "8px",
+  background: "#08111f",
+  borderRadius: "999px",
+  overflow: "hidden",
+};
+
+const readinessBarStyle = {
+  height: "100%",
+  background: "#f5b82e",
+  borderRadius: "999px",
 };
 
 const restaurantNameStyle = {
