@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
 type SubscriptionRow = {
@@ -15,20 +15,19 @@ export default function OwnerLayout({
   children: ReactNode;
 }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-
   const [checking, setChecking] = useState(true);
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
     checkAccess();
-  }, [pathname, searchParams]);
+  }, [pathname]);
 
   async function checkAccess() {
     setChecking(true);
     setAllowed(false);
 
-    const restaurantId = searchParams.get("restaurant");
+    const params = new URLSearchParams(window.location.search);
+    const restaurantId = params.get("restaurant");
 
     if (!restaurantId) {
       setAllowed(true);
@@ -57,8 +56,6 @@ export default function OwnerLayout({
       return;
     }
 
-    // Billing must always remain accessible so owners can activate,
-    // repair payment, or manage a canceled/past-due subscription.
     if (pathname === "/owner/billing") {
       setAllowed(true);
       setChecking(false);
@@ -71,12 +68,7 @@ export default function OwnerLayout({
       .eq("restaurant_id", restaurantId)
       .maybeSingle<SubscriptionRow>();
 
-    if (subscriptionError) {
-      window.location.href = `/owner/billing?restaurant=${restaurantId}&access=required`;
-      return;
-    }
-
-    if (!subscription) {
+    if (subscriptionError || !subscription) {
       window.location.href = `/owner/billing?restaurant=${restaurantId}&access=required`;
       return;
     }
@@ -88,15 +80,10 @@ export default function OwnerLayout({
     }
 
     if (subscription.status === "trial") {
-      if (!subscription.trial_ends_at) {
-        setAllowed(true);
-        setChecking(false);
-        return;
-      }
-
-      const trialEnd = new Date(subscription.trial_ends_at).getTime();
-
-      if (trialEnd > Date.now()) {
+      if (
+        !subscription.trial_ends_at ||
+        new Date(subscription.trial_ends_at).getTime() > Date.now()
+      ) {
         setAllowed(true);
         setChecking(false);
         return;
@@ -117,9 +104,7 @@ export default function OwnerLayout({
     );
   }
 
-  if (!allowed) {
-    return null;
-  }
+  if (!allowed) return null;
 
   return <>{children}</>;
 }
