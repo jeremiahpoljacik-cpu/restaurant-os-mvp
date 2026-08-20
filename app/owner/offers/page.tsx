@@ -196,14 +196,25 @@ export default function OwnerOffersPage() {
             </p>
           </div>
 
-          <button
-            style={secondaryButtonStyle}
-            onClick={() =>
-              (window.location.href = `/owner?restaurant=${restaurantId}`)
-            }
-          >
-            BACK TO DASHBOARD
-          </button>
+          <div style={headerActionsStyle}>
+            <button
+              style={primaryButtonStyle}
+              onClick={() =>
+                (window.location.href = `/owner/redeem?restaurant=${restaurantId}`)
+              }
+            >
+              REDEMPTION CENTER
+            </button>
+
+            <button
+              style={secondaryButtonStyle}
+              onClick={() =>
+                (window.location.href = `/owner?restaurant=${restaurantId}`)
+              }
+            >
+              BACK TO DASHBOARD
+            </button>
+          </div>
         </header>
 
         {message && <div style={messageStyle}>{message}</div>}
@@ -490,6 +501,12 @@ const headerStyle = {
   gap: "20px",
   flexWrap: "wrap" as const,
   marginBottom: "24px",
+};
+
+const headerActionsStyle = {
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap" as const,
 };
 
 const eyebrowStyle = {
