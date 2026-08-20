@@ -26,6 +26,7 @@ type Campaign = {
 export default function OwnerCampaignsPage() {
   const [restaurantId, setRestaurantId] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
+  const [restaurantSlug, setRestaurantSlug] = useState("");
   const [offers, setOffers] = useState<Offer[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +72,7 @@ export default function OwnerCampaignsPage() {
 
     const { data: restaurant, error: restaurantError } = await supabase
       .from("restaurants")
-      .select("id,name")
+      .select("id,name,slug")
       .eq("id", id)
       .eq("owner_user_id", user.id)
       .maybeSingle();
@@ -83,6 +84,7 @@ export default function OwnerCampaignsPage() {
     }
 
     setRestaurantName(restaurant.name);
+    setRestaurantSlug(restaurant.slug);
 
     const [offersResult, campaignsResult] = await Promise.all([
       supabase
@@ -198,6 +200,29 @@ export default function OwnerCampaignsPage() {
   function getOfferLabel(id: string | null) {
     const offer = offers.find((item) => item.id === id);
     return offer?.headline || offer?.name || "No offer attached";
+  }
+
+  function campaignClaimLink(campaign: Campaign) {
+    if (!restaurantSlug || !campaign.offer_id) return "";
+
+    const base =
+      typeof window !== "undefined"
+        ? window.location.origin
+        : "https://restaurant-os-mvp.vercel.app";
+
+    return `${base}/r/${restaurantSlug}/offers/${campaign.offer_id}?campaign=${campaign.id}`;
+  }
+
+  async function copyCampaignLink(campaign: Campaign) {
+    const link = campaignClaimLink(campaign);
+
+    if (!link) {
+      setMessage("Attach an offer before generating a campaign claim link.");
+      return;
+    }
+
+    await navigator.clipboard.writeText(link);
+    setMessage("Campaign claim link copied.");
   }
 
   const stats = useMemo(() => {
@@ -456,6 +481,41 @@ export default function OwnerCampaignsPage() {
               </div>
             </div>
 
+            <div style={linkPanelStyle}>
+              <div style={eyebrowStyle}>CAMPAIGN CLAIM LINK</div>
+
+              {campaign.offer_id ? (
+                <>
+                  <div style={linkValueStyle}>
+                    {campaignClaimLink(campaign)}
+                  </div>
+
+                  <div style={buttonRowStyle}>
+                    <button
+                      style={primaryButtonStyle}
+                      onClick={() => copyCampaignLink(campaign)}
+                    >
+                      COPY CLAIM LINK
+                    </button>
+
+                    <button
+                      style={secondaryButtonStyle}
+                      onClick={() => {
+                        const link = campaignClaimLink(campaign);
+                        if (link) window.open(link, "_blank");
+                      }}
+                    >
+                      OPEN LINK
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div style={linkHelpStyle}>
+                  Attach an offer to this campaign to generate a trackable claim link.
+                </div>
+              )}
+            </div>
+
             <div style={buttonRowStyle}>
               <button
                 style={primaryButtonStyle}
@@ -690,9 +750,35 @@ const statusBadgeStyle = {
   fontWeight: 900,
 };
 
+const linkPanelStyle = {
+  background: "#08111f",
+  border: "1px solid #334155",
+  borderRadius: "14px",
+  padding: "18px",
+  marginBottom: "18px",
+};
+
+const linkValueStyle = {
+  background: "#0a1522",
+  border: "1px solid #23364d",
+  borderRadius: "10px",
+  padding: "13px",
+  margin: "10px 0 12px",
+  color: "#cbd5e1",
+  fontSize: "12px",
+  lineHeight: 1.5,
+  wordBreak: "break-all" as const,
+};
+
+const linkHelpStyle = {
+  color: "#64748b",
+  fontSize: "13px",
+  lineHeight: 1.5,
+  marginTop: "8px",
+};
+
 const buttonRowStyle = {
   display: "flex",
   gap: "10px",
   flexWrap: "wrap" as const,
 };
-
