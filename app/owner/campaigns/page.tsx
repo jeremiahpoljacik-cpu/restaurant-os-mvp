@@ -254,14 +254,25 @@ export default function OwnerCampaignsPage() {
             </p>
           </div>
 
-          <button
-            style={secondaryButtonStyle}
-            onClick={() =>
-              (window.location.href = `/owner?restaurant=${restaurantId}`)
-            }
-          >
-            BACK TO DASHBOARD
-          </button>
+          <div style={headerActionsStyle}>
+            <button
+              style={primaryButtonStyle}
+              onClick={() =>
+                (window.location.href = `/owner/campaign-results?restaurant=${restaurantId}`)
+              }
+            >
+              VIEW RESULTS
+            </button>
+
+            <button
+              style={secondaryButtonStyle}
+              onClick={() =>
+                (window.location.href = `/owner?restaurant=${restaurantId}`)
+              }
+            >
+              BACK TO DASHBOARD
+            </button>
+          </div>
         </header>
 
         {message && <div style={messageStyle}>{message}</div>}
@@ -525,6 +536,15 @@ export default function OwnerCampaignsPage() {
               </button>
 
               <button
+                style={secondaryButtonStyle}
+                onClick={() =>
+                  (window.location.href = `/owner/campaign-results?restaurant=${restaurantId}`)
+                }
+              >
+                VIEW RESULTS
+              </button>
+
+              <button
                 style={dangerButtonStyle}
                 onClick={() => deleteCampaign(campaign)}
               >
@@ -594,6 +614,12 @@ const headerStyle = {
   gap: "20px",
   flexWrap: "wrap" as const,
   marginBottom: "24px",
+};
+
+const headerActionsStyle = {
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap" as const,
 };
 
 const eyebrowStyle = {
