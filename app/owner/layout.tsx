@@ -204,6 +204,18 @@ export default function OwnerLayout({
         }
       `}</style>
 
+
+      {restaurantId && pathname !== "/owner/profile" && (
+        <button
+          style={profileButtonStyle}
+          onClick={() => {
+            window.location.href = `/owner/profile?restaurant=${restaurantId}`;
+          }}
+        >
+          PROFILE / ACCOUNT
+        </button>
+      )}
+
       {children}
     </>
   );
@@ -281,4 +293,23 @@ const trialButtonStyle = {
   fontWeight: 900,
   cursor: "pointer",
   minHeight: "40px",
+};
+
+
+const profileButtonStyle = {
+  position: "fixed" as const,
+  right: "18px",
+  bottom: "18px",
+  zIndex: 100,
+  background: "#0b513e",
+  color: "#ffffff",
+  border: "1px solid rgba(255,255,255,.18)",
+  borderRadius: "999px",
+  padding: "12px 16px",
+  minHeight: "44px",
+  boxShadow: "0 10px 28px rgba(0,0,0,.22)",
+  fontSize: "10px",
+  fontWeight: 900,
+  letterSpacing: ".6px",
+  cursor: "pointer",
 };
