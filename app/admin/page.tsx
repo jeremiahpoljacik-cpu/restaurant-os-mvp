@@ -200,7 +200,7 @@ export default function AdminCommandCenterPage() {
   }, [restaurants, search, statusFilter]);
 
   function openOwner(restaurantId: string) {
-    window.location.href = `/owner?restaurant=${restaurantId}`;
+    window.location.href = `/admin/restaurant?restaurant=${restaurantId}`;
   }
 
   function openPublic(slug: string | null) {
