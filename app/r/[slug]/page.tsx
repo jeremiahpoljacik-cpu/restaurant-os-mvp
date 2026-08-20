@@ -305,6 +305,7 @@ export default function PublicRestaurantPage() {
           .hero-logo { font-size: clamp(62px, 20vw, 110px) !important; }
           .nav-logo { font-size: 22px !important; }
           .hang-buttons { grid-template-columns: 1fr !important; }
+          .food-overlap { margin-top: -36px !important; padding: 0 14px !important; }
         }
       `}</style>
 
@@ -362,14 +363,29 @@ export default function PublicRestaurantPage() {
             </div>
             <div style={heroPizzaStyle}>PIZZA</div>
             <div style={heroTaglineStyle}>
-              {branding?.tagline || "WOOD-FIRED • LOCAL • GOOD"}
+              WOOD-FIRED • MOUNTAIN TOWN • {restaurant.city?.toUpperCase() || "LOCAL"}
             </div>
+
+            <div style={paddleRowStyle}>
+              <span style={paddleLineStyle}>━━━━━━━╾</span>
+              <span style={paddleCenterStyle}>✦</span>
+              <span style={paddleLineStyle}>╼━━━━━━━</span>
+            </div>
+
+            <button
+              style={scrollCueStyle}
+              onClick={() => scrollTo("menu")}
+            >
+              COME HUNGRY ↓
+            </button>
           </div>
         </div>
       </section>
 
-      <section style={foodHeroStyle}>
-        <img src={heroFood} alt="Featured food" style={fullImageStyle} />
+      <section className="food-overlap" style={foodHeroWrapStyle}>
+        <div style={foodHeroStyle}>
+          <img src={heroFood} alt="Featured food" style={fullImageStyle} />
+        </div>
       </section>
 
       <section className="info-grid" style={{ ...infoGridStyle, background: forest }}>
@@ -749,7 +765,7 @@ const orderNavButtonStyle = {
 
 const blueprintLayerStyle = {
   position: "relative" as const,
-  minHeight: "560px",
+  minHeight: "430px",
   overflow: "hidden",
   background:
     "linear-gradient(rgba(225,209,181,.35),rgba(225,209,181,.35)), #f2e5cd",
@@ -758,16 +774,16 @@ const blueprintLayerStyle = {
 const blueprintLinesStyle = {
   position: "absolute" as const,
   inset: 0,
-  opacity: 0.45,
+  opacity: 0.52,
   backgroundImage:
-    "linear-gradient(90deg, rgba(128,108,76,.22) 1px, transparent 1px), linear-gradient(rgba(128,108,76,.18) 1px, transparent 1px), repeating-linear-gradient(35deg, transparent 0 78px, rgba(128,108,76,.13) 79px 80px)",
-  backgroundSize: "88px 88px, 88px 88px, auto",
+    "linear-gradient(90deg, rgba(128,108,76,.19) 1px, transparent 1px), linear-gradient(rgba(128,108,76,.16) 1px, transparent 1px), repeating-linear-gradient(35deg, transparent 0 78px, rgba(128,108,76,.12) 79px 80px), radial-gradient(circle at 20% 30%, rgba(96,75,48,.08) 0 1px, transparent 1.5px)",
+  backgroundSize: "88px 88px, 88px 88px, auto, 16px 16px",
 };
 
 const heroCenterStyle = {
   position: "relative" as const,
   zIndex: 2,
-  minHeight: "560px",
+  minHeight: "430px",
   display: "flex",
   flexDirection: "column" as const,
   justifyContent: "center",
@@ -777,21 +793,21 @@ const heroCenterStyle = {
 };
 
 const heroSmallStyle = {
-  fontSize: "10px",
+  fontSize: "9px",
   fontWeight: 900,
   letterSpacing: "5px",
-  marginBottom: "8px",
+  marginBottom: "6px",
 };
 
 const heroLogoStyle = {
-  fontSize: "clamp(100px, 16vw, 220px)",
+  fontSize: "clamp(92px, 14vw, 190px)",
   lineHeight: 0.72,
   fontWeight: 1000,
   letterSpacing: "-12px",
 };
 
 const heroPizzaStyle = {
-  marginTop: "18px",
+  marginTop: "14px",
   fontSize: "24px",
   fontWeight: 1000,
   letterSpacing: "12px",
@@ -805,9 +821,47 @@ const heroTaglineStyle = {
   letterSpacing: "2px",
 };
 
+const paddleRowStyle = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "14px",
+  marginTop: "24px",
+  color: "#8f7959",
+};
+
+const paddleLineStyle = {
+  fontSize: "16px",
+  letterSpacing: "2px",
+};
+
+const paddleCenterStyle = {
+  fontSize: "12px",
+};
+
+const scrollCueStyle = {
+  marginTop: "22px",
+  border: 0,
+  background: "transparent",
+  color: "#4b4134",
+  fontSize: "9px",
+  fontWeight: 900,
+  letterSpacing: "2px",
+  cursor: "pointer",
+};
+
+const foodHeroWrapStyle = {
+  position: "relative" as const,
+  zIndex: 4,
+  marginTop: "-72px",
+  padding: "0 3vw",
+};
+
 const foodHeroStyle = {
-  height: "520px",
+  height: "470px",
   overflow: "hidden",
+  borderRadius: "4px 4px 0 0",
+  boxShadow: "0 -18px 36px rgba(50,38,22,.12)",
 };
 
 const fullImageStyle = {
