@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "../../lib/supabase";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 type Campaign = {
   id: string;
@@ -10,6 +15,7 @@ type Campaign = {
   name: string;
   channel: string;
   audience: string;
+  message: string | null;
   status: string;
   starts_at: string | null;
   ends_at: string | null;
@@ -37,15 +43,16 @@ type Claim = {
   redeemed_at: string | null;
 };
 
-export default function CampaignResultsPage() {
+export default function CampaignDetailPage() {
   const [restaurantId, setRestaurantId] = useState("");
+  const [campaignId, setCampaignId] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [offers, setOffers] = useState<Offer[]>([]);
+  const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [offer, setOffer] = useState<Offer | null>(null);
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState<"all" | "claimed" | "redeemed">("all");
 
   useEffect(() => {
     load();
@@ -56,65 +63,74 @@ export default function CampaignResultsPage() {
     setMessage("");
 
     const params = new URLSearchParams(window.location.search);
-    const id = params.get("restaurant");
+    const restaurant = params.get("restaurant");
+    const campaignParam = params.get("campaign");
 
-    if (!id) {
-      setMessage("No restaurant selected.");
+    if (!restaurant || !campaignParam) {
+      setMessage("Restaurant and campaign are required.");
       setLoading(false);
       return;
     }
 
-    setRestaurantId(id);
+    setRestaurantId(restaurant);
+    setCampaignId(campaignParam);
 
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
-      setMessage("You are not signed in.");
-      setLoading(false);
+      window.location.href = "/login";
       return;
     }
 
-    const { data: restaurant, error: restaurantError } = await supabase
+    const { data: restaurantData, error: restaurantError } = await supabase
       .from("restaurants")
       .select("id,name")
-      .eq("id", id)
+      .eq("id", restaurant)
       .eq("owner_user_id", user.id)
       .maybeSingle();
 
-    if (restaurantError || !restaurant) {
+    if (restaurantError || !restaurantData) {
       setMessage(restaurantError?.message || "Restaurant not found.");
       setLoading(false);
       return;
     }
 
-    setRestaurantName(restaurant.name);
+    setRestaurantName(restaurantData.name);
 
-    const [campaignResult, offerResult, claimResult] = await Promise.all([
-      supabase
-        .from("restaurant_campaigns")
-        .select("*")
-        .eq("restaurant_id", id)
-        .order("created_at", { ascending: false }),
+    const { data: campaignData, error: campaignError } = await supabase
+      .from("restaurant_campaigns")
+      .select("*")
+      .eq("id", campaignParam)
+      .eq("restaurant_id", restaurant)
+      .maybeSingle();
 
-      supabase
-        .from("restaurant_vip_offers")
-        .select("id,name,headline")
-        .eq("restaurant_id", id),
+    if (campaignError || !campaignData) {
+      setMessage(campaignError?.message || "Campaign not found.");
+      setLoading(false);
+      return;
+    }
+
+    setCampaign(campaignData);
+
+    const [offerResult, claimsResult] = await Promise.all([
+      campaignData.offer_id
+        ? supabase
+            .from("restaurant_vip_offers")
+            .select("id,name,headline")
+            .eq("id", campaignData.offer_id)
+            .eq("restaurant_id", restaurant)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null } as any),
 
       supabase
         .from("restaurant_offer_claims")
         .select("*")
-        .eq("restaurant_id", id)
+        .eq("restaurant_id", restaurant)
+        .eq("campaign_id", campaignParam)
         .order("created_at", { ascending: false }),
     ]);
-
-    if (campaignResult.error) {
-      setMessage(campaignResult.error.message);
-      setLoading(false);
-      return;
-    }
 
     if (offerResult.error) {
       setMessage(offerResult.error.message);
@@ -122,86 +138,102 @@ export default function CampaignResultsPage() {
       return;
     }
 
-    if (claimResult.error) {
-      setMessage(claimResult.error.message);
+    if (claimsResult.error) {
+      setMessage(claimsResult.error.message);
       setLoading(false);
       return;
     }
 
-    setCampaigns(campaignResult.data || []);
-    setOffers(offerResult.data || []);
-    setClaims(claimResult.data || []);
+    setOffer(offerResult.data || null);
+    setClaims(claimsResult.data || []);
     setLoading(false);
   }
 
-  function offerLabel(offerId: string | null) {
-    if (!offerId) return "No offer";
-    const offer = offers.find((item) => item.id === offerId);
-    return offer?.headline || offer?.name || "Offer";
-  }
-
-  const campaignRows = useMemo(() => {
-    return campaigns.map((campaign) => {
-      const campaignClaims = claims.filter(
-        (claim) => claim.campaign_id === campaign.id
-      );
-      const redeemed = campaignClaims.filter(
-        (claim) => claim.status === "redeemed"
-      );
-      const uniqueCustomers = new Set(
-        campaignClaims.map(
-          (claim) =>
-            claim.vip_member_id ||
-            claim.phone ||
-            claim.email ||
-            claim.id
-        )
-      ).size;
-
-      const redemptionRate =
-        campaignClaims.length > 0
-          ? (redeemed.length / campaignClaims.length) * 100
-          : 0;
-
-      return {
-        campaign,
-        claims: campaignClaims.length,
-        redeemed: redeemed.length,
-        unredeemed: campaignClaims.length - redeemed.length,
-        uniqueCustomers,
-        redemptionRate,
-      };
-    });
-  }, [campaigns, claims]);
-
-  const visibleRows = useMemo(() => {
-    if (filter === "all") return campaignRows;
-    return campaignRows.filter((row) => row.campaign.status === filter);
-  }, [campaignRows, filter]);
-
-  const totals = useMemo(() => {
-    const attributedClaims = claims.filter((claim) => claim.campaign_id);
-    const redeemed = attributedClaims.filter(
-      (claim) => claim.status === "redeemed"
-    );
-    const unattributed = claims.filter((claim) => !claim.campaign_id);
+  const stats = useMemo(() => {
+    const redeemed = claims.filter((claim) => claim.status === "redeemed").length;
+    const claimed = claims.length - redeemed;
+    const uniqueCustomers = new Set(
+      claims.map(
+        (claim) =>
+          claim.vip_member_id ||
+          claim.phone ||
+          claim.email ||
+          claim.id
+      )
+    ).size;
 
     return {
-      campaigns: campaigns.length,
-      claims: attributedClaims.length,
-      redeemed: redeemed.length,
-      unattributed: unattributed.length,
-      rate:
-        attributedClaims.length > 0
-          ? (redeemed.length / attributedClaims.length) * 100
-          : 0,
+      claims: claims.length,
+      redeemed,
+      claimed,
+      uniqueCustomers,
+      redemptionRate:
+        claims.length > 0 ? (redeemed / claims.length) * 100 : 0,
     };
-  }, [campaigns, claims]);
+  }, [claims]);
+
+  const visibleClaims = useMemo(() => {
+    if (filter === "all") return claims;
+    return claims.filter((claim) => claim.status === filter);
+  }, [claims, filter]);
+
+  function customerName(claim: Claim) {
+    return claim.first_name || claim.phone || claim.email || "VIP Customer";
+  }
+
+  function exportCsv() {
+    const rows = [
+      [
+        "Customer",
+        "Phone",
+        "Email",
+        "Claim Code",
+        "Status",
+        "Claimed",
+        "Redeemed",
+      ],
+      ...claims.map((claim) => [
+        customerName(claim),
+        claim.phone || "",
+        claim.email || "",
+        claim.claim_code,
+        claim.status,
+        new Date(claim.created_at).toLocaleString(),
+        claim.redeemed_at
+          ? new Date(claim.redeemed_at).toLocaleString()
+          : "",
+      ]),
+    ];
+
+    const csv = rows
+      .map((row) =>
+        row
+          .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
+          .join(",")
+      )
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${campaign?.name || "campaign"}-results.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
   if (loading) {
     return (
       <main style={pageStyle}>
-        <div style={shellStyle}>Loading campaign results...</div>
+        <div style={shellStyle}>Loading campaign details...</div>
+      </main>
+    );
+  }
+
+  if (!campaign) {
+    return (
+      <main style={pageStyle}>
+        <div style={shellStyle}>{message || "Campaign not found."}</div>
       </main>
     );
   }
@@ -212,128 +244,143 @@ export default function CampaignResultsPage() {
         <header style={headerStyle}>
           <div>
             <div style={eyebrowStyle}>RESTAURANT OS</div>
-            <h1 style={titleStyle}>Campaign Results</h1>
+            <h1 style={titleStyle}>{campaign.name}</h1>
             <p style={subStyle}>
-              {restaurantName} — see which campaigns actually drive claims and redemptions.
+              {restaurantName} — inspect the exact customers, claim codes and redemptions attributed to this campaign.
             </p>
           </div>
 
           <div style={headerActionsStyle}>
-            <button
-              style={primaryButtonStyle}
-              onClick={() =>
-                (window.location.href = `/owner/campaigns?restaurant=${restaurantId}`)
-              }
-            >
-              MANAGE CAMPAIGNS
+            <button style={secondaryButtonStyle} onClick={exportCsv}>
+              EXPORT CSV
             </button>
 
             <button
               style={secondaryButtonStyle}
               onClick={() =>
-                (window.location.href = `/owner?restaurant=${restaurantId}`)
+                (window.location.href =
+                  `/owner/campaign-results?restaurant=${restaurantId}`)
               }
             >
-              BACK TO DASHBOARD
+              BACK TO RESULTS
             </button>
           </div>
         </header>
 
         {message && <div style={messageStyle}>{message}</div>}
 
+        <section style={summaryCardStyle}>
+          <div>
+            <div style={eyebrowStyle}>CAMPAIGN</div>
+            <div style={summaryTitleStyle}>{campaign.name}</div>
+            <div style={summaryMetaStyle}>
+              {campaign.channel.toUpperCase()} •{" "}
+              {campaign.audience.replaceAll("_", " ").toUpperCase()} •{" "}
+              {campaign.status.toUpperCase()}
+            </div>
+          </div>
+
+          <div style={offerPanelStyle}>
+            <div style={offerLabelStyle}>ATTACHED OFFER</div>
+            <div style={offerValueStyle}>
+              {offer?.headline || offer?.name || "No offer attached"}
+            </div>
+          </div>
+        </section>
+
         <section style={statsGridStyle}>
-          <Stat label="CAMPAIGNS" value={totals.campaigns} />
-          <Stat label="ATTRIBUTED CLAIMS" value={totals.claims} />
-          <Stat label="REDEEMED" value={totals.redeemed} />
-          <Stat label="REDEMPTION RATE" value={`${totals.rate.toFixed(1)}%`} />
-          <Stat label="UNATTRIBUTED CLAIMS" value={totals.unattributed} />
+          <Stat label="TOTAL CLAIMS" value={stats.claims} />
+          <Stat label="UNREDEEMED" value={stats.claimed} />
+          <Stat label="REDEEMED" value={stats.redeemed} />
+          <Stat label="UNIQUE CUSTOMERS" value={stats.uniqueCustomers} />
+          <Stat
+            label="REDEMPTION RATE"
+            value={`${stats.redemptionRate.toFixed(1)}%`}
+          />
         </section>
 
         <section style={filterPanelStyle}>
           <div style={filterRowStyle}>
-            {["all", "active", "draft", "paused", "completed"].map((status) => (
+            {[
+              ["all", "ALL"],
+              ["claimed", "CLAIMED"],
+              ["redeemed", "REDEEMED"],
+            ].map(([value, label]) => (
               <button
-                key={status}
+                key={value}
+                onClick={() => setFilter(value as typeof filter)}
                 style={{
                   ...filterButtonStyle,
-                  background: filter === status ? "#f5b82e" : "#08111f",
-                  color: filter === status ? "#08111f" : "#cbd5e1",
-                  borderColor: filter === status ? "#f5b82e" : "#334155",
+                  background: filter === value ? "#f5b82e" : "#08111f",
+                  color: filter === value ? "#08111f" : "#cbd5e1",
+                  borderColor: filter === value ? "#f5b82e" : "#334155",
                 }}
-                onClick={() => setFilter(status)}
               >
-                {status.toUpperCase()}
+                {label}
               </button>
             ))}
           </div>
         </section>
 
-        {visibleRows.length === 0 ? (
+        {visibleClaims.length === 0 ? (
           <section style={emptyStyle}>
-            No campaigns match this filter yet.
+            No customer claims match this filter yet.
           </section>
         ) : (
-          <section style={campaignListStyle}>
-            {visibleRows.map((row) => (
-              <article key={row.campaign.id} style={campaignCardStyle}>
-                <div style={campaignTopStyle}>
+          <section style={claimListStyle}>
+            {visibleClaims.map((claim) => (
+              <article key={claim.id} style={claimCardStyle}>
+                <div style={claimTopStyle}>
                   <div>
-                    <div style={campaignNameStyle}>{row.campaign.name}</div>
-                    <div style={campaignMetaStyle}>
-                      {row.campaign.channel.toUpperCase()} •{" "}
-                      {row.campaign.audience.replaceAll("_", " ").toUpperCase()}
-                    </div>
-                    <div style={offerStyle}>
-                      {offerLabel(row.campaign.offer_id)}
+                    <div style={customerNameStyle}>{customerName(claim)}</div>
+                    <div style={customerMetaStyle}>
+                      {[claim.phone, claim.email].filter(Boolean).join(" • ") ||
+                        "No phone/email"}
                     </div>
                   </div>
 
-                  <div style={statusBadgeStyle}>
-                    {row.campaign.status.toUpperCase()}
+                  <div
+                    style={{
+                      ...statusBadgeStyle,
+                      background:
+                        claim.status === "redeemed" ? "#12351f" : "#3b2d08",
+                      color:
+                        claim.status === "redeemed" ? "#86efac" : "#fde68a",
+                    }}
+                  >
+                    {claim.status.toUpperCase()}
                   </div>
                 </div>
 
-                <div style={metricGridStyle}>
-                  <Metric label="CLAIMS" value={row.claims} />
-                  <Metric label="REDEEMED" value={row.redeemed} />
-                  <Metric label="UNREDEEMED" value={row.unredeemed} />
-                  <Metric label="UNIQUE CUSTOMERS" value={row.uniqueCustomers} />
-                  <Metric
-                    label="REDEMPTION RATE"
-                    value={`${row.redemptionRate.toFixed(1)}%`}
+                <div style={detailsGridStyle}>
+                  <Info label="CLAIM CODE" value={claim.claim_code} mono />
+                  <Info
+                    label="CLAIMED"
+                    value={new Date(claim.created_at).toLocaleString()}
+                  />
+                  <Info
+                    label="REDEEMED"
+                    value={
+                      claim.redeemed_at
+                        ? new Date(claim.redeemed_at).toLocaleString()
+                        : "Not yet"
+                    }
+                  />
+                  <Info
+                    label="VIP MEMBER"
+                    value={claim.vip_member_id ? "MATCHED" : "NOT MATCHED"}
                   />
                 </div>
 
-                <div style={progressWrapStyle}>
-                  <div style={progressLabelRowStyle}>
-                    <span>CLAIM → REDEMPTION</span>
-                    <span>{row.redemptionRate.toFixed(1)}%</span>
-                  </div>
-
-                  <div style={progressTrackStyle}>
-                    <div
-                      style={{
-                        ...progressBarStyle,
-                        width: `${Math.min(row.redemptionRate, 100)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div style={footerRowStyle}>
-                  <div style={dateStyle}>
-                    Created{" "}
-                    {new Date(row.campaign.created_at).toLocaleDateString()}
-                  </div>
-
+                <div style={claimFooterStyle}>
                   <button
                     style={secondaryButtonStyle}
                     onClick={() =>
                       (window.location.href =
-                        `/owner/campaign-results/detail?restaurant=${restaurantId}&campaign=${row.campaign.id}`)
+                        `/owner/redeem?restaurant=${restaurantId}`)
                     }
                   >
-                    VIEW CUSTOMERS
+                    OPEN REDEMPTION CENTER
                   </button>
                 </div>
               </article>
@@ -360,17 +407,26 @@ function Stat({
   );
 }
 
-function Metric({
+function Info({
   label,
   value,
+  mono = false,
 }: {
   label: string;
-  value: number | string;
+  value: string;
+  mono?: boolean;
 }) {
   return (
-    <div style={metricStyle}>
-      <div style={metricValueStyle}>{value}</div>
-      <div style={metricLabelStyle}>{label}</div>
+    <div>
+      <div style={infoLabelStyle}>{label}</div>
+      <div
+        style={{
+          ...infoValueStyle,
+          ...(mono ? { letterSpacing: "3px", color: "#f5b82e" } : {}),
+        }}
+      >
+        {value}
+      </div>
     </div>
   );
 }
@@ -421,6 +477,55 @@ const titleStyle = {
 const subStyle = {
   color: "#94a3b8",
   fontSize: "16px",
+  maxWidth: "760px",
+  lineHeight: 1.5,
+};
+
+const summaryCardStyle = {
+  background: "#0f1d2e",
+  border: "1px solid #23364d",
+  borderRadius: "18px",
+  padding: "22px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "20px",
+  flexWrap: "wrap" as const,
+  marginBottom: "20px",
+};
+
+const summaryTitleStyle = {
+  fontSize: "28px",
+  fontWeight: 900,
+  marginTop: "6px",
+};
+
+const summaryMetaStyle = {
+  color: "#64748b",
+  fontSize: "11px",
+  fontWeight: 900,
+  letterSpacing: "1px",
+  marginTop: "8px",
+};
+
+const offerPanelStyle = {
+  background: "#08111f",
+  border: "1px solid #334155",
+  borderRadius: "12px",
+  padding: "14px 16px",
+  minWidth: "260px",
+};
+
+const offerLabelStyle = {
+  color: "#64748b",
+  fontSize: "10px",
+  fontWeight: 900,
+  letterSpacing: "1px",
+};
+
+const offerValueStyle = {
+  marginTop: "6px",
+  fontWeight: 900,
 };
 
 const statsGridStyle = {
@@ -474,19 +579,19 @@ const filterButtonStyle = {
   cursor: "pointer",
 };
 
-const campaignListStyle = {
+const claimListStyle = {
   display: "grid",
-  gap: "16px",
+  gap: "14px",
 };
 
-const campaignCardStyle = {
+const claimCardStyle = {
   background: "#0f1d2e",
   border: "1px solid #23364d",
   borderRadius: "18px",
   padding: "22px",
 };
 
-const campaignTopStyle = {
+const claimTopStyle = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "flex-start",
@@ -494,113 +599,49 @@ const campaignTopStyle = {
   flexWrap: "wrap" as const,
 };
 
-const campaignNameStyle = {
-  fontSize: "25px",
+const customerNameStyle = {
+  fontSize: "22px",
   fontWeight: 900,
 };
 
-const campaignMetaStyle = {
+const customerMetaStyle = {
   color: "#64748b",
-  fontSize: "11px",
-  fontWeight: 900,
-  letterSpacing: "1px",
-  marginTop: "7px",
-};
-
-const offerStyle = {
-  color: "#cbd5e1",
-  fontSize: "14px",
-  marginTop: "8px",
+  fontSize: "12px",
+  marginTop: "5px",
 };
 
 const statusBadgeStyle = {
-  background: "#13263b",
-  border: "1px solid #2d4661",
   borderRadius: "999px",
   padding: "8px 11px",
   fontSize: "10px",
   fontWeight: 900,
 };
 
-const metricGridStyle = {
+const detailsGridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))",
-  gap: "10px",
+  gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+  gap: "18px",
   marginTop: "20px",
 };
 
-const metricStyle = {
-  background: "#08111f",
-  border: "1px solid #23364d",
-  borderRadius: "12px",
-  padding: "16px",
-};
-
-const metricValueStyle = {
-  fontSize: "26px",
-  fontWeight: 900,
-};
-
-const metricLabelStyle = {
+const infoLabelStyle = {
   color: "#64748b",
-  fontSize: "9px",
-  fontWeight: 900,
-  letterSpacing: "1px",
-  marginTop: "5px",
-};
-
-const progressWrapStyle = {
-  marginTop: "20px",
-};
-
-const progressLabelRowStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  color: "#94a3b8",
   fontSize: "10px",
   fontWeight: 900,
   letterSpacing: "1px",
-  marginBottom: "7px",
+  marginBottom: "5px",
 };
 
-const progressTrackStyle = {
-  height: "10px",
-  background: "#08111f",
-  borderRadius: "999px",
-  overflow: "hidden",
-  border: "1px solid #23364d",
+const infoValueStyle = {
+  fontSize: "14px",
+  fontWeight: 800,
+  wordBreak: "break-word" as const,
 };
 
-const progressBarStyle = {
-  height: "100%",
-  background: "#f5b82e",
-  borderRadius: "999px",
-};
-
-const footerRowStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "14px",
-  flexWrap: "wrap" as const,
+const claimFooterStyle = {
   borderTop: "1px solid #23364d",
-  marginTop: "20px",
+  marginTop: "18px",
   paddingTop: "16px",
-};
-
-const dateStyle = {
-  color: "#64748b",
-  fontSize: "11px",
-};
-
-const primaryButtonStyle = {
-  background: "#f5b82e",
-  color: "#08111f",
-  border: 0,
-  borderRadius: "10px",
-  padding: "12px 16px",
-  fontWeight: 900,
-  cursor: "pointer",
 };
 
 const secondaryButtonStyle = {
