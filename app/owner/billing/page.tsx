@@ -22,6 +22,7 @@ export default function OwnerBillingPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     load();
@@ -38,6 +39,13 @@ export default function OwnerBillingPage() {
     }
 
     setRestaurantId(id);
+
+    const checkoutState = params.get("checkout");
+    if (checkoutState === "success") {
+      setMessage("Payment completed. Restaurant OS is confirming your subscription status.");
+    } else if (checkoutState === "canceled") {
+      setMessage("Checkout was canceled. Your current access has not changed.");
+    }
 
     const {
       data: { user },
@@ -179,6 +187,55 @@ export default function OwnerBillingPage() {
     }
   }
 
+  async function openBillingPortal() {
+    if (!restaurantId || portalLoading) return;
+
+    setPortalLoading(true);
+    setMessage("");
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        throw new Error(sessionError.message);
+      }
+
+      if (!session?.access_token) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const response = await fetch("/api/billing/portal", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          restaurant_id: restaurantId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.portal_url) {
+        throw new Error(data.error || "Unable to open billing portal.");
+      }
+
+      window.location.assign(data.portal_url);
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to open billing portal."
+      );
+      setPortalLoading(false);
+    }
+  }
+
   function daysLeft() {
     if (!subscription?.trial_ends_at) return null;
 
@@ -282,26 +339,36 @@ export default function OwnerBillingPage() {
 
           <button
             style={primaryButtonStyle}
-            onClick={startCheckout}
-            disabled={checkoutLoading}
+            onClick={
+              subscription?.status === "active"
+                ? openBillingPortal
+                : startCheckout
+            }
+            disabled={checkoutLoading || portalLoading}
           >
-            {checkoutLoading
+            {subscription?.status === "active"
+              ? portalLoading
+                ? "OPENING BILLING PORTAL..."
+                : "MANAGE SUBSCRIPTION"
+              : checkoutLoading
               ? "OPENING CHECKOUT..."
-              : subscription?.status === "active"
-              ? "MANAGE SUBSCRIPTION"
               : "ACTIVATE FOUNDER PLAN"}
           </button>
         </section>
 
         <section style={noticeStyle}>
-          <div style={eyebrowStyle}>NEXT BILLING STEP</div>
+          <div style={eyebrowStyle}>
+            {subscription?.status === "active" ? "BILLING READY" : "SUBSCRIPTION ACCESS"}
+          </div>
           <div style={noticeTitleStyle}>
-            Connect secure checkout + automatic subscription status.
+            {subscription?.status === "active"
+              ? "Your Restaurant OS subscription is active."
+              : "Activate Restaurant OS when you are ready."}
           </div>
           <p style={noticeTextStyle}>
-            Checkout is now connected. The next build is the Stripe webhook
-            that writes successful billing status back into Restaurant OS
-            automatically.
+            {subscription?.status === "active"
+              ? "Use Manage Subscription to update payment methods, view invoices, or manage your Stripe subscription securely."
+              : "Your trial remains available until activation. Successful checkout will update this page automatically through the Stripe webhook."}
           </p>
         </section>
       </div>
