@@ -106,41 +106,77 @@ export default function OwnerBillingPage() {
   }
 
   async function startCheckout() {
-    if (!restaurantId) return;
+    if (!restaurantId || checkoutLoading) return;
 
     setCheckoutLoading(true);
     setMessage("");
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 20000);
 
-    if (!session?.access_token) {
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        throw new Error(sessionError.message);
+      }
+
+      if (!session?.access_token) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const response = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          restaurant_id: restaurantId,
+        }),
+        signal: controller.signal,
+      });
+
+      const raw = await response.text();
+
+      let data: any = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        throw new Error(
+          `Checkout endpoint returned an unexpected response (${response.status}).`
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || `Checkout failed with status ${response.status}.`
+        );
+      }
+
+      if (!data.checkout_url) {
+        throw new Error("Stripe checkout URL was not returned.");
+      }
+
+      window.location.assign(data.checkout_url);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setMessage(
+          "Checkout timed out after 20 seconds. The billing API is not responding."
+        );
+      } else {
+        setMessage(
+          error instanceof Error ? error.message : "Unable to start checkout."
+        );
+      }
       setCheckoutLoading(false);
-      window.location.href = "/login";
-      return;
+    } finally {
+      window.clearTimeout(timeout);
     }
-
-    const response = await fetch("/api/billing/checkout", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({
-        restaurant_id: restaurantId,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || !data.checkout_url) {
-      setMessage(data.error || "Unable to start checkout.");
-      setCheckoutLoading(false);
-      return;
-    }
-
-    window.location.href = data.checkout_url;
   }
 
   function daysLeft() {
