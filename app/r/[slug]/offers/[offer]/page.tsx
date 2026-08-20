@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
 const publicSupabase = createClient(
@@ -39,8 +39,10 @@ type Offer = {
 
 export default function PublicOfferClaimPage() {
   const params = useParams<{ slug: string; offer: string }>();
+  const searchParams = useSearchParams();
   const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
   const offerId = Array.isArray(params?.offer) ? params.offer[0] : params?.offer;
+  const campaignId = searchParams.get("campaign");
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [branding, setBranding] = useState<Branding | null>(null);
@@ -128,6 +130,43 @@ export default function PublicOfferClaimPage() {
     setSaving(true);
     setMessage("");
 
+    let linkedCampaignId: string | null = null;
+
+    if (campaignId) {
+      const { data: campaign } = await publicSupabase
+        .from("restaurant_campaigns")
+        .select("id,restaurant_id,offer_id,status")
+        .eq("id", campaignId)
+        .eq("restaurant_id", restaurant.id)
+        .eq("offer_id", offer.id)
+        .maybeSingle();
+
+      if (campaign && campaign.status !== "completed") {
+        linkedCampaignId = campaign.id;
+      }
+    }
+
+    const normalizedPhone = phone.trim() ? normalizeUsPhone(phone) : null;
+    const normalizedEmail = email.trim().toLowerCase() || null;
+
+    let vipMemberId: string | null = null;
+
+    if (normalizedPhone || normalizedEmail) {
+      let vipQuery = publicSupabase
+        .from("restaurant_vip_members")
+        .select("id")
+        .eq("restaurant_id", restaurant.id);
+
+      if (normalizedPhone) {
+        vipQuery = vipQuery.eq("phone", normalizedPhone);
+      } else if (normalizedEmail) {
+        vipQuery = vipQuery.eq("email", normalizedEmail);
+      }
+
+      const { data: vipMember } = await vipQuery.maybeSingle();
+      vipMemberId = vipMember?.id || null;
+    }
+
     let code = makeCode();
 
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -136,9 +175,11 @@ export default function PublicOfferClaimPage() {
         .insert({
           restaurant_id: restaurant.id,
           offer_id: offer.id,
+          campaign_id: linkedCampaignId,
+          vip_member_id: vipMemberId,
           first_name: firstName.trim(),
-          phone: phone.trim() ? normalizeUsPhone(phone) : null,
-          email: email.trim().toLowerCase() || null,
+          phone: normalizedPhone,
+          email: normalizedEmail,
           claim_code: code,
           status: "claimed",
         });
@@ -302,6 +343,7 @@ export default function PublicOfferClaimPage() {
 
             <p style={finePrintStyle}>
               A unique redemption code will be generated for this offer.
+              {campaignId ? " This claim will also be attributed to the campaign that sent you here." : ""}
             </p>
           </form>
         </div>
