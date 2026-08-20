@@ -10,6 +10,7 @@ type Check = {
   complete: boolean;
   action: string;
   path: string;
+  severity?: "critical" | "standard";
 };
 
 export default function OwnerSetupPage() {
@@ -199,6 +200,7 @@ export default function OwnerSetupPage() {
         complete: menuComplete,
         action: "BUILD MENU",
         path: "/owner/menu",
+        severity: "critical",
       },
       {
         key: "website",
@@ -207,6 +209,7 @@ export default function OwnerSetupPage() {
         complete: websiteComplete,
         action: "MANAGE SITE",
         path: "/owner/website",
+        severity: "critical",
       },
       {
         key: "ordering",
@@ -231,6 +234,7 @@ export default function OwnerSetupPage() {
         complete: subscriptionComplete,
         action: "VIEW BILLING",
         path: "/owner/billing",
+        severity: "critical",
       },
       {
         key: "publish",
@@ -239,6 +243,7 @@ export default function OwnerSetupPage() {
         complete: Boolean(website?.published),
         action: "PUBLISH SITE",
         path: "/owner/website",
+        severity: "critical",
       },
     ]);
 
@@ -318,9 +323,42 @@ export default function OwnerSetupPage() {
           </div>
         </section>
 
+        {!ready && (
+          <section style={nextActionStyle}>
+            <div style={eyebrowStyle}>NEXT BEST ACTION</div>
+            <div style={nextActionTitleStyle}>
+              {checks.find((check) => !check.complete)?.label || "Continue setup"}
+            </div>
+            <p style={nextActionTextStyle}>
+              {checks.find((check) => !check.complete)?.description ||
+                "Complete the remaining setup items."}
+            </p>
+
+            <button
+              style={primaryButtonStyle}
+              onClick={() => {
+                const nextCheck = checks.find((check) => !check.complete);
+                if (nextCheck) go(nextCheck.path);
+              }}
+            >
+              {checks.find((check) => !check.complete)?.action || "CONTINUE"} →
+            </button>
+          </section>
+        )}
+
         <section style={checkListStyle}>
           {checks.map((check, index) => (
-            <article key={check.key} style={checkCardStyle}>
+            <article
+              key={check.key}
+              style={{
+                ...checkCardStyle,
+                ...(check.complete
+                  ? completeCardStyle
+                  : check.severity === "critical"
+                  ? criticalCardStyle
+                  : {}),
+              }}
+            >
               <div style={numberStyle}>
                 {String(index + 1).padStart(2, "0")}
               </div>
@@ -328,7 +366,14 @@ export default function OwnerSetupPage() {
               <div style={checkBodyStyle}>
                 <div style={checkTopStyle}>
                   <div>
-                    <h2 style={checkTitleStyle}>{check.label}</h2>
+                    <div style={checkLabelRowStyle}>
+                      <h2 style={checkTitleStyle}>{check.label}</h2>
+
+                      {!check.complete && check.severity === "critical" && (
+                        <span style={criticalBadgeStyle}>LAUNCH BLOCKER</span>
+                      )}
+                    </div>
+
                     <p style={checkTextStyle}>{check.description}</p>
                   </div>
 
@@ -343,12 +388,24 @@ export default function OwnerSetupPage() {
                   </div>
                 </div>
 
-                {!check.complete && (
+                {!check.complete ? (
                   <button
-                    style={primaryButtonStyle}
+                    style={{
+                      ...primaryButtonStyle,
+                      ...(check.severity === "critical"
+                        ? criticalActionButtonStyle
+                        : {}),
+                    }}
                     onClick={() => go(check.path)}
                   >
-                    {check.action}
+                    {check.action} →
+                  </button>
+                ) : (
+                  <button
+                    style={completedButtonStyle}
+                    onClick={() => go(check.path)}
+                  >
+                    REVIEW
                   </button>
                 )}
               </div>
@@ -532,6 +589,66 @@ const secondaryButtonStyle = {
   border: "1px solid #334155",
   borderRadius: "10px",
   padding: "12px 16px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const nextActionStyle = {
+  background: "#13263b",
+  border: "1px solid #2d4661",
+  borderRadius: "16px",
+  padding: "20px",
+  marginBottom: "18px",
+};
+
+const nextActionTitleStyle = {
+  fontSize: "26px",
+  fontWeight: 900,
+  marginTop: "5px",
+};
+
+const nextActionTextStyle = {
+  color: "#cbd5e1",
+  lineHeight: 1.5,
+  margin: "8px 0 16px",
+};
+
+const completeCardStyle = {
+  opacity: 0.86,
+};
+
+const criticalCardStyle = {
+  border: "1px solid #7f3333",
+  background: "#171317",
+};
+
+const checkLabelRowStyle = {
+  display: "flex",
+  gap: "10px",
+  alignItems: "center",
+  flexWrap: "wrap" as const,
+};
+
+const criticalBadgeStyle = {
+  background: "#7f1d1d",
+  color: "#fecaca",
+  borderRadius: "999px",
+  padding: "5px 8px",
+  fontSize: "8px",
+  fontWeight: 900,
+  letterSpacing: ".8px",
+};
+
+const criticalActionButtonStyle = {
+  background: "#f59e0b",
+};
+
+const completedButtonStyle = {
+  background: "transparent",
+  color: "#94a3b8",
+  border: "1px solid #334155",
+  borderRadius: "10px",
+  padding: "10px 13px",
   fontWeight: 900,
   cursor: "pointer",
 };
