@@ -175,10 +175,10 @@ export default function PublicOffersPage() {
 
                 <div style={buttonRowStyle}>
                   <a
-                    href={`/r/${restaurant.slug}/vip`}
+                    href={`/r/${restaurant.slug}/offers/${offer.id}`}
                     style={{ ...primaryButtonStyle, background: secondary }}
                   >
-                    JOIN VIP CLUB
+                    CLAIM OFFER
                   </a>
 
                   <a
@@ -360,4 +360,3 @@ const messageCardStyle = {
   borderRadius: "18px",
   padding: "28px",
 };
-
