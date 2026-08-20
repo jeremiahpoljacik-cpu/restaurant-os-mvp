@@ -148,6 +148,62 @@ export default function OwnerLayout({
           </div>
         )}
 
+      <style jsx global>{`
+        @media (max-width: 768px) {
+          html,
+          body {
+            overflow-x: hidden;
+          }
+
+          body {
+            -webkit-text-size-adjust: 100%;
+          }
+
+          main {
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+          }
+
+          button,
+          a {
+            min-height: 44px;
+          }
+
+          input,
+          select,
+          textarea {
+            font-size: 16px !important;
+          }
+
+          img {
+            max-width: 100%;
+            height: auto;
+          }
+
+          table {
+            display: block;
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+        }
+
+        @media (max-width: 520px) {
+          main {
+            padding-top: 18px !important;
+            padding-bottom: 24px !important;
+          }
+
+          h1 {
+            word-break: break-word;
+          }
+
+          button {
+            width: 100%;
+          }
+        }
+      `}</style>
+
       {children}
     </>
   );
@@ -195,11 +251,11 @@ const trialBannerStyle = {
 const trialBannerInnerStyle = {
   maxWidth: "1180px",
   margin: "0 auto",
-  padding: "10px 18px",
+  padding: "10px 16px",
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  gap: "14px",
+  gap: "10px",
   flexWrap: "wrap" as const,
 };
 
@@ -220,8 +276,9 @@ const trialButtonStyle = {
   color: "#ffffff",
   border: 0,
   borderRadius: "8px",
-  padding: "9px 12px",
+  padding: "10px 12px",
   fontSize: "10px",
   fontWeight: 900,
   cursor: "pointer",
+  minHeight: "40px",
 };
