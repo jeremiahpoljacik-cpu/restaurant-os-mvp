@@ -23,10 +23,42 @@ export default function OwnerBillingPage() {
   const [message, setMessage] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
 
   useEffect(() => {
     load();
   }, []);
+
+  async function waitForActiveSubscription(restaurantId: string) {
+    setConfirmingPayment(true);
+
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const { data } = await supabase
+        .from("restaurant_subscriptions")
+        .select("*")
+        .eq("restaurant_id", restaurantId)
+        .maybeSingle();
+
+      if (data?.status === "active") {
+        setSubscription(data);
+        setMessage("Payment confirmed. Your Restaurant OS subscription is ACTIVE.");
+        setConfirmingPayment(false);
+        window.history.replaceState(
+          {},
+          "",
+          `/owner/billing?restaurant=${restaurantId}`
+        );
+        return;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+
+    setMessage(
+      "Payment completed, but billing confirmation is still syncing. Refresh this page in a few seconds."
+    );
+    setConfirmingPayment(false);
+  }
 
   async function load() {
     const params = new URLSearchParams(window.location.search);
@@ -44,7 +76,7 @@ export default function OwnerBillingPage() {
     const accessState = params.get("access");
 
     if (checkoutState === "success") {
-      setMessage("Payment completed. Restaurant OS is confirming your subscription status.");
+      setMessage("Payment completed. Confirming your subscription with Stripe...");
     } else if (checkoutState === "canceled") {
       setMessage("Checkout was canceled. Your current access has not changed.");
     } else if (accessState === "required") {
@@ -90,6 +122,18 @@ export default function OwnerBillingPage() {
     if (existing) {
       setSubscription(existing);
       setLoading(false);
+
+      if (checkoutState === "success" && existing.status !== "active") {
+        waitForActiveSubscription(id);
+      } else if (checkoutState === "success" && existing.status === "active") {
+        setMessage("Payment confirmed. Your Restaurant OS subscription is ACTIVE.");
+        window.history.replaceState(
+          {},
+          "",
+          `/owner/billing?restaurant=${id}`
+        );
+      }
+
       return;
     }
 
@@ -115,6 +159,10 @@ export default function OwnerBillingPage() {
 
     setSubscription(created);
     setLoading(false);
+
+    if (checkoutState === "success") {
+      waitForActiveSubscription(id);
+    }
   }
 
   async function startCheckout() {
@@ -324,6 +372,18 @@ export default function OwnerBillingPage() {
           <div style={statusBadgeStyle}>{accessTitle}</div>
         </section>
 
+        {confirmingPayment && (
+          <section style={syncCardStyle}>
+            <div style={syncDotStyle} />
+            <div>
+              <div style={syncTitleStyle}>CONFIRMING PAYMENT</div>
+              <div style={syncTextStyle}>
+                Stripe checkout succeeded. Restaurant OS is waiting for the billing webhook to confirm ACTIVE status.
+              </div>
+            </div>
+          </section>
+        )}
+
         <section style={planCardStyle}>
           <div style={planTopStyle}>
             <div>
@@ -477,6 +537,39 @@ const statusBadgeStyle = {
   fontSize: "11px",
   fontWeight: 900,
   color: "#f5b82e",
+};
+
+const syncCardStyle = {
+  background: "#13263b",
+  border: "1px solid #2d4661",
+  borderRadius: "14px",
+  padding: "16px",
+  marginBottom: "18px",
+  display: "flex",
+  gap: "12px",
+  alignItems: "center",
+};
+
+const syncDotStyle = {
+  width: "12px",
+  height: "12px",
+  borderRadius: "999px",
+  background: "#f5b82e",
+  flexShrink: 0,
+};
+
+const syncTitleStyle = {
+  color: "#f5b82e",
+  fontSize: "10px",
+  fontWeight: 900,
+  letterSpacing: "1px",
+};
+
+const syncTextStyle = {
+  color: "#cbd5e1",
+  fontSize: "13px",
+  lineHeight: 1.45,
+  marginTop: "4px",
 };
 
 const planCardStyle = {
