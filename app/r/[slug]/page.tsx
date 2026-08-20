@@ -88,6 +88,24 @@ type MenuItem = {
   sort_order: number;
 };
 
+type PageRow = {
+  id: string;
+  title: string;
+  slug: string;
+  nav_label: string | null;
+  active: boolean;
+  show_in_nav: boolean;
+  sort_order: number;
+};
+
+type SocialRow = {
+  id: string;
+  platform: string;
+  url: string;
+  active: boolean;
+  sort_order: number;
+};
+
 export default function PublicRestaurantPage() {
   const params = useParams<{ slug: string }>();
   const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
@@ -100,6 +118,8 @@ export default function PublicRestaurantPage() {
   const [growth, setGrowth] = useState<Growth | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
+  const [pages, setPages] = useState<PageRow[]>([]);
+  const [socials, setSocials] = useState<SocialRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -123,7 +143,6 @@ export default function PublicRestaurantPage() {
     }
 
     setRestaurant(restaurantData);
-
     const restaurantId = restaurantData.id;
 
     const [
@@ -134,6 +153,8 @@ export default function PublicRestaurantPage() {
       growthResult,
       categoriesResult,
       itemsResult,
+      pagesResult,
+      socialsResult,
     ] = await Promise.all([
       publicSupabase
         .from("restaurant_website_settings")
@@ -164,14 +185,24 @@ export default function PublicRestaurantPage() {
         .from("restaurant_menu_categories")
         .select("id,name,sort_order")
         .eq("restaurant_id", restaurantId)
-        .order("sort_order", { ascending: true })
-        .order("name", { ascending: true }),
+        .order("sort_order", { ascending: true }),
       publicSupabase
         .from("restaurant_menu_items")
         .select("id,category_id,name,description,price,featured,sort_order")
         .eq("restaurant_id", restaurantId)
-        .order("sort_order", { ascending: true })
-        .order("name", { ascending: true }),
+        .order("sort_order", { ascending: true }),
+      publicSupabase
+        .from("restaurant_pages")
+        .select("id,title,slug,nav_label,active,show_in_nav,sort_order")
+        .eq("restaurant_id", restaurantId)
+        .eq("active", true)
+        .order("sort_order", { ascending: true }),
+      publicSupabase
+        .from("restaurant_social_links")
+        .select("id,platform,url,active,sort_order")
+        .eq("restaurant_id", restaurantId)
+        .eq("active", true)
+        .order("sort_order", { ascending: true }),
     ]);
 
     setWebsite(websiteResult.data || null);
@@ -181,6 +212,8 @@ export default function PublicRestaurantPage() {
     setGrowth(growthResult.data || null);
     setCategories(categoriesResult.data || []);
     setItems(itemsResult.data || []);
+    setPages(pagesResult.data || []);
+    setSocials(socialsResult.data || []);
     setLoading(false);
   }
 
@@ -190,6 +223,8 @@ export default function PublicRestaurantPage() {
       items: items.filter((item) => item.category_id === category.id),
     }));
   }, [categories, items]);
+
+  const navPages = pages.filter((page) => page.show_in_nav);
 
   if (loading) {
     return (
@@ -203,9 +238,9 @@ export default function PublicRestaurantPage() {
     return (
       <main style={loadingStyle}>
         <div style={loadingCardStyle}>
-          <div style={smallEyebrowStyle}>RESTAURANT OS</div>
-          <h1 style={{ margin: "10px 0 8px" }}>Site not available</h1>
-          <p style={{ margin: 0, color: "#94a3b8" }}>
+          <div style={eyebrowStyle}>RESTAURANT OS</div>
+          <h1>Site not available</h1>
+          <p style={{ color: "#94a3b8" }}>
             This restaurant website has not been published yet.
           </p>
         </div>
@@ -225,15 +260,6 @@ export default function PublicRestaurantPage() {
     .filter(Boolean)
     .join(", ");
 
-  const heroHeadline =
-    website.hero_headline || restaurant.name.toUpperCase();
-
-  const heroSubheadline =
-    website.hero_subheadline ||
-    branding?.tagline ||
-    branding?.short_description ||
-    "Great food. Local flavor. Your table is waiting.";
-
   function scrollTo(id: string) {
     document.getElementById(id)?.scrollIntoView({
       behavior: "smooth",
@@ -242,19 +268,10 @@ export default function PublicRestaurantPage() {
   }
 
   return (
-    <main
-      style={{
-        ...pageStyle,
-        background: "#070b11",
-        color: "#ffffff",
-      }}
-    >
+    <main style={pageStyle}>
       <header style={navStyle}>
         <div style={navInnerStyle}>
-          <button
-            onClick={() => scrollTo("top")}
-            style={brandButtonStyle}
-          >
+          <button onClick={() => scrollTo("top")} style={brandButtonStyle}>
             {website.logo_url ? (
               <img
                 src={website.logo_url}
@@ -278,6 +295,16 @@ export default function PublicRestaurantPage() {
                 MENU
               </button>
             )}
+
+            {navPages.map((page) => (
+              <a
+                key={page.id}
+                href={`/r/${restaurant.slug}/${page.slug}`}
+                style={navAnchorStyle}
+              >
+                {page.nav_label || page.title}
+              </a>
+            ))}
 
             <button style={navLinkStyle} onClick={() => scrollTo("contact")}>
               CONTACT
@@ -306,8 +333,8 @@ export default function PublicRestaurantPage() {
         style={{
           ...heroStyle,
           background: website.hero_image_url
-            ? `linear-gradient(90deg, rgba(0,0,0,.88) 0%, rgba(0,0,0,.58) 52%, rgba(0,0,0,.34) 100%), url("${website.hero_image_url}") center/cover`
-            : `linear-gradient(135deg, ${primary} 0%, #07101c 70%)`,
+            ? `linear-gradient(90deg, rgba(0,0,0,.88), rgba(0,0,0,.42)), url("${website.hero_image_url}") center/cover`
+            : `linear-gradient(135deg, ${primary}, #07101c 72%)`,
         }}
       >
         <div style={heroInnerStyle}>
@@ -315,9 +342,16 @@ export default function PublicRestaurantPage() {
             {restaurant.cuisine_category || "LOCAL RESTAURANT"}
           </div>
 
-          <h1 style={heroHeadlineStyle}>{heroHeadline}</h1>
+          <h1 style={heroHeadlineStyle}>
+            {website.hero_headline || restaurant.name.toUpperCase()}
+          </h1>
 
-          <p style={heroTextStyle}>{heroSubheadline}</p>
+          <p style={heroTextStyle}>
+            {website.hero_subheadline ||
+              branding?.tagline ||
+              branding?.short_description ||
+              "Great food. Local flavor. Your table is waiting."}
+          </p>
 
           <div style={heroButtonsStyle}>
             {website.show_ordering && ordering?.online_ordering_url && (
@@ -336,10 +370,7 @@ export default function PublicRestaurantPage() {
             )}
 
             {website.show_menu && (
-              <button
-                onClick={() => scrollTo("menu")}
-                style={secondaryCtaStyle}
-              >
+              <button onClick={() => scrollTo("menu")} style={secondaryCtaStyle}>
                 {website.secondary_cta_label || "VIEW MENU"}
               </button>
             )}
@@ -351,10 +382,7 @@ export default function PublicRestaurantPage() {
                 ☎ {restaurant.phone}
               </a>
             )}
-
-            {address && (
-              <div style={quickInfoTextStyle}>📍 {address}</div>
-            )}
+            {address && <div>📍 {address}</div>}
           </div>
         </div>
       </section>
@@ -363,12 +391,10 @@ export default function PublicRestaurantPage() {
         <section id="about" style={lightSectionStyle}>
           <div style={contentInnerStyle}>
             <div style={sectionEyebrowStyle}>OUR STORY</div>
-
             <div style={aboutGridStyle}>
               <h2 style={sectionHeadlineStyle}>
                 {website.about_title || `ABOUT ${restaurant.name.toUpperCase()}`}
               </h2>
-
               <p style={sectionBodyStyle}>
                 {website.about_body ||
                   branding?.short_description ||
@@ -382,79 +408,53 @@ export default function PublicRestaurantPage() {
       {website.show_menu && (
         <section id="menu" style={menuSectionStyle}>
           <div style={contentInnerStyle}>
-            <div style={sectionEyebrowStyle}>OUR MENU</div>
+            <div style={sectionEyebrowDarkStyle}>OUR MENU</div>
+            <h2 style={menuHeadlineStyle}>COME HUNGRY. LEAVE HAPPY.</h2>
 
-            <h2 style={menuHeadlineStyle}>
-              COME HUNGRY.
-              <br />
-              LEAVE HAPPY.
-            </h2>
+            <div style={menuGridStyle}>
+              {menuGroups.map((category) => (
+                <article key={category.id} style={menuCategoryStyle}>
+                  <h3 style={menuCategoryTitleStyle}>{category.name}</h3>
 
-            {menuGroups.length === 0 ? (
-              <div style={emptyMenuStyle}>
-                Menu coming soon.
-              </div>
-            ) : (
-              <div style={menuGridStyle}>
-                {menuGroups.map((category) => (
-                  <article key={category.id} style={menuCategoryStyle}>
-                    <h3 style={menuCategoryTitleStyle}>{category.name}</h3>
-
-                    {category.items.length === 0 ? (
-                      <div style={menuEmptyCategoryStyle}>
-                        Items coming soon.
-                      </div>
-                    ) : (
+                  {category.items.map((item) => (
+                    <div key={item.id} style={menuItemStyle}>
                       <div>
-                        {category.items.map((item) => (
-                          <div key={item.id} style={menuItemStyle}>
-                            <div style={{ minWidth: 0 }}>
-                              <div style={menuItemNameStyle}>
-                                {item.name}
-                                {item.featured && (
-                                  <span style={featuredStyle}>★</span>
-                                )}
-                              </div>
-
-                              {item.description && (
-                                <p style={menuItemDescriptionStyle}>
-                                  {item.description}
-                                </p>
-                              )}
-                            </div>
-
-                            {item.price !== null && (
-                              <div style={priceStyle}>
-                                ${Number(item.price).toFixed(2)}
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                        <div style={menuItemNameStyle}>
+                          {item.name}
+                          {item.featured && (
+                            <span style={featuredStyle}>★</span>
+                          )}
+                        </div>
+                        {item.description && (
+                          <p style={menuItemDescriptionStyle}>
+                            {item.description}
+                          </p>
+                        )}
                       </div>
-                    )}
-                  </article>
-                ))}
-              </div>
-            )}
+
+                      {item.price !== null && (
+                        <div style={priceStyle}>
+                          ${Number(item.price).toFixed(2)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </article>
+              ))}
+            </div>
           </div>
         </section>
       )}
 
       {website.show_vip && (
-        <section
-          style={{
-            ...vipSectionStyle,
-            background: primary,
-          }}
-        >
+        <section style={{ ...vipSectionStyle, background: primary }}>
           <div style={vipInnerStyle}>
             <div>
               <div style={vipEyebrowStyle}>VIP CLUB</div>
-
               <h2 style={vipHeadlineStyle}>
-                {growth?.vip_club_name || `JOIN THE ${restaurant.name.toUpperCase()} VIP CLUB`}
+                {growth?.vip_club_name ||
+                  `JOIN THE ${restaurant.name.toUpperCase()} VIP CLUB`}
               </h2>
-
               <p style={vipTextStyle}>
                 {growth?.signup_offer ||
                   "Get restaurant news, special offers and VIP-only perks."}
@@ -462,11 +462,10 @@ export default function PublicRestaurantPage() {
             </div>
 
             <button
-              style={{
-                ...vipButtonStyle,
-                background: secondary,
-              }}
-              onClick={() => alert("VIP signup form is the next module we are connecting.")}
+              style={{ ...vipButtonStyle, background: secondary }}
+              onClick={() =>
+                alert("VIP signup form is the next module we are connecting.")
+              }
             >
               JOIN THE VIP CLUB
             </button>
@@ -498,6 +497,25 @@ export default function PublicRestaurantPage() {
                   {ordering.catering_email}
                 </a>
               )}
+
+              {socials.length > 0 && (
+                <div style={socialWrapStyle}>
+                  <div style={socialTitleStyle}>FOLLOW US</div>
+                  <div style={socialLinksStyle}>
+                    {socials.map((social) => (
+                      <a
+                        key={social.id}
+                        href={social.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={socialLinkStyle}
+                      >
+                        {social.platform}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {hours && (
@@ -519,9 +537,20 @@ export default function PublicRestaurantPage() {
       <footer style={footerStyle}>
         <div style={footerInnerStyle}>
           <div style={footerBrandStyle}>{restaurant.name}</div>
-          <div style={footerTextStyle}>
-            Powered by Restaurant OS
+
+          <div style={footerNavStyle}>
+            {navPages.map((page) => (
+              <a
+                key={page.id}
+                href={`/r/${restaurant.slug}/${page.slug}`}
+                style={footerLinkStyle}
+              >
+                {page.nav_label || page.title}
+              </a>
+            ))}
           </div>
+
+          <div style={footerTextStyle}>Powered by Restaurant OS</div>
         </div>
       </footer>
     </main>
@@ -545,6 +574,8 @@ function HoursRow({
 
 const pageStyle = {
   minHeight: "100vh",
+  background: "#070b11",
+  color: "#ffffff",
   fontFamily: "Arial, Helvetica, sans-serif",
 };
 
@@ -559,7 +590,6 @@ const loadingStyle = {
 };
 
 const loadingCardStyle = {
-  width: "100%",
   maxWidth: "520px",
   background: "#0f1d2e",
   border: "1px solid #23364d",
@@ -567,11 +597,11 @@ const loadingCardStyle = {
   padding: "28px",
 };
 
-const smallEyebrowStyle = {
+const eyebrowStyle = {
   color: "#f5b82e",
   fontSize: "11px",
-  letterSpacing: "2px",
   fontWeight: 900,
+  letterSpacing: "2px",
 };
 
 const navStyle = {
@@ -610,13 +640,12 @@ const navLogoStyle = {
 const brandNameStyle = {
   fontWeight: 900,
   fontSize: "21px",
-  letterSpacing: "-.5px",
 };
 
 const navLinksStyle = {
   display: "flex",
   alignItems: "center",
-  gap: "16px",
+  gap: "15px",
   flexWrap: "wrap" as const,
   justifyContent: "flex-end",
 };
@@ -627,6 +656,13 @@ const navLinkStyle = {
   color: "#ffffff",
   fontWeight: 800,
   cursor: "pointer",
+  fontSize: "12px",
+};
+
+const navAnchorStyle = {
+  color: "#ffffff",
+  textDecoration: "none",
+  fontWeight: 800,
   fontSize: "12px",
 };
 
@@ -656,17 +692,15 @@ const heroKickerStyle = {
   fontSize: "12px",
   fontWeight: 900,
   letterSpacing: "2px",
-  textTransform: "uppercase" as const,
 };
 
 const heroHeadlineStyle = {
-  maxWidth: "880px",
+  maxWidth: "900px",
   fontSize: "clamp(58px,10vw,128px)",
   lineHeight: ".84",
   margin: "18px 0 24px",
   fontWeight: 900,
   letterSpacing: "-5px",
-  textTransform: "uppercase" as const,
 };
 
 const heroTextStyle = {
@@ -714,10 +748,6 @@ const quickInfoLinkStyle = {
   fontWeight: 800,
 };
 
-const quickInfoTextStyle = {
-  color: "#cbd5e1",
-};
-
 const lightSectionStyle = {
   background: "#f3eadc",
   color: "#07101c",
@@ -736,12 +766,18 @@ const sectionEyebrowStyle = {
   letterSpacing: "2px",
 };
 
+const sectionEyebrowDarkStyle = {
+  color: "#f5b82e",
+  fontSize: "12px",
+  fontWeight: 900,
+  letterSpacing: "2px",
+};
+
 const aboutGridStyle = {
   display: "grid",
   gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
   gap: "54px",
   marginTop: "16px",
-  alignItems: "start",
 };
 
 const sectionHeadlineStyle = {
@@ -789,7 +825,6 @@ const menuCategoryTitleStyle = {
   fontSize: "26px",
   margin: "0 0 10px",
   fontWeight: 900,
-  textTransform: "uppercase" as const,
 };
 
 const menuItemStyle = {
@@ -822,19 +857,6 @@ const featuredStyle = {
   color: "#f5b82e",
 };
 
-const menuEmptyCategoryStyle = {
-  color: "#64748b",
-  padding: "18px 0",
-};
-
-const emptyMenuStyle = {
-  color: "#94a3b8",
-  border: "1px dashed #334155",
-  borderRadius: "14px",
-  padding: "30px",
-  textAlign: "center" as const,
-};
-
 const vipSectionStyle = {
   padding: "70px 24px",
 };
@@ -851,7 +873,7 @@ const vipInnerStyle = {
 
 const vipEyebrowStyle = {
   color: "#ffffff",
-  opacity: .7,
+  opacity: 0.7,
   fontSize: "12px",
   fontWeight: 900,
   letterSpacing: "2px",
@@ -914,6 +936,34 @@ const contactLinkStyle = {
   textDecoration: "none",
 };
 
+const socialWrapStyle = {
+  marginTop: "32px",
+};
+
+const socialTitleStyle = {
+  fontSize: "12px",
+  fontWeight: 900,
+  letterSpacing: "2px",
+  marginBottom: "12px",
+};
+
+const socialLinksStyle = {
+  display: "flex",
+  flexWrap: "wrap" as const,
+  gap: "10px",
+};
+
+const socialLinkStyle = {
+  display: "inline-block",
+  color: "#07101c",
+  textDecoration: "none",
+  border: "1px solid #b9a995",
+  borderRadius: "999px",
+  padding: "9px 13px",
+  fontWeight: 900,
+  fontSize: "12px",
+};
+
 const hoursCardStyle = {
   background: "#ffffff",
   borderRadius: "18px",
@@ -953,6 +1003,19 @@ const footerInnerStyle = {
 
 const footerBrandStyle = {
   fontWeight: 900,
+};
+
+const footerNavStyle = {
+  display: "flex",
+  gap: "14px",
+  flexWrap: "wrap" as const,
+};
+
+const footerLinkStyle = {
+  color: "#cbd5e1",
+  textDecoration: "none",
+  fontSize: "12px",
+  fontWeight: 800,
 };
 
 const footerTextStyle = {
