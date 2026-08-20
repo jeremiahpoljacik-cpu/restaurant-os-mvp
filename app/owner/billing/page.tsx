@@ -21,6 +21,7 @@ export default function OwnerBillingPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useEffect(() => {
     load();
@@ -102,6 +103,44 @@ export default function OwnerBillingPage() {
 
     setSubscription(created);
     setLoading(false);
+  }
+
+  async function startCheckout() {
+    if (!restaurantId) return;
+
+    setCheckoutLoading(true);
+    setMessage("");
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      setCheckoutLoading(false);
+      window.location.href = "/login";
+      return;
+    }
+
+    const response = await fetch("/api/billing/checkout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        restaurant_id: restaurantId,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.checkout_url) {
+      setMessage(data.error || "Unable to start checkout.");
+      setCheckoutLoading(false);
+      return;
+    }
+
+    window.location.href = data.checkout_url;
   }
 
   function daysLeft() {
@@ -207,11 +246,12 @@ export default function OwnerBillingPage() {
 
           <button
             style={primaryButtonStyle}
-            onClick={() =>
-              setMessage("Checkout connection is the next billing build.")
-            }
+            onClick={startCheckout}
+            disabled={checkoutLoading}
           >
-            {subscription?.status === "active"
+            {checkoutLoading
+              ? "OPENING CHECKOUT..."
+              : subscription?.status === "active"
               ? "MANAGE SUBSCRIPTION"
               : "ACTIVATE FOUNDER PLAN"}
           </button>
@@ -223,9 +263,9 @@ export default function OwnerBillingPage() {
             Connect secure checkout + automatic subscription status.
           </div>
           <p style={noticeTextStyle}>
-            The account and subscription record are now in place. The next
-            build connects the payment checkout and writes successful billing
-            status back into Restaurant OS automatically.
+            Checkout is now connected. The next build is the Stripe webhook
+            that writes successful billing status back into Restaurant OS
+            automatically.
           </p>
         </section>
       </div>
