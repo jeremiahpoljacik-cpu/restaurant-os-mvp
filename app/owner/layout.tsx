@@ -17,6 +17,9 @@ export default function OwnerLayout({
   const pathname = usePathname();
   const [checking, setChecking] = useState(true);
   const [allowed, setAllowed] = useState(false);
+  const [restaurantId, setRestaurantId] = useState("");
+  const [subscriptionStatus, setSubscriptionStatus] = useState("");
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
 
   useEffect(() => {
     checkAccess();
@@ -34,6 +37,8 @@ export default function OwnerLayout({
       setChecking(false);
       return;
     }
+
+    setRestaurantId(restaurantId);
 
     const {
       data: { user },
@@ -73,6 +78,16 @@ export default function OwnerLayout({
       return;
     }
 
+    setSubscriptionStatus(subscription.status);
+
+    if (subscription.status === "trial" && subscription.trial_ends_at) {
+      const msLeft =
+        new Date(subscription.trial_ends_at).getTime() - Date.now();
+      setTrialDaysLeft(Math.max(0, Math.ceil(msLeft / 86400000)));
+    } else {
+      setTrialDaysLeft(null);
+    }
+
     if (subscription.status === "active") {
       setAllowed(true);
       setChecking(false);
@@ -106,7 +121,36 @@ export default function OwnerLayout({
 
   if (!allowed) return null;
 
-  return <>{children}</>;
+  return (
+    <>
+      {pathname !== "/owner/billing" &&
+        restaurantId &&
+        subscriptionStatus === "trial" &&
+        trialDaysLeft !== null && (
+          <div style={trialBannerStyle}>
+            <div style={trialBannerInnerStyle}>
+              <div>
+                <span style={trialLabelStyle}>FOUNDER TRIAL</span>
+                <span style={trialTextStyle}>
+                  {trialDaysLeft} day{trialDaysLeft === 1 ? "" : "s"} remaining
+                </span>
+              </div>
+
+              <button
+                style={trialButtonStyle}
+                onClick={() => {
+                  window.location.href = `/owner/billing?restaurant=${restaurantId}`;
+                }}
+              >
+                ACTIVATE $99/MO
+              </button>
+            </div>
+          </div>
+        )}
+
+      {children}
+    </>
+  );
 }
 
 const loadingPageStyle = {
@@ -138,4 +182,46 @@ const loadingTitleStyle = {
   fontSize: "24px",
   fontWeight: 900,
   marginTop: "8px",
+};
+
+
+const trialBannerStyle = {
+  background: "#f5b82e",
+  color: "#08111f",
+  borderBottom: "1px solid #c99116",
+  fontFamily: "Arial, Helvetica, sans-serif",
+};
+
+const trialBannerInnerStyle = {
+  maxWidth: "1180px",
+  margin: "0 auto",
+  padding: "10px 18px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "14px",
+  flexWrap: "wrap" as const,
+};
+
+const trialLabelStyle = {
+  fontSize: "10px",
+  fontWeight: 900,
+  letterSpacing: "1.2px",
+  marginRight: "10px",
+};
+
+const trialTextStyle = {
+  fontSize: "13px",
+  fontWeight: 800,
+};
+
+const trialButtonStyle = {
+  background: "#08111f",
+  color: "#ffffff",
+  border: 0,
+  borderRadius: "8px",
+  padding: "9px 12px",
+  fontSize: "10px",
+  fontWeight: 900,
+  cursor: "pointer",
 };
