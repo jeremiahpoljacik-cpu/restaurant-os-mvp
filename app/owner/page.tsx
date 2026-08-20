@@ -20,6 +20,8 @@ export default function OwnerDashboardPage() {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [setupPercent, setSetupPercent] = useState(0);
+  const [setupReady, setSetupReady] = useState(false);
 
   useEffect(() => {
     load();
@@ -60,6 +62,105 @@ export default function OwnerDashboardPage() {
     }
 
     setRestaurant(data);
+
+    const [
+      brandingResult,
+      hoursResult,
+      websiteResult,
+      menuResult,
+      subscriptionResult,
+    ] = await Promise.all([
+      supabase
+        .from("restaurant_branding")
+        .select("primary_color,secondary_color,tagline,short_description")
+        .eq("restaurant_id", id)
+        .maybeSingle(),
+
+      supabase
+        .from("restaurant_hours")
+        .select("*")
+        .eq("restaurant_id", id)
+        .maybeSingle(),
+
+      supabase
+        .from("restaurant_website_settings")
+        .select("hero_headline,about_body,published")
+        .eq("restaurant_id", id)
+        .maybeSingle(),
+
+      supabase
+        .from("restaurant_menu_items")
+        .select("id")
+        .eq("restaurant_id", id)
+        .limit(1),
+
+      supabase
+        .from("restaurant_subscriptions")
+        .select("status,trial_ends_at")
+        .eq("restaurant_id", id)
+        .maybeSingle(),
+    ]);
+
+    const businessComplete = Boolean(
+      data.phone &&
+        data.address_line_1 &&
+        data.city &&
+        data.state &&
+        data.zip
+    );
+
+    const branding = brandingResult.data;
+    const brandingComplete = Boolean(
+      branding?.primary_color &&
+        branding?.secondary_color &&
+        (branding?.tagline || branding?.short_description)
+    );
+
+    const hours = hoursResult.data;
+    const hoursComplete = Boolean(
+      hours &&
+        [
+          hours.monday,
+          hours.tuesday,
+          hours.wednesday,
+          hours.thursday,
+          hours.friday,
+          hours.saturday,
+          hours.sunday,
+        ].some(Boolean)
+    );
+
+    const website = websiteResult.data;
+    const websiteComplete = Boolean(
+      website?.hero_headline && website?.about_body
+    );
+
+    const menuComplete = Boolean(menuResult.data?.length);
+
+    const subscription = subscriptionResult.data;
+    const subscriptionComplete = Boolean(
+      subscription &&
+        (subscription.status === "active" ||
+          (subscription.status === "trial" &&
+            (!subscription.trial_ends_at ||
+              new Date(subscription.trial_ends_at).getTime() > Date.now())))
+    );
+
+    const checks = [
+      businessComplete,
+      brandingComplete,
+      hoursComplete,
+      websiteComplete,
+      menuComplete,
+      subscriptionComplete,
+      Boolean(website?.published),
+    ];
+
+    const completeCount = checks.filter(Boolean).length;
+    const percent = Math.round((completeCount / checks.length) * 100);
+
+    setSetupPercent(percent);
+    setSetupReady(completeCount === checks.length);
     setLoading(false);
   }
 
@@ -133,6 +234,38 @@ export default function OwnerDashboardPage() {
           </div>
         </section>
 
+        <section style={launchPanelStyle}>
+          <div>
+            <div style={eyebrowStyle}>LAUNCH STATUS</div>
+            <div style={launchTitleStyle}>
+              {setupReady ? "READY TO OPERATE" : `${setupPercent}% COMPLETE`}
+            </div>
+            <p style={launchTextStyle}>
+              {setupReady
+                ? "Core Restaurant OS setup is complete."
+                : "Finish the remaining setup items before launch."}
+            </p>
+          </div>
+
+          <div style={launchActionsStyle}>
+            <div style={launchProgressTrackStyle}>
+              <div
+                style={{
+                  ...launchProgressBarStyle,
+                  width: `${setupPercent}%`,
+                }}
+              />
+            </div>
+
+            <button
+              style={setupButtonStyle}
+              onClick={() => go("/owner/setup")}
+            >
+              {setupReady ? "VIEW CHECKLIST" : "CONTINUE SETUP"}
+            </button>
+          </div>
+        </section>
+
         <section style={sectionHeadingStyle}>
           <div>
             <div style={eyebrowStyle}>CORE OPERATIONS</div>
@@ -187,6 +320,14 @@ export default function OwnerDashboardPage() {
             text="Business details, hours, branding and restaurant profile."
             button="EDIT SETTINGS"
             onClick={() => go("/owner/settings")}
+          />
+
+          <DashboardCard
+            kicker="BILLING"
+            title="Subscription"
+            text="Manage Restaurant OS billing, trial access and payment settings."
+            button="MANAGE BILLING"
+            onClick={() => go("/owner/billing")}
           />
         </section>
 
@@ -394,6 +535,58 @@ const statusPillStyle = {
   fontSize: "10px",
   fontWeight: 900,
   color: "#cbd5e1",
+};
+
+const launchPanelStyle = {
+  background: "linear-gradient(135deg,#13263b,#0f1d2e)",
+  border: "1px solid #2d4661",
+  borderRadius: "18px",
+  padding: "22px",
+  display: "grid",
+  gridTemplateColumns: "minmax(0,1fr) minmax(280px,.6fr)",
+  gap: "24px",
+  alignItems: "center",
+  marginBottom: "28px",
+};
+
+const launchTitleStyle = {
+  fontSize: "32px",
+  fontWeight: 900,
+  marginTop: "6px",
+};
+
+const launchTextStyle = {
+  color: "#94a3b8",
+  margin: "8px 0 0",
+};
+
+const launchActionsStyle = {
+  display: "grid",
+  gap: "12px",
+};
+
+const launchProgressTrackStyle = {
+  height: "12px",
+  background: "#08111f",
+  border: "1px solid #23364d",
+  borderRadius: "999px",
+  overflow: "hidden",
+};
+
+const launchProgressBarStyle = {
+  height: "100%",
+  background: "#f5b82e",
+  borderRadius: "999px",
+};
+
+const setupButtonStyle = {
+  background: "#f5b82e",
+  color: "#08111f",
+  border: 0,
+  borderRadius: "10px",
+  padding: "12px 15px",
+  fontWeight: 900,
+  cursor: "pointer",
 };
 
 const sectionHeadingStyle = {
