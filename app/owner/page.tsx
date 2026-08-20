@@ -106,13 +106,18 @@ export default function OwnerPage() {
             {message || "Restaurant not found."}
           </p>
 
-          <button onClick={() => (window.location.href = "/")} style={primaryButtonStyle}>
+          <button
+            onClick={() => (window.location.href = "/")}
+            style={primaryButtonStyle}
+          >
             BACK HOME
           </button>
         </div>
       </main>
     );
   }
+
+  const restaurantId = restaurant.id;
 
   const fullAddress = [
     restaurant.address_line_1,
@@ -167,6 +172,9 @@ export default function OwnerPage() {
             title="WEBSITE"
             description="Manage branding, photos, restaurant content and your public website."
             action="MANAGE SITE"
+            onClick={() =>
+              (window.location.href = `/owner/website?restaurant=${restaurantId}`)
+            }
           />
 
           <DashboardCard
@@ -174,6 +182,9 @@ export default function OwnerPage() {
             title="MENU"
             description="Add categories, menu items, pricing, descriptions and availability."
             action="MANAGE MENU"
+            onClick={() =>
+              (window.location.href = `/owner/menu?restaurant=${restaurantId}`)
+            }
           />
 
           <DashboardCard
@@ -181,6 +192,9 @@ export default function OwnerPage() {
             title="VIP CUSTOMERS"
             description="Build and manage your restaurant customer list."
             action="VIEW VIPS"
+            onClick={() =>
+              (window.location.href = `/owner/vip?restaurant=${restaurantId}`)
+            }
           />
 
           <DashboardCard
@@ -188,6 +202,9 @@ export default function OwnerPage() {
             title="OFFERS"
             description="Create promotions, birthday offers and customer campaigns."
             action="CREATE OFFER"
+            onClick={() =>
+              (window.location.href = `/owner/offers?restaurant=${restaurantId}`)
+            }
           />
 
           <DashboardCard
@@ -195,6 +212,9 @@ export default function OwnerPage() {
             title="ORDERING"
             description="Manage ordering links, catering and third-party delivery."
             action="ORDERING SETTINGS"
+            onClick={() =>
+              (window.location.href = `/owner/settings?restaurant=${restaurantId}`)
+            }
           />
 
           <DashboardCard
@@ -202,6 +222,9 @@ export default function OwnerPage() {
             title="BUSINESS SETTINGS"
             description="Update hours, phone, address and restaurant information."
             action="EDIT SETTINGS"
+            onClick={() =>
+              (window.location.href = `/owner/settings?restaurant=${restaurantId}`)
+            }
           />
         </section>
 
@@ -240,11 +263,13 @@ function DashboardCard({
   title,
   description,
   action,
+  onClick,
 }: {
   icon: string;
   title: string;
   description: string;
   action: string;
+  onClick: () => void;
 }) {
   return (
     <article style={cardStyle}>
@@ -256,7 +281,9 @@ function DashboardCard({
         <p style={cardTextStyle}>{description}</p>
       </div>
 
-      <button style={primaryButtonStyle}>{action}</button>
+      <button style={primaryButtonStyle} onClick={onClick}>
+        {action}
+      </button>
     </article>
   );
 }
