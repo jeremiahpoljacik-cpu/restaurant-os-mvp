@@ -30,7 +30,7 @@ export default function OwnerLoginPage() {
   async function routeOwner(userId: string) {
     const { data: restaurants, error } = await supabase
       .from("restaurants")
-      .select("id,name,created_at")
+      .select("id,name,phone,address_line_1,city,state,zip,created_at")
       .eq("owner_user_id", userId)
       .order("created_at", { ascending: true });
 
@@ -46,12 +46,103 @@ export default function OwnerLoginPage() {
       return;
     }
 
-    if (restaurants.length === 1) {
-      window.location.href = `/owner?restaurant=${restaurants[0].id}`;
-      return;
-    }
+    const restaurant = restaurants[0];
+    const restaurantId = restaurant.id;
 
-    window.location.href = `/owner?restaurant=${restaurants[0].id}`;
+    const [
+      brandingResult,
+      hoursResult,
+      websiteResult,
+      menuResult,
+      subscriptionResult,
+    ] = await Promise.all([
+      supabase
+        .from("restaurant_branding")
+        .select("primary_color,secondary_color,tagline,short_description")
+        .eq("restaurant_id", restaurantId)
+        .maybeSingle(),
+
+      supabase
+        .from("restaurant_hours")
+        .select("*")
+        .eq("restaurant_id", restaurantId)
+        .maybeSingle(),
+
+      supabase
+        .from("restaurant_website_settings")
+        .select("hero_headline,about_body,published")
+        .eq("restaurant_id", restaurantId)
+        .maybeSingle(),
+
+      supabase
+        .from("restaurant_menu_items")
+        .select("id")
+        .eq("restaurant_id", restaurantId)
+        .limit(1),
+
+      supabase
+        .from("restaurant_subscriptions")
+        .select("status,trial_ends_at")
+        .eq("restaurant_id", restaurantId)
+        .maybeSingle(),
+    ]);
+
+    const businessComplete = Boolean(
+      restaurant.phone &&
+        restaurant.address_line_1 &&
+        restaurant.city &&
+        restaurant.state &&
+        restaurant.zip
+    );
+
+    const branding = brandingResult.data;
+    const brandingComplete = Boolean(
+      branding?.primary_color &&
+        branding?.secondary_color &&
+        (branding?.tagline || branding?.short_description)
+    );
+
+    const hours = hoursResult.data;
+    const hoursComplete = Boolean(
+      hours &&
+        [
+          hours.monday,
+          hours.tuesday,
+          hours.wednesday,
+          hours.thursday,
+          hours.friday,
+          hours.saturday,
+          hours.sunday,
+        ].some(Boolean)
+    );
+
+    const website = websiteResult.data;
+    const websiteComplete = Boolean(
+      website?.hero_headline && website?.about_body
+    );
+
+    const menuComplete = Boolean(menuResult.data?.length);
+
+    const subscription = subscriptionResult.data;
+    const subscriptionComplete = Boolean(
+      subscription &&
+        (subscription.status === "active" ||
+          (subscription.status === "trial" &&
+            (!subscription.trial_ends_at ||
+              new Date(subscription.trial_ends_at).getTime() > Date.now())))
+    );
+
+    const setupComplete =
+      businessComplete &&
+      brandingComplete &&
+      hoursComplete &&
+      websiteComplete &&
+      menuComplete &&
+      subscriptionComplete;
+
+    window.location.href = setupComplete
+      ? `/owner?restaurant=${restaurantId}`
+      : `/owner/setup?restaurant=${restaurantId}`;
   }
 
   async function login(event: FormEvent) {
@@ -121,7 +212,7 @@ export default function OwnerLoginPage() {
           <h1 style={heroTitleStyle}>OWNER LOGIN</h1>
           <p style={heroTextStyle}>
             Sign in to manage your restaurant website, menu, VIP customers,
-            offers, and redemption activity.
+            offers, campaigns and billing.
           </p>
         </section>
 
