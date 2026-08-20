@@ -41,10 +41,14 @@ export default function OwnerBillingPage() {
     setRestaurantId(id);
 
     const checkoutState = params.get("checkout");
+    const accessState = params.get("access");
+
     if (checkoutState === "success") {
       setMessage("Payment completed. Restaurant OS is confirming your subscription status.");
     } else if (checkoutState === "canceled") {
       setMessage("Checkout was canceled. Your current access has not changed.");
+    } else if (accessState === "required") {
+      setMessage("Subscription access is required to continue using Restaurant OS.");
     }
 
     const {
@@ -247,6 +251,37 @@ export default function OwnerBillingPage() {
 
   const statusLabel = subscription?.status?.replace("_", " ").toUpperCase();
 
+  const trialExpired =
+    subscription?.status === "trial" &&
+    subscription?.trial_ends_at &&
+    new Date(subscription.trial_ends_at).getTime() <= Date.now();
+
+  const accessTitle =
+    subscription?.status === "past_due"
+      ? "PAYMENT PAST DUE"
+      : subscription?.status === "canceled"
+      ? "SUBSCRIPTION CANCELED"
+      : subscription?.status === "paused"
+      ? "SUBSCRIPTION PAUSED"
+      : trialExpired
+      ? "TRIAL EXPIRED"
+      : subscription?.status === "active"
+      ? "ACTIVE"
+      : "TRIAL";
+
+  const accessText =
+    subscription?.status === "past_due"
+      ? "Your payment needs attention before paid Restaurant OS tools can be used."
+      : subscription?.status === "canceled"
+      ? "Your subscription is canceled. Reactivate to restore paid Restaurant OS tools."
+      : subscription?.status === "paused"
+      ? "Your subscription is paused. Resume billing to restore paid Restaurant OS tools."
+      : trialExpired
+      ? "Your founder trial has ended. Activate the Founder Plan to continue using Restaurant OS."
+      : subscription?.status === "active"
+      ? "Your Restaurant OS subscription is active."
+      : `Your founder trial has ${daysLeft()} day${daysLeft() === 1 ? "" : "s"} remaining.`;
+
   if (loading) {
     return (
       <main style={pageStyle}>
@@ -282,31 +317,11 @@ export default function OwnerBillingPage() {
         <section style={statusPanelStyle}>
           <div>
             <div style={eyebrowStyle}>CURRENT ACCESS</div>
-            <h2 style={statusTitleStyle}>
-              {statusLabel || "NOT ACTIVE"}
-            </h2>
-
-            {subscription?.status === "trial" && (
-              <p style={statusTextStyle}>
-                Your founder trial has {daysLeft()} day
-                {daysLeft() === 1 ? "" : "s"} remaining.
-              </p>
-            )}
-
-            {subscription?.status === "active" && (
-              <p style={statusTextStyle}>
-                Your Restaurant OS subscription is active.
-              </p>
-            )}
-
-            {subscription?.status === "past_due" && (
-              <p style={statusTextStyle}>
-                Payment is past due. Update billing to keep your account active.
-              </p>
-            )}
+            <h2 style={statusTitleStyle}>{accessTitle}</h2>
+            <p style={statusTextStyle}>{accessText}</p>
           </div>
 
-          <div style={statusBadgeStyle}>{statusLabel}</div>
+          <div style={statusBadgeStyle}>{accessTitle}</div>
         </section>
 
         <section style={planCardStyle}>
@@ -340,16 +355,20 @@ export default function OwnerBillingPage() {
           <button
             style={primaryButtonStyle}
             onClick={
-              subscription?.status === "active"
+              subscription?.provider_customer_id &&
+              ["active", "past_due", "canceled", "paused"].includes(subscription.status)
                 ? openBillingPortal
                 : startCheckout
             }
             disabled={checkoutLoading || portalLoading}
           >
-            {subscription?.status === "active"
+            {subscription?.provider_customer_id &&
+            ["active", "past_due", "canceled", "paused"].includes(subscription.status)
               ? portalLoading
                 ? "OPENING BILLING PORTAL..."
-                : "MANAGE SUBSCRIPTION"
+                : subscription.status === "active"
+                ? "MANAGE SUBSCRIPTION"
+                : "FIX BILLING / REACTIVATE"
               : checkoutLoading
               ? "OPENING CHECKOUT..."
               : "ACTIVATE FOUNDER PLAN"}
@@ -358,17 +377,17 @@ export default function OwnerBillingPage() {
 
         <section style={noticeStyle}>
           <div style={eyebrowStyle}>
-            {subscription?.status === "active" ? "BILLING READY" : "SUBSCRIPTION ACCESS"}
+            {subscription?.status === "active" ? "BILLING READY" : "ACCESS CONTROL"}
           </div>
           <div style={noticeTitleStyle}>
             {subscription?.status === "active"
               ? "Your Restaurant OS subscription is active."
-              : "Activate Restaurant OS when you are ready."}
+              : accessTitle}
           </div>
           <p style={noticeTextStyle}>
             {subscription?.status === "active"
               ? "Use Manage Subscription to update payment methods, view invoices, or manage your Stripe subscription securely."
-              : "Your trial remains available until activation. Successful checkout will update this page automatically through the Stripe webhook."}
+              : accessText}
           </p>
         </section>
       </div>
