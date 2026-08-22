@@ -21,9 +21,10 @@ type DomainStatus = {
   message?: string;
   config?: {
     misconfigured?: boolean;
-    aValues?: string[];
-    cname?: string;
-    recommendedIPv4?: string[];
+    aValues?: Array<string | { value?: string; rank?: number }>;
+    cname?: string | { value?: string; rank?: number };
+    recommendedIPv4?: Array<string | { value?: string; rank?: number }>;
+    recommendedCNAME?: Array<string | { value?: string; rank?: number }>;
   };
   project_domain?: {
     verified?: boolean;
@@ -193,13 +194,45 @@ export default function AdminDomainControlPage() {
     return "#94a3b8";
   }
 
-  const verificationRecords =
-    status?.project_domain?.verification || [];
+  const verificationRecords = Array.isArray(
+    status?.project_domain?.verification
+  )
+    ? status?.project_domain?.verification || []
+    : [];
 
-  const recommendedIps =
+  function dnsValue(value: unknown) {
+    if (typeof value === "string") return value;
+    if (
+      value &&
+      typeof value === "object" &&
+      "value" in value &&
+      typeof (value as { value?: unknown }).value === "string"
+    ) {
+      return String((value as { value: string }).value);
+    }
+    return "";
+  }
+
+  const rawRecommendedIps =
     status?.config?.recommendedIPv4 ||
     status?.config?.aValues ||
     [];
+
+  const recommendedIps = Array.isArray(rawRecommendedIps)
+    ? rawRecommendedIps.map(dnsValue).filter(Boolean)
+    : [];
+
+  const rawRecommendedCnames =
+    status?.config?.recommendedCNAME || [];
+
+  const recommendedCnames = Array.isArray(rawRecommendedCnames)
+    ? rawRecommendedCnames.map(dnsValue).filter(Boolean)
+    : [];
+
+  const cname =
+    dnsValue(status?.config?.cname) ||
+    recommendedCnames[0] ||
+    "";
 
   if (loading) {
     return (
@@ -311,8 +344,14 @@ export default function AdminDomainControlPage() {
 
             <StatusRow
               label="VERCEL"
-              value={record?.provider_status || "NOT CONNECTED"}
-              color={statusTone(record?.provider_status)}
+              value={
+                status?.connected
+                  ? status?.status || "CONNECTED"
+                  : "NOT CONNECTED"
+              }
+              color={statusTone(
+                status?.connected ? status?.status || "CONNECTED" : "NOT CONNECTED"
+              )}
             />
 
             <StatusRow
@@ -345,7 +384,7 @@ export default function AdminDomainControlPage() {
 
         {(verificationRecords.length > 0 ||
           recommendedIps.length > 0 ||
-          status?.config?.cname) && (
+          cname) && (
           <section style={dnsCardStyle}>
             <div style={cardEyebrowStyle}>DNS INSTRUCTIONS</div>
             <h2 style={cardTitleStyle}>Use These Only at Final Cutover</h2>
@@ -366,11 +405,11 @@ export default function AdminDomainControlPage() {
               </div>
             )}
 
-            {status?.config?.cname && (
+            {cname && (
               <div style={dnsGroupStyle}>
                 <div style={dnsLabelStyle}>CNAME</div>
                 <div style={dnsValueStyle}>
-                  www → {status.config.cname}
+                  www → {cname}
                 </div>
               </div>
             )}
