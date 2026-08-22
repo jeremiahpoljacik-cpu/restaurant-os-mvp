@@ -4,15 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
 type Check = {
+  key: string;
   label: string;
-  status: "pass" | "warn" | "fail";
   detail: string;
+  pass: boolean;
+  action?: string;
+  href?: string;
 };
 
 export default function OwnerQAPage() {
   const [restaurantId, setRestaurantId] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
-  const [publicUrl, setPublicUrl] = useState("");
   const [checks, setChecks] = useState<Check[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -25,8 +27,16 @@ export default function OwnerQAPage() {
     setLoading(true);
     setMessage("");
 
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("restaurant");
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.user) {
+      window.location.href = "/login";
+      return;
+    }
+
+    const id = new URLSearchParams(window.location.search).get("restaurant") || "";
 
     if (!id) {
       setMessage("No restaurant selected.");
@@ -36,288 +46,312 @@ export default function OwnerQAPage() {
 
     setRestaurantId(id);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      window.location.href = "/login";
-      return;
-    }
-
-    const { data: restaurant, error: restaurantError } = await supabase
-      .from("restaurants")
-      .select("id,name,slug,status")
-      .eq("id", id)
-      .eq("owner_user_id", user.id)
-      .maybeSingle();
-
-    if (restaurantError || !restaurant) {
-      setMessage(restaurantError?.message || "Restaurant not found.");
-      setLoading(false);
-      return;
-    }
-
-    setRestaurantName(restaurant.name);
-    setPublicUrl(
-      restaurant.slug
-        ? `${window.location.origin}/r/${restaurant.slug}`
-        : ""
-    );
-
     const [
-      subscriptionResult,
+      restaurantResult,
       brandingResult,
-      hoursResult,
-      orderingResult,
-      growthResult,
       websiteResult,
+      orderingResult,
+      menuCategoriesResult,
       menuItemsResult,
       vipResult,
       offersResult,
       campaignsResult,
-      claimsResult,
+      subscriptionResult,
+      domainResult,
     ] = await Promise.all([
       supabase
-        .from("restaurant_subscriptions")
-        .select("status,trial_ends_at,provider_customer_id,provider_subscription_id")
-        .eq("restaurant_id", id)
+        .from("restaurants")
+        .select(
+          "id,name,slug,published,status,phone,address_line_1,city,state,zip"
+        )
+        .eq("id", id)
+        .eq("owner_user_id", session.user.id)
         .maybeSingle(),
 
       supabase
         .from("restaurant_branding")
-        .select("restaurant_id")
-        .eq("restaurant_id", id)
-        .maybeSingle(),
-
-      supabase
-        .from("restaurant_hours")
-        .select("restaurant_id")
-        .eq("restaurant_id", id)
-        .maybeSingle(),
-
-      supabase
-        .from("restaurant_ordering")
-        .select("restaurant_id")
-        .eq("restaurant_id", id)
-        .maybeSingle(),
-
-      supabase
-        .from("restaurant_growth_settings")
-        .select("restaurant_id")
+        .select("restaurant_id,tagline,primary_color,secondary_color")
         .eq("restaurant_id", id)
         .maybeSingle(),
 
       supabase
         .from("restaurant_website_settings")
-        .select("published,hero_headline,about_body")
+        .select("restaurant_id,hero_headline,story_title,story_body")
         .eq("restaurant_id", id)
         .maybeSingle(),
 
       supabase
+        .from("restaurant_ordering")
+        .select("restaurant_id,online_ordering_url,catering_email")
+        .eq("restaurant_id", id)
+        .maybeSingle(),
+
+      supabase
+        .from("restaurant_menu_categories")
+        .select("id")
+        .eq("restaurant_id", id)
+        .eq("active", true),
+
+      supabase
         .from("restaurant_menu_items")
-        .select("id", { count: "exact" })
-        .eq("restaurant_id", id),
+        .select("id")
+        .eq("restaurant_id", id)
+        .eq("available", true),
 
       supabase
         .from("restaurant_vip_members")
-        .select("id", { count: "exact" })
+        .select("id", { count: "exact", head: true })
         .eq("restaurant_id", id),
 
       supabase
         .from("restaurant_vip_offers")
-        .select("id", { count: "exact" })
+        .select("id", { count: "exact", head: true })
         .eq("restaurant_id", id),
 
       supabase
         .from("restaurant_campaigns")
-        .select("id", { count: "exact" })
+        .select("id", { count: "exact", head: true })
         .eq("restaurant_id", id),
 
       supabase
-        .from("restaurant_offer_claims")
-        .select("id,campaign_id,status", { count: "exact" })
-        .eq("restaurant_id", id),
+        .from("restaurant_subscriptions")
+        .select("status,trial_ends_at,stripe_customer_id,stripe_subscription_id")
+        .eq("restaurant_id", id)
+        .maybeSingle(),
+
+      supabase
+        .from("restaurant_domains")
+        .select(
+          "normalized_domain,dns_status,ssl_status,verification_status,provider_status"
+        )
+        .eq("restaurant_id", id)
+        .eq("is_primary", true)
+        .maybeSingle(),
     ]);
 
-    const next: Check[] = [];
-
-    next.push({
-      label: "Owner Authentication",
-      status: "pass",
-      detail: "Authenticated owner can access this restaurant.",
-    });
-
-    next.push({
-      label: "Restaurant Record",
-      status: restaurant.slug ? "pass" : "fail",
-      detail: restaurant.slug
-        ? `Restaurant slug is ${restaurant.slug}.`
-        : "Restaurant is missing a public slug.",
-    });
-
-    const subscription = subscriptionResult.data;
-    const trialValid =
-      subscription?.status === "trial" &&
-      (!subscription.trial_ends_at ||
-        new Date(subscription.trial_ends_at).getTime() > Date.now());
-
-    next.push({
-      label: "Subscription Access",
-      status:
-        subscription?.status === "active" || trialValid ? "pass" : "fail",
-      detail: subscription
-        ? `Current subscription status: ${subscription.status}.`
-        : "No subscription row found.",
-    });
-
-    next.push({
-      label: "Branding Row",
-      status: brandingResult.data ? "pass" : "fail",
-      detail: brandingResult.data
-        ? "Branding defaults exist."
-        : "Missing restaurant_branding row.",
-    });
-
-    next.push({
-      label: "Hours Row",
-      status: hoursResult.data ? "pass" : "fail",
-      detail: hoursResult.data
-        ? "Hours row exists."
-        : "Missing restaurant_hours row.",
-    });
-
-    next.push({
-      label: "Ordering Row",
-      status: orderingResult.data ? "pass" : "fail",
-      detail: orderingResult.data
-        ? "Ordering settings row exists."
-        : "Missing restaurant_ordering row.",
-    });
-
-    next.push({
-      label: "Growth Settings Row",
-      status: growthResult.data ? "pass" : "fail",
-      detail: growthResult.data
-        ? "Growth settings row exists."
-        : "Missing restaurant_growth_settings row.",
-    });
-
-    const website = websiteResult.data;
-    next.push({
-      label: "Website Settings",
-      status: website ? "pass" : "fail",
-      detail: website
-        ? website.published
-          ? "Website settings exist and site is published."
-          : "Website settings exist; site is not published yet."
-        : "Missing restaurant_website_settings row.",
-    });
-
-    const menuCount = menuItemsResult.count || 0;
-    next.push({
-      label: "Menu",
-      status: menuCount > 0 ? "pass" : "warn",
-      detail:
-        menuCount > 0
-          ? `${menuCount} menu item${menuCount === 1 ? "" : "s"} found.`
-          : "No menu items yet.",
-    });
-
-    const vipCount = vipResult.count || 0;
-    next.push({
-      label: "VIP Capture",
-      status: vipCount > 0 ? "pass" : "warn",
-      detail:
-        vipCount > 0
-          ? `${vipCount} VIP member${vipCount === 1 ? "" : "s"} captured.`
-          : "No VIP members yet. Public signup should be tested.",
-    });
-
-    const offerCount = offersResult.count || 0;
-    next.push({
-      label: "Offers",
-      status: offerCount > 0 ? "pass" : "warn",
-      detail:
-        offerCount > 0
-          ? `${offerCount} offer${offerCount === 1 ? "" : "s"} found.`
-          : "No offers yet.",
-    });
-
-    const campaignCount = campaignsResult.count || 0;
-    next.push({
-      label: "Campaigns",
-      status: campaignCount > 0 ? "pass" : "warn",
-      detail:
-        campaignCount > 0
-          ? `${campaignCount} campaign${campaignCount === 1 ? "" : "s"} found.`
-          : "No campaigns yet.",
-    });
-
-    const claims = claimsResult.data || [];
-    const attributedClaims = claims.filter((claim) => claim.campaign_id).length;
-    const redeemedClaims = claims.filter(
-      (claim) => claim.status === "redeemed"
-    ).length;
-
-    next.push({
-      label: "Offer Claims",
-      status: claims.length > 0 ? "pass" : "warn",
-      detail:
-        claims.length > 0
-          ? `${claims.length} claim${claims.length === 1 ? "" : "s"} found; ${attributedClaims} campaign-attributed; ${redeemedClaims} redeemed.`
-          : "No claim yet. Public claim + redemption should be tested.",
-    });
-
-    if (subscription?.status === "active") {
-      next.push({
-        label: "Stripe Billing Sync",
-        status:
-          subscription.provider_customer_id &&
-          subscription.provider_subscription_id
-            ? "pass"
-            : "fail",
-        detail:
-          subscription.provider_customer_id &&
-          subscription.provider_subscription_id
-            ? "Stripe customer and subscription IDs are stored."
-            : "Subscription is active but Stripe IDs are missing.",
-      });
-    } else {
-      next.push({
-        label: "Stripe Billing Sync",
-        status: "warn",
-        detail: "Complete one real checkout to validate webhook synchronization.",
-      });
+    if (restaurantResult.error || !restaurantResult.data) {
+      setMessage(
+        restaurantResult.error?.message ||
+          "Restaurant could not be loaded for QA."
+      );
+      setLoading(false);
+      return;
     }
 
-    setChecks(next);
+    const restaurant = restaurantResult.data;
+    setRestaurantName(restaurant.name || "Restaurant");
+
+    const branding = brandingResult.data;
+    const website = websiteResult.data;
+    const ordering = orderingResult.data;
+    const subscription = subscriptionResult.data;
+    const domain = domainResult.data;
+
+    const profileComplete = Boolean(
+      restaurant.name &&
+        restaurant.phone &&
+        restaurant.address_line_1 &&
+        restaurant.city &&
+        restaurant.state &&
+        restaurant.zip
+    );
+
+    const brandingComplete = Boolean(
+      branding?.tagline &&
+        branding?.primary_color &&
+        branding?.secondary_color
+    );
+
+    const websiteComplete = Boolean(
+      website?.hero_headline &&
+        website?.story_title &&
+        website?.story_body
+    );
+
+    const menuReady =
+      (menuCategoriesResult.data?.length || 0) > 0 &&
+      (menuItemsResult.data?.length || 0) > 0;
+
+    const orderingReady = Boolean(ordering?.online_ordering_url);
+
+    const publicPublished = Boolean(restaurant.published && restaurant.slug);
+
+    const accessReady = Boolean(
+      subscription &&
+        (subscription.status === "active" ||
+          (subscription.status === "trial" &&
+            (!subscription.trial_ends_at ||
+              new Date(subscription.trial_ends_at).getTime() > Date.now())))
+    );
+
+    const stripeLiveReady = Boolean(
+      subscription?.status === "active" &&
+        subscription?.stripe_customer_id &&
+        subscription?.stripe_subscription_id
+    );
+
+    const domainPrepared = Boolean(domain?.normalized_domain);
+
+    const domainLiveReady = Boolean(
+      domain?.verification_status === "verified" &&
+        domain?.dns_status === "configured" &&
+        domain?.ssl_status === "active"
+    );
+
+    const nextChecks: Check[] = [
+      {
+        key: "owner",
+        label: "Owner Account Isolation",
+        detail: `${restaurant.name} is correctly loaded under this owner account.`,
+        pass: true,
+      },
+      {
+        key: "profile",
+        label: "Restaurant Profile",
+        detail: profileComplete
+          ? "Name, phone and full address are complete."
+          : "Business profile still has missing required information.",
+        pass: profileComplete,
+        action: "FIX PROFILE",
+        href: "/owner/profile",
+      },
+      {
+        key: "branding",
+        label: "Branding",
+        detail: brandingComplete
+          ? "Tagline and restaurant colors are configured."
+          : "Branding setup is incomplete.",
+        pass: brandingComplete,
+        action: "FIX BRANDING",
+        href: "/owner/settings",
+      },
+      {
+        key: "website",
+        label: "Website Content",
+        detail: websiteComplete
+          ? "Hero and story content are configured."
+          : "Website content still needs setup.",
+        pass: websiteComplete,
+        action: "FIX WEBSITE",
+        href: "/owner/website",
+      },
+      {
+        key: "menu",
+        label: "Live Menu",
+        detail: menuReady
+          ? `${menuCategoriesResult.data?.length || 0} active categories and ${
+              menuItemsResult.data?.length || 0
+            } available items found.`
+          : "No complete live menu was found.",
+        pass: menuReady,
+        action: "FIX MENU",
+        href: "/owner/menu",
+      },
+      {
+        key: "ordering",
+        label: "Online Ordering",
+        detail: orderingReady
+          ? "Online ordering link is connected."
+          : "Online ordering URL is missing.",
+        pass: orderingReady,
+        action: "FIX ORDERING",
+        href: "/owner/settings",
+      },
+      {
+        key: "published",
+        label: "Public Website",
+        detail: publicPublished
+          ? `Public site is published at /r/${restaurant.slug}.`
+          : "Public website is still in draft.",
+        pass: publicPublished,
+        action: "PUBLISH SITE",
+        href: "/owner/website",
+      },
+      {
+        key: "access",
+        label: "Subscription Access",
+        detail: accessReady
+          ? `Account access is ${String(subscription?.status || "").toUpperCase()}.`
+          : "Subscription access is not currently valid.",
+        pass: accessReady,
+        action: "CHECK BILLING",
+        href: "/owner/billing",
+      },
+      {
+        key: "stripe",
+        label: "Stripe Production Loop",
+        detail: stripeLiveReady
+          ? "Real Stripe customer and subscription are active."
+          : "Live paid Stripe subscription has not been fully proven yet.",
+        pass: stripeLiveReady,
+        action: "TEST BILLING",
+        href: "/owner/billing",
+      },
+      {
+        key: "domain",
+        label: "Custom Domain Staged",
+        detail: domainPrepared
+          ? `${domain?.normalized_domain} is staged in Restaurant OS.`
+          : "No custom domain has been staged.",
+        pass: domainPrepared,
+      },
+      {
+        key: "domain-live",
+        label: "Custom Domain Live",
+        detail: domainLiveReady
+          ? `${domain?.normalized_domain} is verified with DNS + SSL active.`
+          : "Custom domain is not fully cut over yet.",
+        pass: domainLiveReady,
+      },
+      {
+        key: "growth",
+        label: "Growth Engine",
+        detail: `${vipResult.count || 0} VIPs · ${offersResult.count || 0} offers · ${
+          campaignsResult.count || 0
+        } campaigns`,
+        pass: true,
+      },
+    ];
+
+    setChecks(nextChecks);
     setLoading(false);
   }
 
-  const passCount = useMemo(
-    () => checks.filter((check) => check.status === "pass").length,
-    [checks]
-  );
-
-  const failCount = useMemo(
-    () => checks.filter((check) => check.status === "fail").length,
-    [checks]
-  );
-
-  const warnCount = useMemo(
-    () => checks.filter((check) => check.status === "warn").length,
-    [checks]
-  );
-
-  function go(path: string) {
-    window.location.href = `${path}?restaurant=${restaurantId}`;
+  function go(href?: string) {
+    if (!href || !restaurantId) return;
+    window.location.href = `${href}?restaurant=${restaurantId}`;
   }
+
+  const passed = useMemo(
+    () => checks.filter((check) => check.pass).length,
+    [checks]
+  );
+
+  const failed = checks.length - passed;
+
+  const percent =
+    checks.length === 0 ? 0 : Math.round((passed / checks.length) * 100);
+
+  const launchCriticalKeys = new Set([
+    "owner",
+    "profile",
+    "website",
+    "menu",
+    "published",
+    "access",
+    "stripe",
+  ]);
+
+  const criticalFailures = checks.filter(
+    (check) => launchCriticalKeys.has(check.key) && !check.pass
+  );
+
+  const founderReady = criticalFailures.length === 0;
 
   if (loading) {
     return (
       <main style={pageStyle}>
-        <div style={shellStyle}>Running Restaurant OS checks...</div>
+        <div style={shellStyle}>Running Restaurant OS launch checks...</div>
       </main>
     );
   }
@@ -327,90 +361,115 @@ export default function OwnerQAPage() {
       <div style={shellStyle}>
         <header style={headerStyle}>
           <div>
-            <div style={eyebrowStyle}>FOUNDER QA</div>
-            <h1 style={titleStyle}>System Check</h1>
+            <div style={eyebrowStyle}>FOUNDER QA · FINAL SMOKE TEST</div>
+            <h1 style={titleStyle}>Launch Readiness</h1>
             <p style={subStyle}>
-              {restaurantName} — verify the core SaaS loop before founder launch.
+              {restaurantName} — one screen to verify the SaaS-critical systems
+              before founder rollout.
             </p>
           </div>
 
-          <div style={headerActionsStyle}>
-            <button style={secondaryButtonStyle} onClick={runChecks}>
-              RUN AGAIN
-            </button>
-
-            <button
-              style={secondaryButtonStyle}
-              onClick={() => go("/owner")}
-            >
-              DASHBOARD
-            </button>
-          </div>
+          <button
+            style={secondaryButtonStyle}
+            onClick={() =>
+              (window.location.href = `/owner?restaurant=${restaurantId}`)
+            }
+          >
+            BACK TO DASHBOARD
+          </button>
         </header>
 
         {message && <div style={messageStyle}>{message}</div>}
 
-        <section style={statsGridStyle}>
-          <Stat label="PASS" value={passCount} />
-          <Stat label="WARN" value={warnCount} />
-          <Stat label="FAIL" value={failCount} />
-        </section>
-
-        <section style={statusPanelStyle}>
-          <div style={eyebrowStyle}>OVERALL STATUS</div>
-          <div style={overallStyle}>
-            {failCount === 0 ? "FOUNDER TEST READY" : "FIX REQUIRED"}
+        <section
+          style={{
+            ...heroStyle,
+            borderColor: founderReady ? "#22c55e" : "#f59e0b",
+          }}
+        >
+          <div>
+            <div style={eyebrowStyle}>OVERALL STATUS</div>
+            <div style={scoreStyle}>{percent}%</div>
+            <div style={scoreMetaStyle}>
+              {passed} PASSED · {failed} NEED ATTENTION
+            </div>
           </div>
-          <p style={overallTextStyle}>
-            {failCount === 0
-              ? "No hard failures detected. Warnings are test items or incomplete content."
-              : `${failCount} hard failure${failCount === 1 ? "" : "s"} detected. Fix those before launch.`}
-          </p>
 
-          {publicUrl && (
-            <button
-              style={primaryButtonStyle}
-              onClick={() => window.open(publicUrl, "_blank")}
-            >
-              OPEN PUBLIC SITE
-            </button>
-          )}
+          <div
+            style={{
+              ...launchBadgeStyle,
+              color: founderReady ? "#86efac" : "#fcd34d",
+              borderColor: founderReady ? "#22c55e" : "#f59e0b",
+            }}
+          >
+            {founderReady
+              ? "FOUNDER LAUNCH READY"
+              : `${criticalFailures.length} LAUNCH-CRITICAL ITEM${
+                  criticalFailures.length === 1 ? "" : "S"
+                } LEFT`}
+          </div>
         </section>
 
         <section style={checkGridStyle}>
           {checks.map((check) => (
-            <article key={check.label} style={checkCardStyle}>
-              <div
-                style={{
-                  ...badgeStyle,
-                  ...(check.status === "pass"
-                    ? passBadgeStyle
-                    : check.status === "fail"
-                    ? failBadgeStyle
-                    : warnBadgeStyle),
-                }}
-              >
-                {check.status.toUpperCase()}
+            <article
+              key={check.key}
+              style={{
+                ...checkCardStyle,
+                borderColor: check.pass ? "#1f5f45" : "#6b3f16",
+              }}
+            >
+              <div style={checkTopStyle}>
+                <div
+                  style={{
+                    ...dotStyle,
+                    background: check.pass ? "#22c55e" : "#f59e0b",
+                  }}
+                />
+                <div style={checkStatusStyle}>
+                  {check.pass ? "PASS" : "NEEDS ATTENTION"}
+                </div>
               </div>
 
-              <div>
-                <h2 style={checkTitleStyle}>{check.label}</h2>
-                <p style={checkTextStyle}>{check.detail}</p>
-              </div>
+              <h2 style={checkTitleStyle}>{check.label}</h2>
+              <p style={checkTextStyle}>{check.detail}</p>
+
+              {!check.pass && check.action && check.href && (
+                <button
+                  style={fixButtonStyle}
+                  onClick={() => go(check.href)}
+                >
+                  {check.action}
+                </button>
+              )}
             </article>
           ))}
         </section>
+
+        <section style={finalCardStyle}>
+          <div>
+            <div style={eyebrowStyle}>NEXT LAUNCH MOVE</div>
+            <h2 style={finalTitleStyle}>
+              {founderReady
+                ? "Open the Founder Battlefield Test"
+                : "Finish Only the Red-Line Items"}
+            </h2>
+            <p style={subStyle}>
+              {founderReady
+                ? "The core SaaS loop is proven. Start with a small founder cohort, watch real usage, and fix anything that breaks before scaling."
+                : "Do not add more features. Clear the remaining launch-critical checks, then begin the controlled founder rollout."}
+            </p>
+          </div>
+
+          <button
+            style={rerunButtonStyle}
+            onClick={runChecks}
+          >
+            RUN CHECKS AGAIN
+          </button>
+        </section>
       </div>
     </main>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div style={statCardStyle}>
-      <div style={statValueStyle}>{value}</div>
-      <div style={statLabelStyle}>{label}</div>
-    </div>
   );
 }
 
@@ -423,7 +482,7 @@ const pageStyle = {
 };
 
 const shellStyle = {
-  maxWidth: "1100px",
+  maxWidth: "1180px",
   margin: "0 auto",
 };
 
@@ -436,153 +495,166 @@ const headerStyle = {
   marginBottom: "24px",
 };
 
-const headerActionsStyle = {
-  display: "flex",
-  gap: "10px",
-  flexWrap: "wrap" as const,
-};
-
 const eyebrowStyle = {
   color: "#f5b82e",
-  fontSize: "11px",
+  fontSize: "10px",
   fontWeight: 900,
   letterSpacing: "2px",
 };
 
 const titleStyle = {
-  fontSize: "clamp(48px,8vw,82px)",
+  margin: "7px 0 8px",
+  fontSize: "clamp(46px,7vw,78px)",
   lineHeight: ".92",
-  margin: "8px 0",
-  fontWeight: 900,
   letterSpacing: "-3px",
 };
 
 const subStyle = {
   color: "#94a3b8",
-  fontSize: "16px",
-};
-
-const statsGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(3,minmax(0,1fr))",
-  gap: "12px",
-  marginBottom: "18px",
-};
-
-const statCardStyle = {
-  background: "#0f1d2e",
-  border: "1px solid #23364d",
-  borderRadius: "16px",
-  padding: "18px",
-};
-
-const statValueStyle = {
-  fontSize: "34px",
-  fontWeight: 900,
-  color: "#f5b82e",
-};
-
-const statLabelStyle = {
-  color: "#94a3b8",
-  fontSize: "10px",
-  fontWeight: 900,
-  letterSpacing: "1px",
-};
-
-const statusPanelStyle = {
-  background: "#13263b",
-  border: "1px solid #2d4661",
-  borderRadius: "18px",
-  padding: "22px",
-  marginBottom: "18px",
-};
-
-const overallStyle = {
-  fontSize: "32px",
-  fontWeight: 900,
-  marginTop: "7px",
-};
-
-const overallTextStyle = {
-  color: "#cbd5e1",
-  lineHeight: 1.5,
-};
-
-const checkGridStyle = {
-  display: "grid",
-  gap: "12px",
-};
-
-const checkCardStyle = {
-  background: "#0f1d2e",
-  border: "1px solid #23364d",
-  borderRadius: "14px",
-  padding: "18px",
-  display: "grid",
-  gridTemplateColumns: "90px 1fr",
-  gap: "16px",
-  alignItems: "start",
-};
-
-const badgeStyle = {
-  borderRadius: "999px",
-  padding: "8px 10px",
-  textAlign: "center" as const,
-  fontSize: "9px",
-  fontWeight: 900,
-};
-
-const passBadgeStyle = {
-  background: "#12351f",
-  color: "#86efac",
-};
-
-const warnBadgeStyle = {
-  background: "#3b2d08",
-  color: "#fde68a",
-};
-
-const failBadgeStyle = {
-  background: "#3b1d1d",
-  color: "#fecaca",
-};
-
-const checkTitleStyle = {
-  fontSize: "20px",
-  margin: 0,
-};
-
-const checkTextStyle = {
-  color: "#94a3b8",
-  margin: "6px 0 0",
-  lineHeight: 1.5,
-};
-
-const primaryButtonStyle = {
-  background: "#f5b82e",
-  color: "#08111f",
-  border: 0,
-  borderRadius: "10px",
-  padding: "12px 15px",
-  fontWeight: 900,
-  cursor: "pointer",
+  maxWidth: "760px",
+  lineHeight: 1.55,
 };
 
 const secondaryButtonStyle = {
-  background: "transparent",
+  background: "#13263b",
   color: "#ffffff",
-  border: "1px solid #334155",
+  border: "1px solid #36516c",
   borderRadius: "10px",
-  padding: "12px 15px",
+  padding: "11px 14px",
+  fontSize: "10px",
   fontWeight: 900,
   cursor: "pointer",
 };
 
 const messageStyle = {
-  background: "#3b1d1d",
-  border: "1px solid #7f3333",
-  borderRadius: "10px",
-  padding: "13px",
-  marginBottom: "18px",
+  marginBottom: "16px",
+  background: "#3a1d1d",
+  border: "1px solid #7f1d1d",
   color: "#fecaca",
+  borderRadius: "10px",
+  padding: "11px",
+  fontSize: "12px",
+};
+
+const heroStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "18px",
+  flexWrap: "wrap" as const,
+  background: "#0f1d2e",
+  border: "2px solid",
+  borderRadius: "18px",
+  padding: "24px",
+  marginBottom: "18px",
+};
+
+const scoreStyle = {
+  fontSize: "56px",
+  fontWeight: 900,
+  lineHeight: 1,
+  marginTop: "6px",
+};
+
+const scoreMetaStyle = {
+  color: "#94a3b8",
+  fontSize: "10px",
+  fontWeight: 900,
+  marginTop: "7px",
+};
+
+const launchBadgeStyle = {
+  background: "#08111f",
+  border: "1px solid",
+  borderRadius: "999px",
+  padding: "12px 16px",
+  fontSize: "10px",
+  fontWeight: 900,
+  letterSpacing: "1px",
+};
+
+const checkGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
+  gap: "14px",
+};
+
+const checkCardStyle = {
+  background: "#0f1d2e",
+  border: "1px solid",
+  borderRadius: "15px",
+  padding: "18px",
+};
+
+const checkTopStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+};
+
+const dotStyle = {
+  width: 9,
+  height: 9,
+  borderRadius: 999,
+};
+
+const checkStatusStyle = {
+  color: "#94a3b8",
+  fontSize: "8px",
+  fontWeight: 900,
+  letterSpacing: "1px",
+};
+
+const checkTitleStyle = {
+  margin: "10px 0 7px",
+  fontSize: "22px",
+};
+
+const checkTextStyle = {
+  minHeight: "44px",
+  color: "#94a3b8",
+  fontSize: "12px",
+  lineHeight: 1.5,
+};
+
+const fixButtonStyle = {
+  width: "100%",
+  marginTop: "10px",
+  background: "#f5b82e",
+  color: "#08111f",
+  border: 0,
+  borderRadius: "9px",
+  padding: "11px",
+  fontSize: "9px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const finalCardStyle = {
+  marginTop: "18px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "20px",
+  flexWrap: "wrap" as const,
+  background: "#10253a",
+  border: "1px solid #36516c",
+  borderRadius: "16px",
+  padding: "22px",
+};
+
+const finalTitleStyle = {
+  margin: "6px 0 7px",
+  fontSize: "30px",
+};
+
+const rerunButtonStyle = {
+  background: "#22c55e",
+  color: "#052e16",
+  border: 0,
+  borderRadius: "10px",
+  padding: "14px 18px",
+  fontSize: "10px",
+  fontWeight: 900,
+  cursor: "pointer",
 };
