@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     const accessToken = authHeader.slice(7).trim();
+
     const body = await request.json();
     const restaurantId = String(body?.restaurant_id || "").trim();
 
@@ -87,6 +88,10 @@ export async function POST(request: NextRequest) {
     params.set("mode", "subscription");
     params.set("line_items[0][price]", stripePriceId);
     params.set("line_items[0][quantity]", "1");
+
+    // Allow internal/customer promotion codes at Stripe Checkout.
+    params.set("allow_promotion_codes", "true");
+
     params.set(
       "success_url",
       `${origin}/owner/billing?restaurant=${encodeURIComponent(
