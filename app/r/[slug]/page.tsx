@@ -12,6 +12,7 @@ type RestaurantThemeRow = {
   slug: string;
   theme_key: string | null;
   theme_mode: string | null;
+  published: boolean;
 };
 
 export default function RestaurantThemeRouter() {
@@ -20,26 +21,38 @@ export default function RestaurantThemeRouter() {
 
   const [restaurant, setRestaurant] = useState<RestaurantThemeRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (!slug) return;
 
     async function loadTheme() {
       setLoading(true);
+      setMessage("");
 
-      const { data, error } = await supabase
-        .from("restaurants")
-        .select("id,name,slug,theme_key,theme_mode")
-        .eq("slug", slug)
-        .maybeSingle();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (error || !data) {
+      const response = await fetch(
+        `/api/public/restaurant-theme?slug=${encodeURIComponent(slug)}`,
+        {
+          headers: session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : {},
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.restaurant) {
         setRestaurant(null);
+        setMessage(data.error || "Restaurant not found.");
         setLoading(false);
         return;
       }
 
-      setRestaurant(data);
+      setRestaurant(data.restaurant);
       setLoading(false);
     }
 
@@ -73,13 +86,18 @@ export default function RestaurantThemeRouter() {
           fontFamily: "Arial, Helvetica, sans-serif",
         }}
       >
-        Restaurant not found.
+        {message || "Restaurant not found."}
       </main>
     );
   }
 
   if (restaurant.theme_key === "vi-pollos-custom") {
-    return <ViPollosCustomTheme restaurantId={restaurant.id} slug={restaurant.slug} />;
+    return (
+      <ViPollosCustomTheme
+        restaurantId={restaurant.id}
+        slug={restaurant.slug}
+      />
+    );
   }
 
   return <DefaultRestaurantTheme />;
