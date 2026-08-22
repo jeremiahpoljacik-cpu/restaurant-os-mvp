@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
 export default function AdminLayout({
@@ -8,13 +9,19 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
   const [state, setState] = useState<
     "checking" | "allowed" | "denied"
   >("checking");
 
   useEffect(() => {
+    if (pathname === "/admin/login") {
+      setState("allowed");
+      return;
+    }
+
     checkAdminAccess();
-  }, []);
+  }, [pathname]);
 
   async function checkAdminAccess() {
     const {
@@ -22,7 +29,7 @@ export default function AdminLayout({
     } = await supabase.auth.getSession();
 
     if (!session?.user) {
-      window.location.href = "/login";
+      window.location.href = "/admin/login";
       return;
     }
 
