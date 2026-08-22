@@ -192,7 +192,7 @@ async function upsertDomainRecord({
   return data;
 }
 
-async function addDomainToVercel(domain: string) {
+async function addSingleDomainToVercel(domain: string) {
   if (!vercelToken) {
     return {
       connected: false,
@@ -228,12 +228,13 @@ async function addDomainToVercel(domain: string) {
       body?.message ||
       "Vercel rejected the custom domain.";
 
-    // If the domain is already attached to this project, treat it as connected
-    // and continue into status verification instead of making migration brittle.
+    // If this hostname is already connected to the Restaurant OS project,
+    // treat it as success. This makes repeated clicks safe.
     if (
       code === "domain_already_in_use" ||
       code === "domain_already_exists" ||
-      /already/i.test(message)
+      /already.*project/i.test(message) ||
+      /already.*use/i.test(message)
     ) {
       return {
         connected: true,
@@ -248,8 +249,30 @@ async function addDomainToVercel(domain: string) {
   return {
     connected: true,
     status: "added",
-    message: "Domain added to Vercel project.",
+    message: `${domain} added to Vercel project.`,
     vercel: body,
+  };
+}
+
+async function addDomainPairToVercel(domain: string) {
+  const apex = normalizeDomain(domain);
+  const www = `www.${apex}`;
+
+  const apexResult = await addSingleDomainToVercel(apex);
+  const wwwResult = await addSingleDomainToVercel(www);
+
+  return {
+    connected: Boolean(apexResult.connected && wwwResult.connected),
+    status:
+      apexResult.connected && wwwResult.connected
+        ? "added"
+        : "partial",
+    message:
+      apexResult.connected && wwwResult.connected
+        ? `${apex} and ${www} are connected to Restaurant OS.`
+        : "One or more domain hostnames still need attention.",
+    apex: apexResult,
+    www: wwwResult,
   };
 }
 
@@ -466,7 +489,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const vercel = await addDomainToVercel(domain);
+      const vercel = await addDomainPairToVercel(domain);
 
       const record = await upsertDomainRecord({
         admin: auth.admin,
