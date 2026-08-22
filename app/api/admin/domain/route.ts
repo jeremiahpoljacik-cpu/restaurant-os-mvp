@@ -131,7 +131,6 @@ async function upsertDomainRecord({
   dnsStatus,
   sslStatus,
   verificationStatus,
-  providerStatus,
 }: {
   admin: ReturnType<typeof adminClient>;
   restaurantId: string;
@@ -139,14 +138,13 @@ async function upsertDomainRecord({
   dnsStatus?: string;
   sslStatus?: string;
   verificationStatus?: string;
-  providerStatus?: string;
 }) {
   const payload: Record<string, unknown> = {
     restaurant_id: restaurantId,
     domain,
-    normalized_domain: domain,
     is_primary: true,
     provider: "vercel",
+    last_checked_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
 
@@ -154,14 +152,36 @@ async function upsertDomainRecord({
   if (sslStatus !== undefined) payload.ssl_status = sslStatus;
   if (verificationStatus !== undefined)
     payload.verification_status = verificationStatus;
-  if (providerStatus !== undefined)
-    payload.provider_status = providerStatus;
+
+  const { data: existing, error: existingError } = await admin
+    .from("restaurant_domains")
+    .select("id")
+    .eq("restaurant_id", restaurantId)
+    .eq("is_primary", true)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error(existingError.message);
+  }
+
+  if (existing?.id) {
+    const { data, error } = await admin
+      .from("restaurant_domains")
+      .update(payload)
+      .eq("id", existing.id)
+      .select("*")
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
+  }
 
   const { data, error } = await admin
     .from("restaurant_domains")
-    .upsert(payload, {
-      onConflict: "normalized_domain",
-    })
+    .insert(payload)
     .select("*")
     .single();
 
@@ -427,7 +447,6 @@ export async function POST(request: NextRequest) {
         dnsStatus: "pending",
         sslStatus: "pending",
         verificationStatus: "pending",
-        providerStatus: "staged",
       });
 
       return NextResponse.json({
@@ -456,7 +475,6 @@ export async function POST(request: NextRequest) {
         dnsStatus: "pending",
         sslStatus: "pending",
         verificationStatus: "pending",
-        providerStatus: vercel.status,
       });
 
       return NextResponse.json({
@@ -487,7 +505,6 @@ export async function POST(request: NextRequest) {
         sslStatus:
           status.status === "ready" ? "active" : "pending",
         verificationStatus: status.verified ? "verified" : "pending",
-        providerStatus: status.status,
       });
 
       return NextResponse.json({
