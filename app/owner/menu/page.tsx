@@ -534,16 +534,13 @@ function MenuItemEditor({
           onChange={(value) => onChange({ ...item, name: value })}
         />
 
-        <Field
+        <PriceField
           label="PRICE"
-          value={item.price === null ? "" : String(item.price)}
-          onChange={(value) =>
+          value={item.price}
+          onChange={(price) =>
             onChange({
               ...item,
-              price:
-                value.trim() === ""
-                  ? null
-                  : Number(value.replace(/[^0-9.]/g, "")),
+              price,
             })
           }
         />
@@ -631,6 +628,80 @@ function MenuItemEditor({
           DELETE
         </button>
       </div>
+    </div>
+  );
+}
+
+function PriceField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (value: number | null) => void;
+}) {
+  const [draft, setDraft] = useState(
+    value === null || value === undefined ? "" : String(value)
+  );
+
+  useEffect(() => {
+    const next =
+      value === null || value === undefined ? "" : String(value);
+
+    // Do not clobber a user who is in the middle of typing a decimal
+    // such as "11." or "11.0".
+    if (!draft.endsWith(".") && !/^\d+\.\d$/.test(draft)) {
+      setDraft(next);
+    }
+  }, [value]);
+
+  return (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      <input
+        inputMode="decimal"
+        value={draft}
+        placeholder="14.99"
+        onChange={(e) => {
+          const raw = e.target.value.replace(/[^0-9.]/g, "");
+
+          // Allow only one decimal point and up to two decimal places.
+          if (!/^\d*(?:\.\d{0,2})?$/.test(raw)) return;
+
+          setDraft(raw);
+
+          if (raw === "") {
+            onChange(null);
+            return;
+          }
+
+          // Preserve intermediate typing states like "11." and "11.0"
+          // in the input while only committing a valid numeric value.
+          if (raw.endsWith(".") || /^\d+\.\d$/.test(raw)) {
+            return;
+          }
+
+          const parsed = Number(raw);
+          if (Number.isFinite(parsed)) {
+            onChange(parsed);
+          }
+        }}
+        onBlur={() => {
+          if (draft === "") {
+            onChange(null);
+            return;
+          }
+
+          const parsed = Number(draft);
+          if (!Number.isFinite(parsed)) return;
+
+          const rounded = Math.round(parsed * 100) / 100;
+          setDraft(rounded.toFixed(2));
+          onChange(rounded);
+        }}
+        style={inputStyle}
+      />
     </div>
   );
 }
