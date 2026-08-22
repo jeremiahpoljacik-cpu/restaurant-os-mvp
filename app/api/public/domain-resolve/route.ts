@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     const { data: domainRow, error: domainError } = await admin
       .from("restaurant_domains")
       .select(
-        "restaurant_id,domain,normalized_domain,is_primary,dns_status,ssl_status,verification_status,provider_status"
+        "restaurant_id,domain,normalized_domain,is_primary,dns_status,ssl_status,verification_status,provider"
       )
       .eq("normalized_domain", host)
       .maybeSingle();
@@ -62,17 +62,14 @@ export async function GET(request: NextRequest) {
 
     if (!domainRow) {
       return NextResponse.json(
-        {
-          found: false,
-          host,
-        },
+        { found: false, host },
         { status: 404 }
       );
     }
 
     const { data: restaurant, error: restaurantError } = await admin
       .from("restaurants")
-      .select("id,name,slug,status,published,admin_suspended")
+      .select("id,name,slug,status,admin_suspended")
       .eq("id", domainRow.restaurant_id)
       .maybeSingle();
 
@@ -89,6 +86,16 @@ export async function GET(request: NextRequest) {
         },
         { status: 404 }
       );
+    }
+
+    const { data: websiteSettings, error: websiteError } = await admin
+      .from("restaurant_website_settings")
+      .select("published")
+      .eq("restaurant_id", restaurant.id)
+      .maybeSingle();
+
+    if (websiteError) {
+      throw new Error(websiteError.message);
     }
 
     if (restaurant.admin_suspended) {
@@ -117,6 +124,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Custom domains should only serve restaurants whose public website
+    // is explicitly published in restaurant_website_settings.
+    if (!websiteSettings?.published) {
+      return NextResponse.json(
+        {
+          found: true,
+          routable: false,
+          reason: "not_published",
+          host,
+          restaurant_id: restaurant.id,
+        },
+        { status: 403 }
+      );
+    }
+
     return NextResponse.json({
       found: true,
       routable: true,
@@ -126,7 +148,7 @@ export async function GET(request: NextRequest) {
         name: restaurant.name,
         slug: restaurant.slug,
         status: restaurant.status,
-        published: restaurant.published,
+        published: true,
       },
       domain: {
         domain: domainRow.domain,
@@ -135,7 +157,7 @@ export async function GET(request: NextRequest) {
         dns_status: domainRow.dns_status,
         ssl_status: domainRow.ssl_status,
         verification_status: domainRow.verification_status,
-        provider_status: domainRow.provider_status,
+        provider: domainRow.provider,
       },
     });
   } catch (error) {
