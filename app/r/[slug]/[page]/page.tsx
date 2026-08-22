@@ -141,7 +141,7 @@ function ViPollosPage({ restaurant, page }: { restaurant: Restaurant; page: Page
         button,input,textarea { font:inherit; }
       `}</style>
 
-      <style jsx>{`
+      <style jsx global>{`
         .vpSite { min-height:100vh; background:#061a31; color:white; }
         .shell { max-width:1500px; margin:0 auto; background:#f3eadb; min-height:100vh; box-shadow:0 0 80px rgba(0,0,0,.45); }
         .nav { min-height:96px; padding:0 34px; display:flex; align-items:center; gap:14px; background:#030303; position:sticky; top:0; z-index:50; box-shadow:0 8px 24px rgba(0,0,0,.28); }
