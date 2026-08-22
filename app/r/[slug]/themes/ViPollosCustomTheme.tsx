@@ -16,6 +16,7 @@ const EN = {
   order: "ORDER ONLINE",
   locations: "LOCATIONS",
   contact: "CONTACT",
+  login: "SITE LOGIN",
   hero1: "MADE WITH PRIDE.",
   hero2: "FLAVOR THAT BRINGS US TOGETHER.",
   body: "Authentic Honduran food made with family recipes, fresh ingredients, and the heart of our people.",
@@ -53,6 +54,7 @@ const ES = {
   order: "ORDENAR",
   locations: "UBICACIONES",
   contact: "CONTACTO",
+  login: "INICIAR SESIÓN",
   hero1: "HECHO CON ORGULLO.",
   hero2: "SABOR QUE NOS UNE.",
   body: "Auténtica comida hondureña hecha con recetas familiares, ingredientes frescos y el corazón de nuestra gente.",
@@ -238,12 +240,12 @@ export default function ViPollosCustomTheme({ restaurantId, slug }: Props) {
         .heroLeftBg { background:#050505; }
         .heroImg { width:100%; height:100%; object-fit:cover; }
         .heroShade { position:absolute; inset:0; background:linear-gradient(90deg, rgba(0,0,0,.98) 0 31%, rgba(0,0,0,.60) 43%, rgba(0,0,0,.04) 68%); z-index:1; }
-        .nav { position:relative; z-index:5; height:98px; display:flex; align-items:center; padding:0 58px; gap:24px; }
-        .logo { width:240px; height:92px; object-fit:contain; object-position:left center; }
-        .navLinks { margin-left:auto; display:flex; gap:25px; align-items:center; font-size:12px; font-weight:900; }
+        .nav { position:relative; z-index:5; height:98px; display:flex; align-items:center; padding:0 38px; gap:14px; }
+        .logo { width:205px; height:88px; object-fit:contain; object-position:left center; flex:0 0 auto; }
+        .navLinks { margin-left:auto; display:flex; gap:18px; align-items:center; font-size:11px; font-weight:900; white-space:nowrap; }
         .navLinks a:first-child { color:#d9ad21; border-bottom:2px solid #d9ad21; padding-bottom:9px; }
-        .topOrder { padding:14px 24px; background:#075cb3; font-weight:900; }
-        .lang { padding:12px 16px; border:1px solid rgba(255,255,255,.4); background:rgba(0,0,0,.45); color:white; border-radius:3px; cursor:pointer; font-weight:800; }
+        .topOrder { padding:13px 18px; background:#075cb3; font-weight:900; font-size:11px; white-space:nowrap; }
+        .siteLogin { padding:11px 13px; border:1px solid rgba(255,255,255,.42); background:rgba(0,0,0,.48); color:white; border-radius:3px; font-size:10px; font-weight:900; white-space:nowrap; }\n        .lang { padding:11px 13px; border:1px solid rgba(255,255,255,.4); background:rgba(0,0,0,.45); color:white; border-radius:3px; cursor:pointer; font-weight:800; white-space:nowrap; }
 
         .heroCopy { position:relative; z-index:3; width:34%; padding:38px 24px 28px 60px; }
         .heroCopy h1 { margin:0; font-family:Impact,Haettenschweiler,"Arial Narrow Bold",sans-serif; font-size:62px; line-height:.94; letter-spacing:1px; font-weight:400; }
@@ -358,14 +360,14 @@ export default function ViPollosCustomTheme({ restaurantId, slug }: Props) {
             <img src={LOGO} alt="Vi Pollos" className="logo" />
             <div className="navLinks">
               <a href={`/r/${slug}`}>{t.home}</a>
-              <a href="#story">{t.story}</a>
+              <a href={`/r/${slug}/our-story`}>{t.story}</a>
               <a href={`/r/${slug}/food-menu`}>{t.menu}</a>
-              <a href={cateringHref}>{t.catering}</a>
-              <a href={orderUrl} target="_blank" rel="noreferrer">{t.order}</a>
-              <a href="#visit">{t.locations}</a>
-              <a href="#visit">{t.contact}</a>
+              <a href={`/r/${slug}/catering`}>{t.catering}</a>
+              <a href={`/r/${slug}/locations`}>{t.locations}</a>
+              <a href={`/r/${slug}/contact`}>{t.contact}</a>
             </div>
             <a className="topOrder" href={orderUrl} target="_blank" rel="noreferrer">{t.order}</a>
+            <a className="siteLogin" href="https://restaurant-os-mvp.vercel.app/login">{t.login}</a>
             <button className="lang" onClick={() => setSpanish(!spanish)}>{spanish ? "🇺🇸 English" : "🇭🇳 Español"}</button>
           </nav>
 
