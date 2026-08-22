@@ -1,27 +1,63 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
 type Restaurant = {
   id: string;
   name: string;
-  slug: string | null;
+  cuisine_category: string | null;
+  phone: string | null;
+  address_line_1: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+};
+
+type Branding = {
+  primary_color: string | null;
+  secondary_color: string | null;
+  tagline: string | null;
+  short_description: string | null;
+};
+
+type WebsiteSettings = {
+  hero_headline: string;
+  hero_subheadline: string;
+  hero_image_url: string;
+  logo_url: string;
+  about_title: string;
+  about_body: string;
+  primary_cta_label: string;
+  secondary_cta_label: string;
+  show_about: boolean;
+  show_menu: boolean;
+  show_ordering: boolean;
+  show_vip: boolean;
   published: boolean;
-  status: string | null;
 };
 
-type DomainRecord = {
-  normalized_domain?: string | null;
-  dns_status?: string | null;
-  ssl_status?: string | null;
-  verification_status?: string | null;
-  provider_status?: string | null;
+const initialSettings: WebsiteSettings = {
+  hero_headline: "",
+  hero_subheadline: "",
+  hero_image_url: "",
+  logo_url: "",
+  about_title: "",
+  about_body: "",
+  primary_cta_label: "ORDER ONLINE",
+  secondary_cta_label: "VIEW MENU",
+  show_about: true,
+  show_menu: true,
+  show_ordering: true,
+  show_vip: true,
+  published: false,
 };
 
-export default function OwnerWebsitePage() {
+export default function WebsiteManagerPage() {
+  const [restaurantId, setRestaurantId] = useState("");
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [domain, setDomain] = useState<DomainRecord | null>(null);
+  const [branding, setBranding] = useState<Branding | null>(null);
+  const [settings, setSettings] = useState<WebsiteSettings>(initialSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -31,110 +67,145 @@ export default function OwnerWebsitePage() {
   }, []);
 
   async function load() {
-    setLoading(true);
-    setMessage("");
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("restaurant");
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session?.user) {
-      window.location.href = "/login";
-      return;
-    }
-
-    const restaurantId = new URLSearchParams(window.location.search).get(
-      "restaurant"
-    );
-
-    if (!restaurantId) {
+    if (!id) {
       setMessage("No restaurant selected.");
       setLoading(false);
       return;
     }
 
-    const { data: restaurantData, error } = await supabase
+    setRestaurantId(id);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setMessage("You are not signed in.");
+      setLoading(false);
+      return;
+    }
+
+    const { data: restaurantData, error: restaurantError } = await supabase
       .from("restaurants")
-      .select("id,name,slug,published,status")
-      .eq("id", restaurantId)
-      .eq("owner_user_id", session.user.id)
+      .select("*")
+      .eq("id", id)
+      .eq("owner_user_id", user.id)
       .maybeSingle();
 
-    if (error || !restaurantData) {
-      setMessage(error?.message || "Restaurant not found.");
+    if (restaurantError || !restaurantData) {
+      setMessage(restaurantError?.message || "Restaurant not found.");
       setLoading(false);
       return;
     }
 
     setRestaurant(restaurantData);
 
-    const { data: domainData } = await supabase
-      .from("restaurant_domains")
-      .select(
-        "normalized_domain,dns_status,ssl_status,verification_status,provider_status"
-      )
-      .eq("restaurant_id", restaurantId)
-      .eq("is_primary", true)
+    const { data: brandingData } = await supabase
+      .from("restaurant_branding")
+      .select("*")
+      .eq("restaurant_id", id)
       .maybeSingle();
 
-    setDomain(domainData || null);
+    if (brandingData) {
+      setBranding({
+        primary_color: brandingData.primary_color || null,
+        secondary_color: brandingData.secondary_color || null,
+        tagline: brandingData.tagline || null,
+        short_description: brandingData.short_description || null,
+      });
+    }
+
+    const { data: websiteData } = await supabase
+      .from("restaurant_website_settings")
+      .select("*")
+      .eq("restaurant_id", id)
+      .maybeSingle();
+
+    if (websiteData) {
+      setSettings({
+        hero_headline: websiteData.hero_headline || "",
+        hero_subheadline: websiteData.hero_subheadline || "",
+        hero_image_url: websiteData.hero_image_url || "",
+        logo_url: websiteData.logo_url || "",
+        about_title: websiteData.about_title || "",
+        about_body: websiteData.about_body || "",
+        primary_cta_label: websiteData.primary_cta_label || "ORDER ONLINE",
+        secondary_cta_label: websiteData.secondary_cta_label || "VIEW MENU",
+        show_about: websiteData.show_about ?? true,
+        show_menu: websiteData.show_menu ?? true,
+        show_ordering: websiteData.show_ordering ?? true,
+        show_vip: websiteData.show_vip ?? true,
+        published: websiteData.published ?? false,
+      });
+    } else {
+      setSettings((current) => ({
+        ...current,
+        hero_headline: restaurantData.name
+          ? `WELCOME TO ${restaurantData.name.toUpperCase()}`
+          : "",
+        hero_subheadline:
+          brandingData?.tagline ||
+          brandingData?.short_description ||
+          "Great food. Local flavor. Your table is waiting.",
+        about_title: `ABOUT ${restaurantData.name.toUpperCase()}`,
+        about_body:
+          brandingData?.short_description ||
+          "Tell your story here. Share what makes your restaurant special.",
+      }));
+    }
+
     setLoading(false);
   }
 
-  async function togglePublished() {
-    if (!restaurant) return;
+  function update<K extends keyof WebsiteSettings>(
+    key: K,
+    value: WebsiteSettings[K]
+  ) {
+    setSettings((current) => ({ ...current, [key]: value }));
+  }
+
+  async function save() {
+    if (!restaurantId) return;
 
     setSaving(true);
     setMessage("");
 
-    const nextPublished = !restaurant.published;
-
     const { error } = await supabase
-      .from("restaurants")
-      .update({
-        published: nextPublished,
-        status: nextPublished ? "published" : "draft",
-      })
-      .eq("id", restaurant.id);
-
-    if (error) {
-      setMessage(error.message);
-      setSaving(false);
-      return;
-    }
-
-    setRestaurant({
-      ...restaurant,
-      published: nextPublished,
-      status: nextPublished ? "published" : "draft",
-    });
-
-    setMessage(
-      nextPublished
-        ? "Website published. Public fallback URL is now live."
-        : "Website moved back to draft."
-    );
+      .from("restaurant_website_settings")
+      .upsert(
+        {
+          restaurant_id: restaurantId,
+          ...settings,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "restaurant_id" }
+      );
 
     setSaving(false);
+    setMessage(error ? error.message : "Website settings saved.");
   }
-
-  const fallbackUrl = useMemo(() => {
-    if (!restaurant?.slug) return "";
-    return `/r/${restaurant.slug}`;
-  }, [restaurant]);
-
-  const domainReady =
-    domain?.verification_status === "verified" &&
-    domain?.dns_status === "configured" &&
-    domain?.ssl_status === "active";
 
   if (loading) {
     return (
       <main style={pageStyle}>
-        <div style={shellStyle}>Loading website controls...</div>
+        <div style={shellStyle}>Loading website manager...</div>
       </main>
     );
   }
+
+  if (!restaurant) {
+    return (
+      <main style={pageStyle}>
+        <div style={shellStyle}>{message || "Restaurant not found."}</div>
+      </main>
+    );
+  }
+
+  const primary = branding?.primary_color || "#0b3a67";
+  const secondary = branding?.secondary_color || "#f5b82e";
 
   return (
     <main style={pageStyle}>
@@ -142,143 +213,335 @@ export default function OwnerWebsitePage() {
         <header style={headerStyle}>
           <div>
             <div style={eyebrowStyle}>RESTAURANT OS</div>
-            <h1 style={titleStyle}>Website Launch Control</h1>
+            <h1 style={titleStyle}>Website Manager</h1>
             <p style={subStyle}>
-              {restaurant?.name || "Restaurant"} — publish the Restaurant OS
-              website when you are ready. Custom domain cutover is controlled
-              separately by Super Admin.
+              Control the content and sections that power your restaurant site.
             </p>
           </div>
 
-          <button
-            style={secondaryButtonStyle}
-            onClick={() =>
-              (window.location.href = `/owner?restaurant=${restaurant?.id || ""}`)
-            }
-          >
-            BACK TO DASHBOARD
-          </button>
+          <div style={headerActionsStyle}>
+            <button
+              style={primaryOutlineButtonStyle}
+              onClick={() =>
+                (window.location.href = `/owner/pages?restaurant=${restaurantId}`)
+              }
+            >
+              PAGES & SOCIALS
+            </button>
+
+            <button
+              style={secondaryButtonStyle}
+              onClick={() =>
+                (window.location.href = `/owner?restaurant=${restaurantId}`)
+              }
+            >
+              BACK TO DASHBOARD
+            </button>
+          </div>
         </header>
 
         {message && <div style={messageStyle}>{message}</div>}
 
-        <section style={statusCardStyle}>
+        <section style={quickControlStyle}>
           <div>
-            <div style={cardEyebrowStyle}>PUBLIC WEBSITE</div>
-            <div style={statusTitleStyle}>
-              {restaurant?.published ? "PUBLISHED" : "DRAFT"}
-            </div>
-            <p style={helpStyle}>
-              Publishing enables the Restaurant OS public site at the fallback
-              URL. It does not switch the restaurant&apos;s custom domain.
-            </p>
-          </div>
-
-          <div style={statusBadgeStyle}>
-            {restaurant?.published ? "LIVE" : "NOT LIVE"}
-          </div>
-        </section>
-
-        <section style={gridStyle}>
-          <div style={cardStyle}>
-            <div style={cardEyebrowStyle}>FALLBACK URL</div>
-            <h2 style={cardTitleStyle}>Restaurant OS Public Link</h2>
-
-            <div style={urlBoxStyle}>
-              {fallbackUrl || "No slug configured"}
-            </div>
-
-            {fallbackUrl && (
-              <button
-                style={secondaryFullButtonStyle}
-                onClick={() => window.open(fallbackUrl, "_blank")}
-              >
-                OPEN PUBLIC SITE
-              </button>
-            )}
-          </div>
-
-          <div style={cardStyle}>
-            <div style={cardEyebrowStyle}>CUSTOM DOMAIN</div>
-            <h2 style={cardTitleStyle}>Domain Readiness</h2>
-
-            <StatusRow
-              label="DOMAIN"
-              value={domain?.normalized_domain || "NOT STAGED"}
-            />
-            <StatusRow
-              label="VERIFICATION"
-              value={domain?.verification_status || "PENDING"}
-            />
-            <StatusRow
-              label="DNS"
-              value={domain?.dns_status || "PENDING"}
-            />
-            <StatusRow
-              label="SSL"
-              value={domain?.ssl_status || "PENDING"}
-            />
-
-            <div
-              style={{
-                ...readinessBoxStyle,
-                borderColor: domainReady ? "#22c55e" : "#f59e0b",
-                color: domainReady ? "#86efac" : "#fcd34d",
-              }}
-            >
-              {domainReady
-                ? "CUSTOM DOMAIN READY FOR CUTOVER"
-                : "CUSTOM DOMAIN STILL IN PREP MODE"}
-            </div>
-          </div>
-        </section>
-
-        <section style={publishCardStyle}>
-          <div>
-            <div style={cardEyebrowStyle}>LAUNCH ACTION</div>
-            <h2 style={publishTitleStyle}>
-              {restaurant?.published ? "Website Is Live" : "Ready to Publish?"}
-            </h2>
-            <p style={helpStyle}>
-              Publish only after you have reviewed the restaurant site and menu.
-              Custom DNS remains untouched until Super Admin completes the final
-              domain cutover.
+            <div style={eyebrowStyle}>SITE STRUCTURE</div>
+            <h2 style={quickControlTitleStyle}>Pages, Navigation & Socials</h2>
+            <p style={quickControlTextStyle}>
+              Add catering, locations, contact and custom pages. Control what
+              appears in navigation and connect Facebook, Instagram, TikTok,
+              Google Business and more.
             </p>
           </div>
 
           <button
-            style={
-              restaurant?.published
-                ? unpublishButtonStyle
-                : publishButtonStyle
+            style={quickControlButtonStyle}
+            onClick={() =>
+              (window.location.href = `/owner/pages?restaurant=${restaurantId}`)
             }
-            disabled={saving || !restaurant}
-            onClick={togglePublished}
           >
-            {saving
-              ? "SAVING..."
-              : restaurant?.published
-              ? "MOVE BACK TO DRAFT"
-              : "PUBLISH WEBSITE"}
+            MANAGE PAGES & SOCIALS →
           </button>
         </section>
+
+        <div style={layoutStyle}>
+          <div>
+            <section style={sectionStyle}>
+              <SectionTitle title="Hero Section" />
+
+              <Field
+                label="HERO HEADLINE"
+                value={settings.hero_headline}
+                onChange={(value) => update("hero_headline", value)}
+                placeholder="WELCOME TO YOUR RESTAURANT"
+              />
+
+              <Textarea
+                label="HERO SUBHEADLINE"
+                value={settings.hero_subheadline}
+                onChange={(value) => update("hero_subheadline", value)}
+                placeholder="Tell people why they should eat here."
+              />
+
+              <Field
+                label="HERO IMAGE URL"
+                value={settings.hero_image_url}
+                onChange={(value) => update("hero_image_url", value)}
+                placeholder="https://..."
+              />
+
+              <Field
+                label="LOGO URL"
+                value={settings.logo_url}
+                onChange={(value) => update("logo_url", value)}
+                placeholder="https://..."
+              />
+            </section>
+
+            <section style={sectionStyle}>
+              <SectionTitle title="About Section" />
+
+              <Field
+                label="ABOUT TITLE"
+                value={settings.about_title}
+                onChange={(value) => update("about_title", value)}
+              />
+
+              <Textarea
+                label="ABOUT BODY"
+                value={settings.about_body}
+                onChange={(value) => update("about_body", value)}
+              />
+            </section>
+
+            <section style={sectionStyle}>
+              <SectionTitle title="Buttons & Calls to Action" />
+
+              <Field
+                label="PRIMARY BUTTON"
+                value={settings.primary_cta_label}
+                onChange={(value) => update("primary_cta_label", value)}
+              />
+
+              <Field
+                label="SECONDARY BUTTON"
+                value={settings.secondary_cta_label}
+                onChange={(value) => update("secondary_cta_label", value)}
+              />
+            </section>
+
+            <section style={sectionStyle}>
+              <SectionTitle title="Visible Sections" />
+
+              <Toggle
+                label="SHOW ABOUT SECTION"
+                checked={settings.show_about}
+                onChange={(value) => update("show_about", value)}
+              />
+
+              <Toggle
+                label="SHOW MENU"
+                checked={settings.show_menu}
+                onChange={(value) => update("show_menu", value)}
+              />
+
+              <Toggle
+                label="SHOW ORDERING"
+                checked={settings.show_ordering}
+                onChange={(value) => update("show_ordering", value)}
+              />
+
+              <Toggle
+                label="SHOW VIP SIGNUP"
+                checked={settings.show_vip}
+                onChange={(value) => update("show_vip", value)}
+              />
+
+              <Toggle
+                label="PUBLISH WEBSITE"
+                checked={settings.published}
+                onChange={(value) => update("published", value)}
+              />
+            </section>
+
+            <button
+              style={saveButtonStyle}
+              disabled={saving}
+              onClick={save}
+            >
+              {saving ? "SAVING..." : "SAVE WEBSITE SETTINGS"}
+            </button>
+          </div>
+
+          <div>
+            <div style={previewStickyStyle}>
+              <div style={eyebrowStyle}>LIVE PREVIEW</div>
+
+              <div
+                style={{
+                  ...previewCardStyle,
+                  background: settings.hero_image_url
+                    ? `linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.72)), url("${settings.hero_image_url}") center/cover`
+                    : `linear-gradient(135deg, ${primary}, #07101c)`,
+                }}
+              >
+                <div style={previewTopStyle}>
+                  {settings.logo_url ? (
+                    <img src={settings.logo_url} alt="" style={logoStyle} />
+                  ) : (
+                    <div style={previewBrandStyle}>{restaurant.name}</div>
+                  )}
+
+                  <div
+                    style={{
+                      ...publishPillStyle,
+                      borderColor: settings.published ? secondary : "#475569",
+                      color: settings.published ? secondary : "#94a3b8",
+                    }}
+                  >
+                    {settings.published ? "PUBLISHED" : "DRAFT"}
+                  </div>
+                </div>
+
+                <div style={previewHeroBodyStyle}>
+                  <h2 style={previewHeadlineStyle}>
+                    {settings.hero_headline || restaurant.name}
+                  </h2>
+
+                  <p style={previewTextStyle}>
+                    {settings.hero_subheadline ||
+                      branding?.tagline ||
+                      "Great food. Local flavor."}
+                  </p>
+
+                  <div style={buttonRowStyle}>
+                    <button
+                      style={{
+                        ...previewPrimaryButtonStyle,
+                        background: secondary,
+                      }}
+                    >
+                      {settings.primary_cta_label || "ORDER ONLINE"}
+                    </button>
+
+                    <button style={previewSecondaryButtonStyle}>
+                      {settings.secondary_cta_label || "VIEW MENU"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {settings.show_about && (
+                <div style={previewSectionStyle}>
+                  <div style={eyebrowStyle}>OUR STORY</div>
+                  <h3 style={previewSectionTitleStyle}>
+                    {settings.about_title || `ABOUT ${restaurant.name}`}
+                  </h3>
+                  <p style={previewBodyStyle}>
+                    {settings.about_body ||
+                      branding?.short_description ||
+                      "Your restaurant story will appear here."}
+                  </p>
+                </div>
+              )}
+
+              <div style={miniGridStyle}>
+                {settings.show_menu && <div style={miniCardStyle}>🍽️ MENU</div>}
+                {settings.show_ordering && (
+                  <div style={miniCardStyle}>🛍️ ORDER ONLINE</div>
+                )}
+                {settings.show_vip && (
+                  <div style={miniCardStyle}>⭐ VIP CLUB</div>
+                )}
+              </div>
+
+              <div style={hintStyle}>
+                Use Pages & Socials for extra pages, navigation and social
+                profiles. This preview shows the core home-page content.
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   );
 }
 
-function StatusRow({
+function SectionTitle({ title }: { title: string }) {
+  return (
+    <div style={{ marginBottom: "20px" }}>
+      <div style={eyebrowStyle}>SITE CONTROL</div>
+      <h2 style={sectionTitleStyle}>{title}</h2>
+    </div>
+  );
+}
+
+function Field({
   label,
   value,
+  onChange,
+  placeholder = "",
 }: {
   label: string;
   value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
 }) {
   return (
-    <div style={statusRowStyle}>
-      <div style={statusLabelStyle}>{label}</div>
-      <div style={statusValueStyle}>{value.toUpperCase()}</div>
+    <div style={{ marginBottom: "16px" }}>
+      <label style={labelStyle}>{label}</label>
+      <input
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        style={inputStyle}
+      />
     </div>
+  );
+}
+
+function Textarea({
+  label,
+  value,
+  onChange,
+  placeholder = "",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div style={{ marginBottom: "16px" }}>
+      <label style={labelStyle}>{label}</label>
+      <textarea
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        rows={5}
+        style={{ ...inputStyle, resize: "vertical" as const }}
+      />
+    </div>
+  );
+}
+
+function Toggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <label style={toggleRowStyle}>
+      <span>{label}</span>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+    </label>
   );
 }
 
@@ -291,7 +554,7 @@ const pageStyle = {
 };
 
 const shellStyle = {
-  maxWidth: "1180px",
+  maxWidth: "1260px",
   margin: "0 auto",
 };
 
@@ -304,198 +567,280 @@ const headerStyle = {
   marginBottom: "24px",
 };
 
+const headerActionsStyle = {
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap" as const,
+};
+
 const eyebrowStyle = {
   color: "#f5b82e",
-  fontSize: "10px",
+  fontSize: "11px",
   fontWeight: 900,
   letterSpacing: "2px",
 };
 
 const titleStyle = {
-  margin: "7px 0 8px",
-  fontSize: "clamp(42px,6vw,68px)",
+  fontSize: "clamp(42px,7vw,72px)",
   lineHeight: ".95",
-  letterSpacing: "-3px",
+  margin: "8px 0",
+  fontWeight: 900,
+  letterSpacing: "-2px",
 };
 
 const subStyle = {
   color: "#94a3b8",
+  fontSize: "16px",
+};
+
+const quickControlStyle = {
+  background: "#13263b",
+  border: "1px solid #2d4661",
+  borderRadius: "18px",
+  padding: "22px",
+  marginBottom: "20px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "24px",
+  flexWrap: "wrap" as const,
+};
+
+const quickControlTitleStyle = {
+  margin: "6px 0 8px",
+  fontSize: "26px",
+};
+
+const quickControlTextStyle = {
+  color: "#94a3b8",
+  margin: 0,
   maxWidth: "760px",
-  lineHeight: 1.55,
+  lineHeight: 1.5,
+};
+
+const quickControlButtonStyle = {
+  background: "#f5b82e",
+  color: "#08111f",
+  border: 0,
+  borderRadius: "10px",
+  padding: "14px 18px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const primaryOutlineButtonStyle = {
+  background: "#f5b82e",
+  color: "#08111f",
+  border: 0,
+  borderRadius: "10px",
+  padding: "12px 16px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const layoutStyle = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0,1.05fr) minmax(360px,.95fr)",
+  gap: "22px",
+  alignItems: "start",
+};
+
+const sectionStyle = {
+  background: "#0f1d2e",
+  border: "1px solid #23364d",
+  borderRadius: "18px",
+  padding: "24px",
+  marginBottom: "18px",
+};
+
+const sectionTitleStyle = {
+  margin: "6px 0 0",
+  fontSize: "27px",
+};
+
+const labelStyle = {
+  display: "block",
+  fontSize: "11px",
+  color: "#cbd5e1",
+  fontWeight: 900,
+  letterSpacing: "1px",
+  marginBottom: "7px",
+};
+
+const inputStyle = {
+  width: "100%",
+  boxSizing: "border-box" as const,
+  background: "#08111f",
+  color: "#ffffff",
+  border: "1px solid #334155",
+  borderRadius: "10px",
+  padding: "13px",
+  fontSize: "14px",
+};
+
+const toggleRowStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "20px",
+  borderBottom: "1px solid #23364d",
+  padding: "14px 0",
+  fontWeight: 800,
+};
+
+const saveButtonStyle = {
+  width: "100%",
+  background: "#f5b82e",
+  color: "#08111f",
+  border: 0,
+  borderRadius: "12px",
+  padding: "17px",
+  fontWeight: 900,
+  cursor: "pointer",
 };
 
 const secondaryButtonStyle = {
-  background: "#13263b",
+  background: "transparent",
   color: "#ffffff",
-  border: "1px solid #36516c",
+  border: "1px solid #334155",
   borderRadius: "10px",
-  padding: "11px 14px",
-  fontSize: "10px",
+  padding: "12px 16px",
   fontWeight: 900,
   cursor: "pointer",
 };
 
 const messageStyle = {
-  marginBottom: "16px",
   background: "#13263b",
   border: "1px solid #2d4661",
-  color: "#dbeafe",
   borderRadius: "10px",
-  padding: "11px",
-  fontSize: "12px",
+  padding: "14px",
+  marginBottom: "18px",
 };
 
-const statusCardStyle = {
+const previewStickyStyle = {
+  position: "sticky" as const,
+  top: "18px",
+};
+
+const previewCardStyle = {
+  minHeight: "520px",
+  borderRadius: "20px",
+  border: "1px solid #2b3e55",
+  padding: "24px",
+  display: "flex",
+  flexDirection: "column" as const,
+  justifyContent: "space-between",
+  overflow: "hidden",
+};
+
+const previewTopStyle = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  gap: "18px",
-  flexWrap: "wrap" as const,
-  background: "#10253a",
-  border: "1px solid #36516c",
-  borderRadius: "16px",
-  padding: "22px",
-  marginBottom: "16px",
-};
-
-const cardEyebrowStyle = {
-  color: "#f5b82e",
-  fontSize: "9px",
-  fontWeight: 900,
-  letterSpacing: "1.5px",
-};
-
-const statusTitleStyle = {
-  fontSize: "34px",
-  fontWeight: 900,
-  marginTop: "5px",
-};
-
-const statusBadgeStyle = {
-  background: "#08111f",
-  color: "#f5b82e",
-  border: "1px solid #36516c",
-  borderRadius: "999px",
-  padding: "10px 14px",
-  fontSize: "9px",
-  fontWeight: 900,
-  letterSpacing: "1px",
-};
-
-const gridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(360px,1fr))",
-  gap: "16px",
-};
-
-const cardStyle = {
-  background: "#0f1d2e",
-  border: "1px solid #23364d",
-  borderRadius: "16px",
-  padding: "22px",
-};
-
-const cardTitleStyle = {
-  margin: "6px 0 16px",
-  fontSize: "28px",
-};
-
-const helpStyle = {
-  color: "#94a3b8",
-  fontSize: "12px",
-  lineHeight: 1.55,
-};
-
-const urlBoxStyle = {
-  background: "#08111f",
-  border: "1px solid #23364d",
-  borderRadius: "9px",
-  padding: "12px",
-  fontSize: "13px",
-  wordBreak: "break-word" as const,
-};
-
-const secondaryFullButtonStyle = {
-  width: "100%",
-  marginTop: "12px",
-  background: "#13263b",
-  color: "#ffffff",
-  border: "1px solid #36516c",
-  borderRadius: "9px",
-  padding: "12px",
-  fontSize: "10px",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const statusRowStyle = {
-  display: "flex",
-  justifyContent: "space-between",
   gap: "12px",
-  padding: "10px 0",
-  borderBottom: "1px solid #23364d",
 };
 
-const statusLabelStyle = {
-  color: "#64748b",
-  fontSize: "8px",
+const logoStyle = {
+  maxHeight: "64px",
+  maxWidth: "140px",
+  objectFit: "contain" as const,
+};
+
+const previewBrandStyle = {
+  fontSize: "20px",
+  fontWeight: 900,
+};
+
+const publishPillStyle = {
+  border: "1px solid",
+  borderRadius: "999px",
+  padding: "7px 10px",
+  fontSize: "10px",
   fontWeight: 900,
   letterSpacing: "1px",
 };
 
-const statusValueStyle = {
-  color: "#ffffff",
-  fontSize: "11px",
-  fontWeight: 900,
+const previewHeroBodyStyle = {
+  maxWidth: "500px",
+  paddingTop: "110px",
 };
 
-const readinessBoxStyle = {
-  marginTop: "14px",
-  background: "#08111f",
-  border: "1px solid",
-  borderRadius: "10px",
-  padding: "12px",
-  fontSize: "10px",
+const previewHeadlineStyle = {
+  fontSize: "clamp(38px,5vw,64px)",
+  lineHeight: ".92",
+  margin: 0,
   fontWeight: 900,
-  letterSpacing: ".5px",
+  letterSpacing: "-2px",
 };
 
-const publishCardStyle = {
-  marginTop: "16px",
+const previewTextStyle = {
+  color: "#e2e8f0",
+  lineHeight: 1.6,
+  fontSize: "16px",
+  marginTop: "18px",
+};
+
+const buttonRowStyle = {
   display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "18px",
+  gap: "10px",
   flexWrap: "wrap" as const,
+  marginTop: "22px",
+};
+
+const previewPrimaryButtonStyle = {
+  color: "#08111f",
+  border: 0,
+  borderRadius: "9px",
+  padding: "13px 16px",
+  fontWeight: 900,
+};
+
+const previewSecondaryButtonStyle = {
+  background: "transparent",
+  color: "#ffffff",
+  border: "1px solid rgba(255,255,255,.7)",
+  borderRadius: "9px",
+  padding: "13px 16px",
+  fontWeight: 900,
+};
+
+const previewSectionStyle = {
   background: "#0f1d2e",
   border: "1px solid #23364d",
-  borderRadius: "16px",
+  borderRadius: "18px",
   padding: "22px",
+  marginTop: "16px",
 };
 
-const publishTitleStyle = {
-  margin: "6px 0 7px",
-  fontSize: "30px",
+const previewSectionTitleStyle = {
+  fontSize: "28px",
+  margin: "7px 0 12px",
 };
 
-const publishButtonStyle = {
-  background: "#22c55e",
-  color: "#052e16",
-  border: 0,
-  borderRadius: "10px",
-  padding: "14px 18px",
-  fontSize: "10px",
+const previewBodyStyle = {
+  color: "#94a3b8",
+  lineHeight: 1.6,
+};
+
+const miniGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))",
+  gap: "10px",
+  marginTop: "12px",
+};
+
+const miniCardStyle = {
+  background: "#0f1d2e",
+  border: "1px solid #23364d",
+  borderRadius: "12px",
+  padding: "16px",
   fontWeight: 900,
-  cursor: "pointer",
+  textAlign: "center" as const,
 };
 
-const unpublishButtonStyle = {
-  background: "#7f1d1d",
-  color: "#ffffff",
-  border: "1px solid #991b1b",
-  borderRadius: "10px",
-  padding: "14px 18px",
-  fontSize: "10px",
-  fontWeight: 900,
-  cursor: "pointer",
+const hintStyle = {
+  color: "#64748b",
+  fontSize: "12px",
+  lineHeight: 1.5,
+  marginTop: "14px",
 };
