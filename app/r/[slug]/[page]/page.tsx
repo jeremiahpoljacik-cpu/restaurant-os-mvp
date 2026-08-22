@@ -176,7 +176,7 @@ export default function PublicCustomPage() {
   const secondary = branding?.secondary_color || "#f5b82e";
 
   if (restaurant.theme_key === "vi-pollos-custom") {
-    const viLogo = website.logo_url || "data:image/jpeg;
+    const viLogo = website.logo_url || "";
     const orderUrl =
       "https://www.doordash.com/store/vi-pollos-clayton-41942251/";
 
