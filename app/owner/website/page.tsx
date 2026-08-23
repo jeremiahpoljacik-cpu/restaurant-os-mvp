@@ -346,21 +346,43 @@ export default function WebsiteManagerPage() {
     setMessage("Theme applied. Open the public site to review it.");
   }
 
-  async function uploadAsset(file: File | null, kind: "logo" | "hero" | "gallery") {
+  async function uploadAsset(file: File | null, kind: "logo" | "hero" | "gallery" | "video") {
     if (!file || !restaurantId) return;
 
-    if (!file.type.startsWith("image/")) {
-      setMessage("Please choose an image file.");
-      return;
-    }
+    if (kind === "video") {
+      if (!file.type.startsWith("video/")) {
+        setMessage("Please choose a video file.");
+        return;
+      }
 
-    if (file.size > 8 * 1024 * 1024) {
-      setMessage("Image must be smaller than 8 MB.");
-      return;
+      if (file.size > 40 * 1024 * 1024) {
+        setMessage("Hero video must be smaller than 40 MB.");
+        return;
+      }
+    } else {
+      if (!file.type.startsWith("image/")) {
+        setMessage("Please choose an image file.");
+        return;
+      }
+
+      if (file.size > 8 * 1024 * 1024) {
+        setMessage("Image must be smaller than 8 MB.");
+        return;
+      }
     }
 
     setUploading(kind);
-    setMessage(`${kind === "gallery" ? "Photo" : kind === "logo" ? "Logo" : "Hero image"} uploading...`);
+    setMessage(
+      `${
+        kind === "gallery"
+          ? "Photo"
+          : kind === "logo"
+          ? "Logo"
+          : kind === "video"
+          ? "Hero video"
+          : "Hero image"
+      } uploading...`
+    );
 
     try {
       const {
@@ -396,6 +418,9 @@ export default function WebsiteManagerPage() {
       } else if (kind === "hero") {
         setSettings((current) => ({ ...current, hero_image_url: result.publicUrl }));
         setMessage("Hero image uploaded and saved.");
+      } else if (kind === "video") {
+        setSettings((current) => ({ ...current, hero_video_url: result.publicUrl }));
+        setMessage("Hero video uploaded and saved.");
       } else if (result.image) {
         setSiteImages((current) =>
           [...current, result.image as SiteImage].sort(
@@ -413,10 +438,15 @@ export default function WebsiteManagerPage() {
     }
   }
 
-  async function removeSiteAsset(kind: "logo" | "hero") {
+  async function removeSiteAsset(kind: "logo" | "hero" | "video") {
     if (!restaurantId) return;
 
-    const column = kind === "logo" ? "logo_url" : "hero_image_url";
+    const column =
+      kind === "logo"
+        ? "logo_url"
+        : kind === "hero"
+        ? "hero_image_url"
+        : "hero_video_url";
 
     const { error } = await supabase
       .from("restaurant_website_settings")
@@ -433,10 +463,22 @@ export default function WebsiteManagerPage() {
 
     setSettings((current) => ({
       ...current,
-      [kind === "logo" ? "logo_url" : "hero_image_url"]: "",
+      [
+        kind === "logo"
+          ? "logo_url"
+          : kind === "hero"
+          ? "hero_image_url"
+          : "hero_video_url"
+      ]: "",
     }));
 
-    setMessage(kind === "logo" ? "Logo removed." : "Hero image removed.");
+    setMessage(
+      kind === "logo"
+        ? "Logo removed."
+        : kind === "hero"
+        ? "Hero image removed."
+        : "Hero video removed."
+    );
   }
 
   async function deleteGalleryImage(image: SiteImage) {
@@ -908,16 +950,18 @@ export default function WebsiteManagerPage() {
                 onRemove={() => removeSiteAsset("hero")}
               />
 
-              <Field
-                label="HERO VIDEO URL (OPTIONAL)"
-                value={settings.hero_video_url}
-                onChange={(value) =>
+              <VideoUpload
+                videoUrl={settings.hero_video_url}
+                disabled={Boolean(uploading)}
+                uploading={uploading === "video"}
+                onFile={(file) => uploadAsset(file, "video")}
+                onRemove={() => removeSiteAsset("video")}
+                onUrlChange={(value) =>
                   setSettings((current) => ({
                     ...current,
                     hero_video_url: value,
                   }))
                 }
-                placeholder="https://...mp4 or hosted video URL"
               />
             </section>
 
@@ -1148,6 +1192,82 @@ function Textarea({
   );
 }
 
+
+function VideoUpload({
+  videoUrl,
+  disabled,
+  uploading,
+  onFile,
+  onRemove,
+  onUrlChange,
+}: {
+  videoUrl: string;
+  disabled: boolean;
+  uploading: boolean;
+  onFile: (file: File | null) => void;
+  onRemove: () => void;
+  onUrlChange: (value: string) => void;
+}) {
+  return (
+    <div style={assetUploadCardStyle}>
+      <div>
+        <label style={labelStyle}>HERO VIDEO (OPTIONAL)</label>
+        <div style={assetHelpStyle}>
+          MP4 / MOV · up to 40 MB · muted looping background
+        </div>
+      </div>
+
+      {videoUrl && (
+        <video
+          src={videoUrl}
+          muted
+          loop
+          playsInline
+          controls
+          style={videoPreviewStyle}
+        />
+      )}
+
+      <div style={assetActionRowStyle}>
+        <label style={uploadButtonStyle}>
+          {uploading
+            ? "UPLOADING..."
+            : videoUrl
+            ? "REPLACE VIDEO"
+            : "UPLOAD HERO VIDEO"}
+          <input
+            type="file"
+            accept="video/mp4,video/quicktime,video/webm,video/*"
+            disabled={disabled}
+            style={{ display: "none" }}
+            onChange={(event) => onFile(event.target.files?.[0] || null)}
+          />
+        </label>
+
+        {videoUrl && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onRemove}
+            style={removeAssetButtonStyle}
+          >
+            REMOVE VIDEO
+          </button>
+        )}
+      </div>
+
+      <div style={{ display: "grid", gap: "7px" }}>
+        <label style={labelStyle}>OR USE A HOSTED VIDEO URL</label>
+        <input
+          value={videoUrl}
+          onChange={(event) => onUrlChange(event.target.value)}
+          placeholder="https://...mp4"
+          style={inputStyle}
+        />
+      </div>
+    </div>
+  );
+}
 
 function AssetUpload({
   label,
@@ -1438,6 +1558,14 @@ const assetHelpStyle = {
   color: "#64748b",
   fontSize: "11px",
   marginTop: "5px",
+};
+
+const videoPreviewStyle = {
+  width: "100%",
+  maxHeight: "260px",
+  objectFit: "cover" as const,
+  borderRadius: "9px",
+  background: "#02060b",
 };
 
 const assetPreviewStyle = {
