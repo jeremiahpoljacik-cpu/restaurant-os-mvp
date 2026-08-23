@@ -28,6 +28,7 @@ type WebsiteSettings = {
   hero_headline: string;
   hero_subheadline: string;
   hero_image_url: string;
+  hero_video_url: string;
   logo_url: string;
   about_title: string;
   about_body: string;
@@ -44,6 +45,7 @@ const initialSettings: WebsiteSettings = {
   hero_headline: "",
   hero_subheadline: "",
   hero_image_url: "",
+  hero_video_url: "",
   logo_url: "",
   about_title: "",
   about_body: "",
@@ -280,6 +282,7 @@ export default function WebsiteManagerPage() {
         hero_headline: websiteData.hero_headline || "",
         hero_subheadline: websiteData.hero_subheadline || "",
         hero_image_url: websiteData.hero_image_url || "",
+        hero_video_url: websiteData.hero_video_url || "",
         logo_url: websiteData.logo_url || "",
         about_title: websiteData.about_title || "",
         about_body: websiteData.about_body || "",
@@ -462,6 +465,80 @@ export default function WebsiteManagerPage() {
 
     setCustomRequest(data as CustomRequest);
     setMessage("Custom website request submitted to Restaurant OS.");
+  }
+
+
+  async function setFeaturedImage(image: SiteImage) {
+    setSettings((current) => ({
+      ...current,
+      hero_image_url: image.image_url,
+    }));
+    setMessage("Featured image selected. Click SAVE WEBSITE SETTINGS to finish.");
+  }
+
+  async function moveImage(image: SiteImage, direction: "up" | "down") {
+    const sorted = [...siteImages].sort((a, b) => a.sort_order - b.sort_order);
+    const index = sorted.findIndex((item) => item.id === image.id);
+    if (index < 0) return;
+
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= sorted.length) return;
+
+    const target = sorted[targetIndex];
+
+    const [{ error: firstError }, { error: secondError }] = await Promise.all([
+      supabase
+        .from("restaurant_site_images")
+        .update({ sort_order: target.sort_order })
+        .eq("id", image.id)
+        .eq("restaurant_id", restaurantId),
+      supabase
+        .from("restaurant_site_images")
+        .update({ sort_order: image.sort_order })
+        .eq("id", target.id)
+        .eq("restaurant_id", restaurantId),
+    ]);
+
+    if (firstError || secondError) {
+      setMessage(firstError?.message || secondError?.message || "Unable to reorder images.");
+      return;
+    }
+
+    const next = sorted.map((item) => {
+      if (item.id === image.id) return { ...item, sort_order: target.sort_order };
+      if (item.id === target.id) return { ...item, sort_order: image.sort_order };
+      return item;
+    }).sort((a, b) => a.sort_order - b.sort_order);
+
+    setSiteImages(next);
+    setMessage("Photo order updated.");
+  }
+
+  async function updateGalleryCaption(image: SiteImage, caption: string) {
+    setSiteImages((current) =>
+      current.map((item) =>
+        item.id === image.id ? { ...item, caption } : item
+      )
+    );
+  }
+
+  async function saveGalleryCaption(image: SiteImage) {
+    const current = siteImages.find((item) => item.id === image.id);
+    const { error } = await supabase
+      .from("restaurant_site_images")
+      .update({
+        caption: current?.caption || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", image.id)
+      .eq("restaurant_id", restaurantId);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Photo caption saved.");
   }
 
   async function save() {
@@ -705,9 +782,46 @@ export default function WebsiteManagerPage() {
 
           {siteImages.length > 0 && (
             <div style={galleryGridStyle}>
-              {siteImages.map((image) => (
+              {siteImages.map((image, index) => (
                 <div key={image.id} style={galleryCardStyle}>
-                  <img src={image.image_url} alt="" style={galleryImageStyle} />
+                  <img src={image.image_url} alt={image.caption || ""} style={galleryImageStyle} />
+
+                  <div style={galleryControlPanelStyle}>
+                    <div style={galleryButtonRowStyle}>
+                      <button
+                        type="button"
+                        style={galleryMiniButtonStyle}
+                        disabled={index === 0}
+                        onClick={() => moveImage(image, "up")}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        style={galleryMiniButtonStyle}
+                        disabled={index === siteImages.length - 1}
+                        onClick={() => moveImage(image, "down")}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        style={galleryFeatureButtonStyle}
+                        onClick={() => setFeaturedImage(image)}
+                      >
+                        FEATURE
+                      </button>
+                    </div>
+
+                    <input
+                      value={image.caption || ""}
+                      onChange={(event) => updateGalleryCaption(image, event.target.value)}
+                      onBlur={() => saveGalleryCaption(image)}
+                      placeholder="Photo caption"
+                      style={galleryCaptionInputStyle}
+                    />
+                  </div>
+
                   <button
                     type="button"
                     style={galleryDeleteStyle}
@@ -715,6 +829,10 @@ export default function WebsiteManagerPage() {
                   >
                     REMOVE
                   </button>
+
+                  {settings.hero_image_url === image.image_url && (
+                    <div style={featuredBadgeStyle}>FEATURED</div>
+                  )}
                 </div>
               ))}
             </div>
@@ -754,6 +872,18 @@ export default function WebsiteManagerPage() {
                 imageUrl={settings.hero_image_url}
                 disabled={Boolean(uploading)}
                 onFile={(file) => uploadAsset(file, "hero")}
+              />
+
+              <Field
+                label="HERO VIDEO URL (OPTIONAL)"
+                value={settings.hero_video_url}
+                onChange={(value) =>
+                  setSettings((current) => ({
+                    ...current,
+                    hero_video_url: value,
+                  }))
+                }
+                placeholder="https://...mp4 or hosted video URL"
               />
             </section>
 
@@ -1262,6 +1392,65 @@ const uploadButtonStyle = {
   fontSize: "10px",
   fontWeight: 900,
   cursor: "pointer",
+};
+
+const galleryControlPanelStyle = {
+  display: "grid",
+  gap: "8px",
+  padding: "10px",
+  background: "#0b1b2d",
+  borderTop: "1px solid #2d4661",
+};
+
+const galleryButtonRowStyle = {
+  display: "flex",
+  gap: "6px",
+  flexWrap: "wrap" as const,
+};
+
+const galleryMiniButtonStyle = {
+  minWidth: "34px",
+  border: "1px solid #3d5875",
+  borderRadius: "7px",
+  background: "#17314a",
+  color: "#fff",
+  fontWeight: 900,
+  padding: "7px 9px",
+  cursor: "pointer",
+};
+
+const galleryFeatureButtonStyle = {
+  marginLeft: "auto",
+  border: "1px solid #f5b82e",
+  borderRadius: "7px",
+  background: "transparent",
+  color: "#f5b82e",
+  fontWeight: 900,
+  padding: "7px 10px",
+  cursor: "pointer",
+  fontSize: "9px",
+};
+
+const galleryCaptionInputStyle = {
+  width: "100%",
+  background: "#08111f",
+  border: "1px solid #2d4661",
+  borderRadius: "7px",
+  color: "#fff",
+  padding: "9px 10px",
+  fontSize: "11px",
+};
+
+const featuredBadgeStyle = {
+  position: "absolute" as const,
+  left: "7px",
+  top: "7px",
+  background: "#f5b82e",
+  color: "#07101c",
+  borderRadius: "999px",
+  padding: "6px 8px",
+  fontSize: "8px",
+  fontWeight: 900,
 };
 
 const pageStyle = {
