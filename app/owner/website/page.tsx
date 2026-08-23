@@ -71,44 +71,107 @@ type CustomRequest = {
   requested_at: string;
 };
 
-const THEME_LIBRARY = [
+const THEME_CATEGORIES = [
   {
-    key: "taqueria-street",
-    name: "Taqueria / Street Food",
-    description: "Bold, energetic, food-first. Built for tacos, Latin street food and fast casual.",
-    swatches: ["#8B1E1E", "#F3C969", "#111111"],
+    key: "mexican",
+    name: "Mexican / Taqueria",
+    themes: [
+      {
+        key: "mex-jefe-bold",
+        name: "Jefe Bold",
+        description: "High-energy street taqueria. Massive brand moments, punchy type, late-night energy.",
+        swatches: ["#0C0C0C", "#E43A2F", "#F5C242"],
+      },
+      {
+        key: "mex-cantina-social",
+        name: "Cantina Social",
+        description: "Modern cantina with nightlife, margarita, event and reservation energy.",
+        swatches: ["#0E342F", "#F1D7A8", "#C94B3C"],
+      },
+      {
+        key: "mex-coastal-taco",
+        name: "Coastal Taco",
+        description: "Airy, lifestyle-driven, beach-club taco aesthetic with lots of photography.",
+        swatches: ["#F5F0E7", "#6E9E93", "#E89B63"],
+      },
+      {
+        key: "mex-cosmic-night",
+        name: "Cosmic Night",
+        description: "Editorial, dark, upscale Mexican dining with nightlife and event atmosphere.",
+        swatches: ["#0A0A0D", "#A62863", "#E5B94A"],
+      },
+      {
+        key: "mex-birria-street",
+        name: "Birria Street",
+        description: "Food-first, social-media-ready, bold red/orange color and oversized menu photography.",
+        swatches: ["#1A0C08", "#D63A22", "#F39A2C"],
+      },
+    ],
   },
   {
-    key: "pizza-italian",
+    key: "pizza",
     name: "Pizza / Italian",
-    description: "Warm, rustic and neighborhood-driven with strong menu presentation.",
-    swatches: ["#9F2D24", "#F5E7CE", "#163B2D"],
+    themes: [
+      {
+        key: "pizza-italian",
+        name: "Neighborhood Pizzeria",
+        description: "Warm, rustic and neighborhood-driven with strong menu presentation.",
+        swatches: ["#9F2D24", "#F5E7CE", "#163B2D"],
+      },
+    ],
   },
   {
-    key: "bbq-smokehouse",
+    key: "bbq",
     name: "BBQ / Smokehouse",
-    description: "Dark, rugged and smoky with oversized food photography.",
-    swatches: ["#241A14", "#C15B2A", "#E7D5B8"],
+    themes: [
+      {
+        key: "bbq-smokehouse",
+        name: "Smokehouse",
+        description: "Dark, rugged and smoky with oversized food photography.",
+        swatches: ["#241A14", "#C15B2A", "#E7D5B8"],
+      },
+    ],
   },
   {
-    key: "cafe-bakery",
+    key: "cafe",
     name: "Cafe / Bakery",
-    description: "Bright, welcoming and handcrafted for coffee, breakfast and baked goods.",
-    swatches: ["#6B4F3A", "#F6EFE4", "#B8875B"],
+    themes: [
+      {
+        key: "cafe-bakery",
+        name: "Cafe & Bakery",
+        description: "Bright, welcoming and handcrafted for coffee, breakfast and baked goods.",
+        swatches: ["#6B4F3A", "#F6EFE4", "#B8875B"],
+      },
+    ],
   },
   {
-    key: "upscale-dining",
+    key: "upscale",
     name: "Upscale / Fine Dining",
-    description: "Editorial, elegant and restrained for premium dining concepts.",
-    swatches: ["#111111", "#D5B46A", "#F2EEE6"],
+    themes: [
+      {
+        key: "upscale-dining",
+        name: "Editorial Dining",
+        description: "Elegant and restrained for premium dining concepts.",
+        swatches: ["#111111", "#D5B46A", "#F2EEE6"],
+      },
+    ],
   },
   {
-    key: "family-casual",
+    key: "family",
     name: "Family / Casual",
-    description: "Friendly, approachable and flexible for broad independent restaurant concepts.",
-    swatches: ["#0B3A67", "#F4B400", "#F7F1E8"],
+    themes: [
+      {
+        key: "family-casual",
+        name: "Family Casual",
+        description: "Friendly, approachable and flexible for broad independent restaurant concepts.",
+        swatches: ["#0B3A67", "#F4B400", "#F7F1E8"],
+      },
+    ],
   },
 ] as const;
+
+const THEME_LIBRARY = THEME_CATEGORIES.flatMap((category) => category.themes);
+
 
 export default function WebsiteManagerPage() {
   const [restaurantId, setRestaurantId] = useState("");
@@ -119,6 +182,7 @@ export default function WebsiteManagerPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [selectedTheme, setSelectedTheme] = useState("family-casual");
+  const [themeCategory, setThemeCategory] = useState("mexican");
   const [siteImages, setSiteImages] = useState<SiteImage[]>([]);
   const [uploading, setUploading] = useState("");
   const [customRequest, setCustomRequest] = useState<CustomRequest | null>(null);
@@ -165,6 +229,11 @@ export default function WebsiteManagerPage() {
 
     setRestaurant(restaurantData);
     setSelectedTheme(restaurantData.theme_key || "family-casual");
+    const currentThemeKey = restaurantData.theme_key || "family-casual";
+    const matchingCategory = THEME_CATEGORIES.find((category) =>
+      category.themes.some((theme) => theme.key === currentThemeKey)
+    );
+    if (matchingCategory) setThemeCategory(matchingCategory.key);
 
     const [{ data: imageData }, { data: requestData }] = await Promise.all([
       supabase
@@ -497,26 +566,44 @@ export default function WebsiteManagerPage() {
               <div style={eyebrowStyle}>DESIGN & THEME</div>
               <h2 style={quickControlTitleStyle}>Choose Your Website Style</h2>
               <p style={quickControlTextStyle}>
-                Pick a professionally built Restaurant OS theme. Your menu, logo,
-                photos, colors and content stay connected when you switch themes.
+                Choose a restaurant category, then pick from purpose-built website themes. Mexican / Taqueria launches with five premium designs now; every top category is structured to hold five.
               </p>
             </div>
 
-            <select
-              value={selectedTheme}
-              onChange={(event) => setSelectedTheme(event.target.value)}
-              style={themeSelectStyle}
-            >
-              {THEME_LIBRARY.map((theme) => (
-                <option key={theme.key} value={theme.key}>
-                  {theme.name}
-                </option>
-              ))}
-            </select>
+            <div style={{ display: "grid", gap: "8px", minWidth: "280px" }}>
+              <select
+                value={themeCategory}
+                onChange={(event) => {
+                  const nextCategory = event.target.value;
+                  setThemeCategory(nextCategory);
+                  const firstTheme = THEME_CATEGORIES.find((category) => category.key === nextCategory)?.themes[0];
+                  if (firstTheme) setSelectedTheme(firstTheme.key);
+                }}
+                style={themeSelectStyle}
+              >
+                {THEME_CATEGORIES.map((category) => (
+                  <option key={category.key} value={category.key}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedTheme}
+                onChange={(event) => setSelectedTheme(event.target.value)}
+                style={themeSelectStyle}
+              >
+                {THEME_CATEGORIES.find((category) => category.key === themeCategory)?.themes.map((theme) => (
+                  <option key={theme.key} value={theme.key}>
+                    {theme.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div style={themeGridStyle}>
-            {THEME_LIBRARY.map((theme) => {
+            {(THEME_CATEGORIES.find((category) => category.key === themeCategory)?.themes || []).map((theme) => {
               const active = selectedTheme === theme.key;
               const installed = restaurant.theme_key === theme.key && restaurant.theme_mode !== "custom";
 
