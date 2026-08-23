@@ -242,6 +242,16 @@ export default function AdminRestaurantDetailPage() {
                 VIEW SITE
               </button>
             )}
+
+            <button
+              style={domainButtonStyle}
+              onClick={() =>
+                (window.location.href = `/admin/restaurant/domain?restaurant=${restaurant.id}`)
+              }
+            >
+              DOMAIN CONTROL
+            </button>
+
             <button
               style={primaryButtonStyle}
               onClick={() =>
@@ -674,6 +684,16 @@ const buttonRowStyle = {
   gap: 9,
   flexWrap: "wrap" as const,
   marginTop: 16,
+};
+
+const domainButtonStyle = {
+  background: "#2563eb",
+  color: "#ffffff",
+  border: "1px solid #3b82f6",
+  borderRadius: "10px",
+  padding: "12px 15px",
+  fontWeight: 900,
+  cursor: "pointer",
 };
 
 const primaryButtonStyle = {
