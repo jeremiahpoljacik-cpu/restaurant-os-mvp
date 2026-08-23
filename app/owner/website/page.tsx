@@ -115,10 +115,34 @@ const THEME_CATEGORIES = [
     name: "Pizza / Italian",
     themes: [
       {
-        key: "pizza-italian",
-        name: "Neighborhood Pizzeria",
-        description: "Warm, rustic and neighborhood-driven with strong menu presentation.",
-        swatches: ["#9F2D24", "#F5E7CE", "#163B2D"],
+        key: "pizza-red-brick",
+        name: "Red Brick Classic",
+        description: "Old-school neighborhood pizzeria with bold red branding, brick energy and family-style warmth.",
+        swatches: ["#A72B22", "#F2E3C6", "#153C2E"],
+      },
+      {
+        key: "pizza-napoli-modern",
+        name: "Napoli Modern",
+        description: "Clean, modern Italian design with premium photography, soft neutrals and restrained typography.",
+        swatches: ["#F3EFE7", "#183A32", "#B53D2F"],
+      },
+      {
+        key: "pizza-slice-shop",
+        name: "Slice Shop",
+        description: "Fast, loud, youthful and urban. Built for giant slices, late nights and high-volume ordering.",
+        swatches: ["#111111", "#F4C542", "#E8472B"],
+      },
+      {
+        key: "pizza-woodfire",
+        name: "Woodfire Artisan",
+        description: "Rustic wood-fired concept with earthy tones, chef-driven storytelling and oven-first imagery.",
+        swatches: ["#2A211B", "#C56A3A", "#E7D7BC"],
+      },
+      {
+        key: "pizza-supper-club",
+        name: "Italian Supper Club",
+        description: "Moody, elegant Italian dining with rich greens, cream, wine tones and reservation energy.",
+        swatches: ["#102B24", "#E7D7B4", "#7A2635"],
       },
     ],
   },
