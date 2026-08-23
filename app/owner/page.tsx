@@ -52,15 +52,40 @@ export default function OwnerDashboardPage() {
       return;
     }
 
-    const { data, error } = await supabase
+    let data: Restaurant | null = null;
+
+    const { data: ownedRestaurant, error } = await supabase
       .from("restaurants")
       .select("*")
       .eq("id", id)
       .eq("owner_user_id", user.id)
       .maybeSingle();
 
-    if (error || !data) {
-      setMessage(error?.message || "Restaurant not found.");
+    if (!error && ownedRestaurant) {
+      data = ownedRestaurant as Restaurant;
+    } else {
+      const { data: adminRow } = await supabase
+        .from("platform_admins")
+        .select("user_id,active")
+        .eq("user_id", user.id)
+        .eq("active", true)
+        .maybeSingle();
+
+      if (adminRow) {
+        const { data: adminRestaurant, error: adminError } = await supabase
+          .from("restaurants")
+          .select("*")
+          .eq("id", id)
+          .maybeSingle();
+
+        if (!adminError && adminRestaurant) {
+          data = adminRestaurant as Restaurant;
+        }
+      }
+    }
+
+    if (!data) {
+      setMessage(error?.message || "Restaurant not found or access denied.");
       setLoading(false);
       return;
     }
@@ -315,6 +340,16 @@ export default function OwnerDashboardPage() {
         </header>
 
         {message && <div style={messageStyle}>{message}</div>}
+
+        <div style={adminViewBannerStyle}>
+          SUPER ADMIN VIEW · Managing {restaurant.name}
+          <button
+            style={adminViewButtonStyle}
+            onClick={() => (window.location.href = `/admin/restaurant?restaurant=${restaurant.id}`)}
+          >
+            RETURN TO ADMIN ACCOUNT
+          </button>
+        </div>
 
         <section style={restaurantPanelStyle}>
           <div>
@@ -594,6 +629,34 @@ function FlowStep({ number, text }: { number: string; text: string }) {
 function FlowArrow() {
   return <div style={flowArrowStyle}>→</div>;
 }
+
+const adminViewBannerStyle = {
+  background: "#173b2b",
+  border: "1px solid #2f7a58",
+  color: "#b7f7d0",
+  borderRadius: "12px",
+  padding: "10px 12px",
+  marginBottom: "14px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "10px",
+  flexWrap: "wrap" as const,
+  fontSize: "10px",
+  fontWeight: 900,
+  letterSpacing: "1px",
+};
+
+const adminViewButtonStyle = {
+  background: "#22c55e",
+  color: "#052e16",
+  border: 0,
+  borderRadius: "8px",
+  padding: "8px 10px",
+  fontSize: "9px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
 
 const pageStyle = {
   minHeight: "100vh",
