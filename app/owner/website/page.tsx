@@ -327,7 +327,7 @@ export default function WebsiteManagerPage() {
       .from("restaurants")
       .update({
         theme_key: themeKey,
-        theme_mode: "standard",
+        theme_mode: "template",
       })
       .eq("id", restaurantId);
 
@@ -338,7 +338,7 @@ export default function WebsiteManagerPage() {
 
     setSelectedTheme(themeKey);
     setRestaurant((current) =>
-      current ? { ...current, theme_key: themeKey, theme_mode: "standard" } : current
+      current ? { ...current, theme_key: themeKey, theme_mode: "template" } : current
     );
     setMessage("Theme applied. Open the public site to review it.");
   }
