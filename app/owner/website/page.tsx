@@ -168,7 +168,7 @@ const THEME_CATEGORIES = [
       },
     ],
   },
-] as const;
+];
 
 const THEME_LIBRARY = THEME_CATEGORIES.flatMap((category) => category.themes);
 
