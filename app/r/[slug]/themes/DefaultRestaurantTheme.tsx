@@ -33,6 +33,7 @@ type Website = {
   hero_headline: string | null;
   hero_subheadline: string | null;
   hero_image_url: string | null;
+  hero_video_url?: string | null;
   logo_url: string | null;
   about_title: string | null;
   about_body: string | null;
@@ -80,6 +81,86 @@ const MEXICAN_KEYS = new Set([
   "mex-cosmic-night",
   "mex-birria-street",
 ]);
+
+const THEME_MEDIA: Record<string, { images: string[]; video?: string }> = {
+  "mex-jefe-bold": {
+    images: [
+      "https://images.unsplash.com/photo-1613514785940-daed07799d9b?auto=format&fit=crop&w=1600&q=80",
+      "https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: "https://player.vimeo.com/external/434045526.sd.mp4?s=3d0ef4f6f9c3b65b0f59f88e66847e6fe4ed291a&profile_id=139&oauth2_token_id=57447761"
+  },
+  "mex-cantina-social": {
+    images: [
+      "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1600&q=80",
+      "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1559329007-40df8a9345d8?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: "https://player.vimeo.com/external/477844741.sd.mp4?s=7b584efb5b10a7cc8ca2cdca5e451684f8ec4102&profile_id=139&oauth2_token_id=57447761"
+  },
+  "mex-coastal-taco": {
+    images: [
+      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=80",
+      "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: "https://player.vimeo.com/external/393180998.sd.mp4?s=4a0292accce44bfb95f87f5a2d7f5f42cc70d879&profile_id=139&oauth2_token_id=57447761"
+  },
+  "mex-cosmic-night": {
+    images: [
+      "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=80",
+      "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1552566626-f8b1dfbcbcb9?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1543007630-9710e4a00a20?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: "https://player.vimeo.com/external/368763162.sd.mp4?s=e4cc7195ef3cc0cc15e856d77bb957f2e4ddf3dd&profile_id=139&oauth2_token_id=57447761"
+  },
+  "mex-birria-street": {
+    images: [
+      "https://images.unsplash.com/photo-1604467715878-83e57e8bc129?auto=format&fit=crop&w=1600&q=80",
+      "https://images.unsplash.com/photo-1615870216519-2f9fa575fa5c?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1624300629298-e9de39c13be5?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1599974579688-8dbdd335c77f?auto=format&fit=crop&w=1200&q=80"
+    ],
+    video: "https://player.vimeo.com/external/434045526.sd.mp4?s=3d0ef4f6f9c3b65b0f59f88e66847e6fe4ed291a&profile_id=139&oauth2_token_id=57447761"
+  }
+};
+
+function themeMedia(themeKey: string | null | undefined) {
+  return THEME_MEDIA[themeKey || ""] || THEME_MEDIA["mex-cantina-social"];
+}
+
+function getHeroImage(data: SiteData, themeKey: string) {
+  return data.website.hero_image_url || data.images[0]?.image_url || themeMedia(themeKey).images[0] || "";
+}
+
+function getThemeImage(data: SiteData, themeKey: string, index: number) {
+  if (index === 0 && data.website.hero_image_url) return data.website.hero_image_url;
+  return data.images[index]?.image_url || themeMedia(themeKey).images[index] || themeMedia(themeKey).images[index % Math.max(themeMedia(themeKey).images.length, 1)] || "";
+}
+
+function getHeroVideo(data: SiteData, themeKey: string) {
+  return (data.website as any)?.hero_video_url || themeMedia(themeKey).video || "";
+}
+
+function PhotoMosaic({ data, themeKey, bg, cardBg, rounded = 24 }: { data: SiteData; themeKey: string; bg: string; cardBg: string; rounded?: number }) {
+  const imgs = [0, 1, 2].map((i) => getThemeImage(data, themeKey, i));
+  return (
+    <section style={{ background: bg, padding: "26px 26px 12px" }}>
+      <div className="ros-three" style={{ maxWidth: 1180, margin: "0 auto", display: "grid", gridTemplateColumns: "1.2fr .8fr .8fr", gap: 14 }}>
+        {imgs.map((src, idx) => (
+          <div key={idx} style={{ background: cardBg, borderRadius: rounded, overflow: "hidden", minHeight: idx === 0 ? 380 : 280 }}>
+            {src ? <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : null}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default function DefaultRestaurantTheme() {
   const params = useParams<{ slug: string }>();
@@ -256,13 +337,12 @@ function HeroActions({ data, primary, secondary, darkText = false }: { data: Sit
   );
 }
 
-function FeaturedGrid({ data, cardBg, text, muted, accent, imageHeight = 210, radius = 0 }: { data: SiteData; cardBg: string; text: string; muted: string; accent: string; imageHeight?: number; radius?: number }) {
-  const photos = data.images;
+function FeaturedGrid({ data, themeKey, cardBg, text, muted, accent, imageHeight = 210, radius = 0 }: { data: SiteData; themeKey: string; cardBg: string; text: string; muted: string; accent: string; imageHeight?: number; radius?: number }) {
   return (
     <div className="ros-three" style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 16 }}>
       {data.items.slice(0, 6).map((item, index) => (
         <article key={item.id} style={{ background: cardBg, color: text, borderRadius: radius, overflow: "hidden", border: "1px solid rgba(127,127,127,.16)" }}>
-          {photos[index]?.image_url && <img src={photos[index].image_url} alt="" style={{ width: "100%", height: imageHeight, objectFit: "cover" }} />}
+          {getThemeImage(data, themeKey, index + 1) && <img src={getThemeImage(data, themeKey, index + 1)} alt="" style={{ width: "100%", height: imageHeight, objectFit: "cover" }} />}
           <div style={{ padding: 22 }}>
             <div style={{ display: "flex", gap: 12, alignItems: "baseline" }}>
               <strong style={{ fontSize: 20 }}>{item.name}</strong>
@@ -303,7 +383,8 @@ function VisitBand({ data, bg, text, accent }: { data: SiteData; bg: string; tex
 
 function JefeBold({ data }: { data: SiteData }) {
   const { restaurant, branding, website } = data;
-  const hero = website.hero_image_url || data.images[0]?.image_url;
+  const hero = getHeroImage(data, "mex-jefe-bold");
+  const heroVideo = getHeroVideo(data, "mex-jefe-bold");
   const red = branding?.primary_color || "#E43A2F";
   const yellow = branding?.secondary_color || "#F4C443";
 
@@ -324,7 +405,8 @@ function JefeBold({ data }: { data: SiteData }) {
           <HeroActions data={data} primary={red} secondary={yellow} darkText />
         </div>
 
-        <div style={{ minHeight: 650, background: hero ? `url("${hero}") center/cover` : `linear-gradient(145deg,${red},${yellow})`, position: "relative" }}>
+        <div style={{ minHeight: 650, background: hero ? `url("${hero}") center/cover` : `linear-gradient(145deg,${red},${yellow})`, position: "relative", overflow: "hidden" }}>
+          {heroVideo ? <video autoPlay muted loop playsInline src={heroVideo} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} /> : null}
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg,#0A0A0A 0%,transparent 24%)" }} />
           <div style={{ position: "absolute", right: 24, bottom: 24, background: yellow, color: "#111", padding: "12px 16px", fontSize: 11, fontWeight: 950 }}>OPEN 7 DAYS A WEEK</div>
         </div>
@@ -347,7 +429,7 @@ function JefeBold({ data }: { data: SiteData }) {
               {website.about_body || branding?.short_description || "Tell your story with personality, confidence and a reason for people to come hungry."}
             </p>
           </div>
-          {data.images[1]?.image_url && <img src={data.images[1].image_url} alt="" style={{ width: "100%", height: 430, objectFit: "cover", border: `8px solid ${red}` }} />}
+          {getThemeImage(data, "mex-jefe-bold", 1) && <img src={getThemeImage(data, "mex-jefe-bold", 1)} alt="" style={{ width: "100%", height: 430, objectFit: "cover", border: `8px solid ${red}` }} />}
         </div>
       </section>
 
@@ -356,11 +438,12 @@ function JefeBold({ data }: { data: SiteData }) {
           <div style={{ maxWidth: 1180, margin: "0 auto" }}>
             <div style={{ color: yellow, fontSize: 11, fontWeight: 950, letterSpacing: 2.4 }}>WHAT ARE YOU CRAVING?</div>
             <h2 style={{ margin: "10px 0 30px", fontFamily: 'Impact,Haettenschweiler,"Arial Narrow Bold",sans-serif', fontSize: "clamp(50px,6vw,82px)", textTransform: "uppercase", lineHeight: .9, fontWeight: 400 }}>Fan Favorites</h2>
-            <FeaturedGrid data={data} cardBg="#1A1A1A" text="#fff" muted="#BBB" accent={yellow} imageHeight={230} />
+            <FeaturedGrid data={data} themeKey="mex-jefe-bold" cardBg="#1A1A1A" text="#fff" muted="#BBB" accent={yellow} imageHeight={230} />
           </div>
         </section>
       )}
 
+      <PhotoMosaic data={data} themeKey="mex-jefe-bold" bg="#F5E6C8" cardBg="#fff1" />
       <VisitBand data={data} bg={red} text="#fff" accent={yellow} />
       <Footer data={data} bg="#050505" color="#aaa" />
     </main>
@@ -373,7 +456,8 @@ function JefeBold({ data }: { data: SiteData }) {
 
 function CantinaSocial({ data }: { data: SiteData }) {
   const { restaurant, branding, website } = data;
-  const hero = website.hero_image_url || data.images[0]?.image_url;
+  const hero = getHeroImage(data, "mex-cantina-social");
+  const heroVideo = getHeroVideo(data, "mex-cantina-social");
   const green = branding?.primary_color || "#163D36";
   const coral = branding?.secondary_color || "#E15B4D";
 
@@ -382,7 +466,9 @@ function CantinaSocial({ data }: { data: SiteData }) {
       <SharedGlobal />
       <Header data={data} bg={green} color="#fff" accent={coral} outline />
 
-      <section style={{ minHeight: 650, color: "#fff", position: "relative", display: "flex", alignItems: "end", background: hero ? `linear-gradient(90deg,rgba(12,46,40,.84),rgba(12,46,40,.18)),url("${hero}") center/cover` : `linear-gradient(135deg,${green},#0D1E1A)` }}>
+      <section style={{ minHeight: 650, color: "#fff", position: "relative", display: "flex", alignItems: "end", background: hero ? `linear-gradient(90deg,rgba(12,46,40,.84),rgba(12,46,40,.18)),url("${hero}") center/cover` : `linear-gradient(135deg,${green},#0D1E1A)`, overflow: "hidden" }}>
+        {heroVideo ? <video autoPlay muted loop playsInline src={heroVideo} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: .65 }} /> : null}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg,rgba(12,46,40,.84),rgba(12,46,40,.20))" }} />
         <div style={{ maxWidth: 1180, width: "100%", margin: "0 auto", padding: "90px 28px 72px" }}>
           <div style={{ color: "#F2D3A2", fontSize: 11, fontWeight: 950, letterSpacing: 3 }}>TACOS · MARGARITAS · GOOD NIGHTS</div>
           <h1 style={{ maxWidth: 850, margin: "14px 0 14px", fontFamily: 'Georgia,"Times New Roman",serif', fontSize: "clamp(64px,8vw,112px)", lineHeight: .92, fontWeight: 600 }}>
@@ -401,7 +487,7 @@ function CantinaSocial({ data }: { data: SiteData }) {
 
       <section id="story" style={{ background: "#F3E4C9" }}>
         <div className="ros-two" style={{ maxWidth: 1180, margin: "0 auto", padding: "80px 28px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 38, alignItems: "center" }}>
-          {data.images[1]?.image_url && <img src={data.images[1].image_url} alt="" style={{ width: "100%", height: 480, objectFit: "cover", borderRadius: 180 }} />}
+          {getThemeImage(data, "mex-cantina-social", 1) && <img src={getThemeImage(data, "mex-cantina-social", 1)} alt="" style={{ width: "100%", height: 480, objectFit: "cover", borderRadius: 180 }} />}
           <div>
             <div style={{ color: coral, fontSize: 11, fontWeight: 950, letterSpacing: 2.6 }}>EVERY NIGHT CAN BE TACO NIGHT</div>
             <h2 style={{ margin: "12px 0 18px", fontFamily: 'Georgia,"Times New Roman",serif', fontSize: "clamp(44px,5vw,68px)", lineHeight: 1, fontWeight: 500 }}>{website.about_title || "Mexican Soul. Social Energy."}</h2>
@@ -415,11 +501,12 @@ function CantinaSocial({ data }: { data: SiteData }) {
           <div style={{ maxWidth: 1180, margin: "0 auto" }}>
             <div style={{ color: "#F0D6A8", fontSize: 11, fontWeight: 950, letterSpacing: 2.4 }}>FROM THE KITCHEN</div>
             <h2 style={{ margin: "10px 0 30px", fontFamily: 'Georgia,"Times New Roman",serif', fontSize: "clamp(46px,5vw,72px)", fontWeight: 500 }}>Food Worth Gathering Around</h2>
-            <FeaturedGrid data={data} cardBg="#214E45" text="#fff" muted="#D1DDD8" accent="#F0D6A8" imageHeight={220} radius={18} />
+            <FeaturedGrid data={data} themeKey="mex-cantina-social" cardBg="#214E45" text="#fff" muted="#D1DDD8" accent="#F0D6A8" imageHeight={220} radius={18} />
           </div>
         </section>
       )}
 
+      <PhotoMosaic data={data} themeKey="mex-cantina-social" bg="#F3E4C9" cardBg="#fff4" rounded={26} />
       <VisitBand data={data} bg="#0C2823" text="#fff" accent="#F0D6A8" />
       <Footer data={data} bg="#071813" color="#B8C8C2" />
     </main>
@@ -432,7 +519,8 @@ function CantinaSocial({ data }: { data: SiteData }) {
 
 function CoastalTaco({ data }: { data: SiteData }) {
   const { restaurant, branding, website } = data;
-  const hero = website.hero_image_url || data.images[0]?.image_url;
+  const hero = getHeroImage(data, "mex-coastal-taco");
+  const heroVideo = getHeroVideo(data, "mex-coastal-taco");
   const teal = branding?.primary_color || "#6B9C92";
   const peach = branding?.secondary_color || "#E39A64";
 
@@ -441,8 +529,10 @@ function CoastalTaco({ data }: { data: SiteData }) {
       <SharedGlobal />
       <Header data={data} bg="#FBF9F4" color="#213831" accent={teal} compact outline />
 
-      <section style={{ minHeight: 720, display: "grid", placeItems: "center", textAlign: "center", padding: "80px 24px", color: "#fff", background: hero ? `linear-gradient(rgba(26,56,49,.30),rgba(26,56,49,.30)),url("${hero}") center/cover` : `linear-gradient(135deg,${teal},#B9D1CA)` }}>
-        <div style={{ maxWidth: 900 }}>
+      <section style={{ minHeight: 720, display: "grid", placeItems: "center", textAlign: "center", padding: "80px 24px", color: "#fff", background: hero ? `linear-gradient(rgba(26,56,49,.30),rgba(26,56,49,.30)),url("${hero}") center/cover` : `linear-gradient(135deg,${teal},#B9D1CA)`, position: "relative", overflow: "hidden" }}>
+        {heroVideo ? <video autoPlay muted loop playsInline src={heroVideo} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: .65 }} /> : null}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(rgba(26,56,49,.30),rgba(26,56,49,.30))" }} />
+        <div style={{ maxWidth: 900, position: "relative", zIndex: 2 }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 3, textTransform: "lowercase" }}>tacos · bowls · good vibes</div>
           <h1 style={{ margin: "18px 0", fontFamily: 'Georgia,"Times New Roman",serif', fontSize: "clamp(64px,8vw,108px)", lineHeight: .95, fontWeight: 500 }}>
             {website.hero_headline || restaurant.name}
@@ -454,7 +544,7 @@ function CoastalTaco({ data }: { data: SiteData }) {
 
       <section style={{ background: "#F7F4EE" }}>
         <div className="ros-three" style={{ maxWidth: 1180, margin: "0 auto", padding: "30px 28px", display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
-          {data.images.slice(1,4).map((image, index) => <img key={image.id} src={image.image_url} alt="" style={{ width: "100%", height: index === 1 ? 390 : 330, objectFit: "cover", borderRadius: 180 }} />)}
+          {[1,2,3].map((imageIndex, index) => { const src = getThemeImage(data, "mex-coastal-taco", imageIndex); return src ? <img key={imageIndex} src={src} alt="" style={{ width: "100%", height: index === 1 ? 390 : 330, objectFit: "cover", borderRadius: 180 }} /> : null; })}
         </div>
       </section>
 
@@ -471,7 +561,7 @@ function CoastalTaco({ data }: { data: SiteData }) {
           <div style={{ maxWidth: 1180, margin: "0 auto" }}>
             <div style={{ color: teal, fontSize: 11, fontWeight: 950, letterSpacing: 2.4 }}>FAVORITES</div>
             <h2 style={{ margin: "10px 0 30px", fontFamily: 'Georgia,"Times New Roman",serif', fontSize: "clamp(44px,5vw,68px)", fontWeight: 500 }}>Tacos + Not Tacos</h2>
-            <FeaturedGrid data={data} cardBg="#FBF9F4" text="#213831" muted="#708079" accent={peach} imageHeight={210} radius={22} />
+            <FeaturedGrid data={data} themeKey="mex-coastal-taco" cardBg="#FBF9F4" text="#213831" muted="#708079" accent={peach} imageHeight={210} radius={22} />
           </div>
         </section>
       )}
@@ -488,7 +578,8 @@ function CoastalTaco({ data }: { data: SiteData }) {
 
 function CosmicNight({ data }: { data: SiteData }) {
   const { restaurant, branding, website } = data;
-  const hero = website.hero_image_url || data.images[0]?.image_url;
+  const hero = getHeroImage(data, "mex-cosmic-night");
+  const heroVideo = getHeroVideo(data, "mex-cosmic-night");
   const magenta = branding?.primary_color || "#A72D68";
   const gold = branding?.secondary_color || "#DDBB63";
 
@@ -498,6 +589,8 @@ function CosmicNight({ data }: { data: SiteData }) {
       <Header data={data} bg="#08080B" color="#fff" accent={magenta} outline />
 
       <section style={{ minHeight: 760, position: "relative", display: "flex", alignItems: "end", overflow: "hidden", background: hero ? `linear-gradient(0deg,rgba(8,8,11,.86),rgba(8,8,11,.16)),url("${hero}") center/cover` : `radial-gradient(circle at 70% 30%,${magenta},#09090D 48%)` }}>
+        {heroVideo ? <video autoPlay muted loop playsInline src={heroVideo} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: .55 }} /> : null}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(0deg,rgba(8,8,11,.86),rgba(8,8,11,.22))" }} />
         <div style={{ maxWidth: 1180, width: "100%", margin: "0 auto", padding: "100px 28px 72px", position: "relative", zIndex: 2 }}>
           <div style={{ color: gold, fontSize: 11, fontWeight: 900, letterSpacing: 4 }}>DINNER · COCKTAILS · AFTER DARK</div>
           <h1 style={{ maxWidth: 900, margin: "16px 0", fontFamily: 'Georgia,"Times New Roman",serif', fontSize: "clamp(66px,9vw,126px)", lineHeight: .88, fontWeight: 500, letterSpacing: -2 }}>
@@ -521,7 +614,7 @@ function CosmicNight({ data }: { data: SiteData }) {
             <h2 style={{ margin: "12px 0 20px", fontFamily: 'Georgia,"Times New Roman",serif', fontSize: "clamp(46px,5vw,74px)", lineHeight: .98, fontWeight: 500 }}>{website.about_title || "Come for Dinner. Stay for the Energy."}</h2>
             <p style={{ color: "#B7B0B6", fontSize: 17, lineHeight: 1.85 }}>{website.about_body || branding?.short_description || "An expressive dining room built around bold food, cocktails, music and a night worth remembering."}</p>
           </div>
-          {data.images[1]?.image_url && <img src={data.images[1].image_url} alt="" style={{ width: "100%", height: 500, objectFit: "cover", border: `1px solid ${gold}66` }} />}
+          {getThemeImage(data, "mex-cosmic-night", 1) && <img src={getThemeImage(data, "mex-cosmic-night", 1)} alt="" style={{ width: "100%", height: 500, objectFit: "cover", border: `1px solid ${gold}66` }} />}
         </div>
       </section>
 
@@ -530,11 +623,12 @@ function CosmicNight({ data }: { data: SiteData }) {
           <div style={{ maxWidth: 1180, margin: "0 auto" }}>
             <div style={{ color: gold, fontSize: 11, fontWeight: 900, letterSpacing: 2.8 }}>FROM THE MENU</div>
             <h2 style={{ margin: "10px 0 30px", fontFamily: 'Georgia,"Times New Roman",serif', fontSize: "clamp(44px,5vw,70px)", fontWeight: 500 }}>A Little Dangerous. Very Delicious.</h2>
-            <FeaturedGrid data={data} cardBg="#0E0E13" text="#F6F1E7" muted="#AAA4AA" accent={gold} imageHeight={240} />
+            <FeaturedGrid data={data} themeKey="mex-cosmic-night" cardBg="#0E0E13" text="#F6F1E7" muted="#AAA4AA" accent={gold} imageHeight={240} />
           </div>
         </section>
       )}
 
+      <PhotoMosaic data={data} themeKey="mex-cosmic-night" bg="#09090D" cardBg="#15151D" rounded={6} />
       <VisitBand data={data} bg={magenta} text="#fff" accent={gold} />
       <Footer data={data} bg="#050506" color="#8C858B" />
     </main>
@@ -547,7 +641,8 @@ function CosmicNight({ data }: { data: SiteData }) {
 
 function BirriaStreet({ data }: { data: SiteData }) {
   const { restaurant, branding, website } = data;
-  const hero = website.hero_image_url || data.images[0]?.image_url;
+  const hero = getHeroImage(data, "mex-birria-street");
+  const heroVideo = getHeroVideo(data, "mex-birria-street");
   const red = branding?.primary_color || "#D83D22";
   const orange = branding?.secondary_color || "#F49A2C";
 
@@ -565,7 +660,9 @@ function BirriaStreet({ data }: { data: SiteData }) {
           <p style={{ color: "#F2D6CB", fontSize: 18, lineHeight: 1.65 }}>{website.hero_subheadline || branding?.tagline || "Big flavor, crispy edges, molten cheese and no apologies."}</p>
           <HeroActions data={data} primary={red} secondary={orange} darkText />
         </div>
-        <div style={{ minHeight: 680, position: "relative", background: hero ? `url("${hero}") center/cover` : `linear-gradient(145deg,${red},${orange})` }}>
+        <div style={{ minHeight: 680, position: "relative", background: hero ? `url("${hero}") center/cover` : `linear-gradient(145deg,${red},${orange})`, overflow: "hidden" }}>
+          {heroVideo ? <video autoPlay muted loop playsInline src={heroVideo} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: .82 }} /> : null}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(0deg,rgba(0,0,0,.16),rgba(0,0,0,.16))" }} />
           <div style={{ position: "absolute", left: 20, bottom: 20, background: "#fff", color: red, padding: "12px 16px", fontWeight: 950, transform: "rotate(-2deg)" }}>GET IT WHILE IT'S HOT</div>
         </div>
       </section>
@@ -579,14 +676,14 @@ function BirriaStreet({ data }: { data: SiteData }) {
           <div style={{ maxWidth: 1180, margin: "0 auto" }}>
             <div style={{ color: red, fontSize: 11, fontWeight: 950, letterSpacing: 2.4 }}>THE FOOD IS THE CONTENT</div>
             <h2 style={{ margin: "10px 0 30px", fontFamily: 'Impact,Haettenschweiler,"Arial Narrow Bold",sans-serif', fontSize: "clamp(52px,6vw,86px)", lineHeight: .9, textTransform: "uppercase", fontWeight: 400 }}>Built to Crave</h2>
-            <FeaturedGrid data={data} cardBg="#FFF7EC" text="#23110C" muted="#6B554B" accent={red} imageHeight={250} radius={12} />
+            <FeaturedGrid data={data} themeKey="mex-birria-street" cardBg="#FFF7EC" text="#23110C" muted="#6B554B" accent={red} imageHeight={250} radius={12} />
           </div>
         </section>
       )}
 
       <section id="story" style={{ background: "#170B08" }}>
         <div className="ros-two" style={{ maxWidth: 1180, margin: "0 auto", padding: "84px 28px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, alignItems: "center" }}>
-          {data.images[2]?.image_url && <img src={data.images[2].image_url} alt="" style={{ width: "100%", height: 470, objectFit: "cover", borderRadius: 14 }} />}
+          {getThemeImage(data, "mex-birria-street", 2) && <img src={getThemeImage(data, "mex-birria-street", 2)} alt="" style={{ width: "100%", height: 470, objectFit: "cover", borderRadius: 14 }} />}
           <div>
             <div style={{ color: orange, fontSize: 11, fontWeight: 950, letterSpacing: 2.4 }}>WHY PEOPLE COME BACK</div>
             <h2 style={{ margin: "10px 0 18px", fontFamily: 'Impact,Haettenschweiler,"Arial Narrow Bold",sans-serif', fontSize: "clamp(50px,6vw,82px)", lineHeight: .9, textTransform: "uppercase", fontWeight: 400 }}>{website.about_title || "Flavor That Hits Hard."}</h2>
@@ -595,6 +692,7 @@ function BirriaStreet({ data }: { data: SiteData }) {
         </div>
       </section>
 
+      <PhotoMosaic data={data} themeKey="mex-birria-street" bg="#170B08" cardBg="#24100B" rounded={14} />
       <VisitBand data={data} bg={red} text="#fff" accent={orange} />
       <Footer data={data} bg="#080403" color="#A98C80" />
     </main>
@@ -645,7 +743,7 @@ function StandardFallback({ data, themeKey }: { data: SiteData; themeKey: string
           <div style={{ maxWidth:1180, margin:"0 auto" }}>
             <div style={{ color:primary, fontSize:11, fontWeight:950, letterSpacing:2.4 }}>FEATURED FAVORITES</div>
             <h2 style={{ margin:"10px 0 30px", fontFamily:c.heading, fontSize:"clamp(44px,5vw,70px)" }}>Our Menu</h2>
-            <FeaturedGrid data={data} cardBg={c.surface} text={c.text} muted={c.muted} accent={primary} imageHeight={210} radius={c.radius} />
+            <FeaturedGrid data={data} themeKey={themeKey} cardBg={c.surface} text={c.text} muted={c.muted} accent={primary} imageHeight={210} radius={c.radius} />
           </div>
         </section>
       )}
