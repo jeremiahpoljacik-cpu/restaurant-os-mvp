@@ -83,7 +83,7 @@ const copy = {
   }
 };
 
-export default function ViPollosFoodMenuPage() {
+function ViPollosFoodMenuPage() {
   const params = useParams<{ slug: string }>();
   const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
 
@@ -392,3 +392,148 @@ export default function ViPollosFoodMenuPage() {
     </main>
   );
 }
+
+
+function StandardFoodMenuPage({ slug }: { slug: string }) {
+  const [restaurant, setRestaurant] = useState<any>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch(`/api/public/menu?slug=${encodeURIComponent(slug)}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Unable to load menu.");
+        setLoading(false);
+        return;
+      }
+
+      setRestaurant(data.restaurant || null);
+      setCategories(data.categories || []);
+      setItems(data.items || []);
+      setLoading(false);
+    }
+
+    load();
+  }, [slug]);
+
+  if (loading) {
+    return <main style={{minHeight:"100vh",background:"#08111f",color:"#fff",display:"grid",placeItems:"center",fontFamily:"Arial"}}>Loading menu...</main>;
+  }
+
+  if (error || !restaurant) {
+    return <main style={{minHeight:"100vh",background:"#08111f",color:"#fff",display:"grid",placeItems:"center",fontFamily:"Arial"}}>{error || "Menu unavailable."}</main>;
+  }
+
+  const grouped = categories.map((category:any) => ({
+    ...category,
+    items: items.filter((item:any) => item.category_id === category.id),
+  }));
+
+  return (
+    <main style={{minHeight:"100vh",background:"#f6efe5",color:"#10253d",fontFamily:"Arial,Helvetica,sans-serif"}}>
+      <header style={{background:"#0b2037",color:"#fff"}}>
+        <div style={{maxWidth:1200,margin:"0 auto",padding:"20px 24px",display:"flex",alignItems:"center",gap:20}}>
+          <a href={`/r/${slug}`} style={{fontSize:22,fontWeight:900,textDecoration:"none",color:"#fff"}}>
+            {restaurant.name}
+          </a>
+          <nav style={{marginLeft:"auto",display:"flex",gap:18,fontSize:11,fontWeight:900}}>
+            <a href={`/r/${slug}`} style={{color:"#fff",textDecoration:"none"}}>HOME</a>
+            <a href={`/r/${slug}/food-menu`} style={{color:"#f4b400",textDecoration:"none"}}>MENU</a>
+            <a href={`/r/${slug}/offers`} style={{color:"#fff",textDecoration:"none"}}>OFFERS</a>
+            <a href={`/r/${slug}/vip`} style={{color:"#fff",textDecoration:"none"}}>VIP</a>
+          </nav>
+        </div>
+      </header>
+
+      <section style={{background:"#103a63",color:"#fff",padding:"70px 24px"}}>
+        <div style={{maxWidth:1200,margin:"0 auto"}}>
+          <div style={{color:"#f4b400",fontSize:11,fontWeight:900,letterSpacing:2}}>OUR MENU</div>
+          <h1 style={{fontSize:"clamp(52px,8vw,90px)",margin:"10px 0 8px",lineHeight:.95}}>
+            {restaurant.name}
+          </h1>
+          <p style={{margin:0,color:"#dbe7f2",fontSize:18}}>Fresh menu items and current pricing.</p>
+        </div>
+      </section>
+
+      <section style={{maxWidth:1200,margin:"0 auto",padding:"46px 24px 80px"}}>
+        {grouped.length === 0 ? (
+          <div style={{padding:30,background:"#fff",borderRadius:14}}>No menu categories yet.</div>
+        ) : (
+          <div style={{display:"grid",gap:22}}>
+            {grouped.map((category:any) => (
+              <section key={category.id} style={{background:"#fff",border:"1px solid #e4d7c4",borderRadius:14,overflow:"hidden"}}>
+                <div style={{background:"#0b2037",color:"#fff",padding:"18px 22px",display:"flex",justifyContent:"space-between",gap:20}}>
+                  <h2 style={{margin:0,fontSize:26}}>{category.name}</h2>
+                  <span style={{color:"#f4b400",fontSize:11,fontWeight:900}}>{category.items.length} ITEMS</span>
+                </div>
+
+                <div>
+                  {category.items.length === 0 ? (
+                    <div style={{padding:22,color:"#6b7280"}}>No items in this category yet.</div>
+                  ) : (
+                    category.items.map((item:any) => (
+                      <article key={item.id} style={{padding:"20px 22px",borderBottom:"1px solid #eee3d4"}}>
+                        <div style={{display:"flex",gap:18,alignItems:"baseline"}}>
+                          <strong style={{fontSize:18}}>{item.name}</strong>
+                          {item.featured && <span style={{fontSize:9,fontWeight:900,color:"#b97800"}}>FEATURED</span>}
+                          {item.price !== null && item.price !== undefined && (
+                            <strong style={{marginLeft:"auto",color:"#0b5f9f"}}>${Number(item.price).toFixed(2)}</strong>
+                          )}
+                        </div>
+                        {item.description && <p style={{margin:"8px 0 0",color:"#687585",lineHeight:1.55}}>{item.description}</p>}
+                      </article>
+                    ))
+                  )}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
+
+export default function RestaurantFoodMenuPage() {
+  const params = useParams<{ slug: string }>();
+  const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
+
+  const [themeKey, setThemeKey] = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    if (!slug) return;
+
+    async function checkTheme() {
+      const { data } = await supabase
+        .from("restaurants")
+        .select("theme_key")
+        .eq("slug", slug)
+        .maybeSingle();
+
+      setThemeKey(data?.theme_key || null);
+      setChecking(false);
+    }
+
+    checkTheme();
+  }, [slug]);
+
+  if (!slug || checking) {
+    return <main style={{minHeight:"100vh",background:"#08111f"}} />;
+  }
+
+  if (themeKey === "vi-pollos-custom") {
+    return <ViPollosFoodMenuPage />;
+  }
+
+  return <StandardFoodMenuPage slug={slug} />;
+}
+
