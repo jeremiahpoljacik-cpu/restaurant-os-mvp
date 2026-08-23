@@ -413,6 +413,16 @@ function StandardFoodMenuPage({ slug, themeKey }: { slug: string; themeKey: stri
         return { bg:"#09090D", surface:"#15151D", nav:"#08080B", accent:"#A72D68", accent2:"#DDBB63", text:"#F6F1E7", muted:"#AAA4AA" };
       case "mex-birria-street":
         return { bg:"#170B08", surface:"#2A130D", nav:"#120805", accent:"#D83D22", accent2:"#F49A2C", text:"#FFF4EA", muted:"#D9BFB4" };
+      case "pizza-red-brick":
+        return { bg:"#F3E5CB", surface:"#FFF7E8", nav:"#153C2E", accent:"#A72B22", accent2:"#F2D39B", text:"#241711", muted:"#6D594A" };
+      case "pizza-napoli-modern":
+        return { bg:"#F4F0E8", surface:"#FFFFFF", nav:"#183A32", accent:"#B53D2F", accent2:"#EED4B1", text:"#1D2A27", muted:"#68736F" };
+      case "pizza-slice-shop":
+        return { bg:"#111111", surface:"#1A1A1A", nav:"#000000", accent:"#E8472B", accent2:"#F4C542", text:"#FFFFFF", muted:"#BEBEBE" };
+      case "pizza-woodfire":
+        return { bg:"#E9DDC8", surface:"#F6EBDD", nav:"#2A211B", accent:"#C56A3A", accent2:"#E7D7BC", text:"#2B211A", muted:"#6C5A4B" };
+      case "pizza-supper-club":
+        return { bg:"#0B1E19", surface:"#132A24", nav:"#081712", accent:"#7A2635", accent2:"#E7D7B4", text:"#F6EFE1", muted:"#B8C6C0" };
       case "pizza-italian":
         return { bg:"#F3E8D5", surface:"#FFF9EF", nav:"#1B2D22", accent:"#9D2F27", accent2:"#D8B98B", text:"#1E201A", muted:"#665F53" };
       case "bbq-smokehouse":
