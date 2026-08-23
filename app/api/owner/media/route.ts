@@ -59,16 +59,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!["gallery", "logo", "hero"].includes(kind)) {
-      return NextResponse.json({ error: "Invalid image type." }, { status: 400 });
+    if (!["gallery", "logo", "hero", "video"].includes(kind)) {
+      return NextResponse.json({ error: "Invalid media type." }, { status: 400 });
     }
 
-    if (!file.type.startsWith("image/")) {
-      return NextResponse.json({ error: "Please choose an image file." }, { status: 400 });
-    }
+    const isVideo = kind === "video";
 
-    if (file.size > 8 * 1024 * 1024) {
-      return NextResponse.json({ error: "Image must be smaller than 8 MB." }, { status: 400 });
+    if (isVideo) {
+      if (!file.type.startsWith("video/")) {
+        return NextResponse.json({ error: "Please choose a video file." }, { status: 400 });
+      }
+
+      if (file.size > 40 * 1024 * 1024) {
+        return NextResponse.json({ error: "Hero video must be smaller than 40 MB." }, { status: 400 });
+      }
+    } else {
+      if (!file.type.startsWith("image/")) {
+        return NextResponse.json({ error: "Please choose an image file." }, { status: 400 });
+      }
+
+      if (file.size > 8 * 1024 * 1024) {
+        return NextResponse.json({ error: "Image must be smaller than 8 MB." }, { status: 400 });
+      }
     }
 
     const admin = adminClient();
@@ -108,8 +120,13 @@ export async function POST(request: NextRequest) {
       .from("restaurant-assets")
       .getPublicUrl(path).data.publicUrl;
 
-    if (kind === "logo" || kind === "hero") {
-      const column = kind === "logo" ? "logo_url" : "hero_image_url";
+    if (kind === "logo" || kind === "hero" || kind === "video") {
+      const column =
+        kind === "logo"
+          ? "logo_url"
+          : kind === "hero"
+          ? "hero_image_url"
+          : "hero_video_url";
 
       const { data: existing } = await admin
         .from("restaurant_website_settings")
