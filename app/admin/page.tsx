@@ -67,6 +67,7 @@ export default function AdminCommandCenterPage() {
   const [note, setNote] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
+  const [customSiteCount, setCustomSiteCount] = useState(0);
 
   useEffect(() => {
     loadAdmin();
@@ -84,6 +85,13 @@ export default function AdminCommandCenterPage() {
       window.location.href = "/login";
       return;
     }
+
+    const { count: customRequestsCount } = await supabase
+      .from("restaurant_custom_site_requests")
+      .select("id", { count: "exact", head: true })
+      .not("status", "in", '("installed","declined")');
+
+    setCustomSiteCount(customRequestsCount || 0);
 
     const response = await fetch("/api/admin/overview", {
       headers: {
@@ -266,6 +274,27 @@ export default function AdminCommandCenterPage() {
             />
           </section>
         )}
+
+        <section style={customSitePanelStyle}>
+          <div>
+            <div style={customSiteEyebrowStyle}>CUSTOM WEBSITE REQUESTS</div>
+            <div style={customSiteTitleStyle}>
+              {customSiteCount > 0
+                ? `${customSiteCount} custom site request${customSiteCount === 1 ? "" : "s"} waiting`
+                : "No open custom site requests"}
+            </div>
+            <div style={customSiteTextStyle}>
+              Customers requesting a custom design upgrade land here for your review.
+            </div>
+          </div>
+
+          <button
+            style={customSiteButtonStyle}
+            onClick={() => (window.location.href = "/admin/custom-sites")}
+          >
+            OPEN CUSTOM SITE QUEUE
+          </button>
+        </section>
 
         <section style={attentionPanelStyle}>
           <div>
@@ -777,6 +806,48 @@ const statLabelStyle = {
   fontWeight: 900,
   letterSpacing: "1px",
   marginTop: "5px",
+};
+
+const customSitePanelStyle = {
+  background: "#102b22",
+  border: "1px solid #256a51",
+  borderRadius: "16px",
+  padding: "18px",
+  marginBottom: "18px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "16px",
+  flexWrap: "wrap" as const,
+};
+
+const customSiteEyebrowStyle = {
+  color: "#86efac",
+  fontSize: "10px",
+  fontWeight: 900,
+  letterSpacing: "1.5px",
+};
+
+const customSiteTitleStyle = {
+  fontSize: "24px",
+  fontWeight: 900,
+  marginTop: "4px",
+};
+
+const customSiteTextStyle = {
+  color: "#a7c7ba",
+  fontSize: "12px",
+  marginTop: "6px",
+};
+
+const customSiteButtonStyle = {
+  background: "#22c55e",
+  color: "#062312",
+  border: 0,
+  borderRadius: "10px",
+  padding: "11px 14px",
+  fontWeight: 900,
+  cursor: "pointer",
 };
 
 const attentionPanelStyle = {
