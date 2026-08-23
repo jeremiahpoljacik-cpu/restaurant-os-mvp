@@ -360,54 +360,53 @@ export default function WebsiteManagerPage() {
     }
 
     setUploading(kind);
-    setMessage("");
+    setMessage(`${kind === "gallery" ? "Photo" : kind === "logo" ? "Logo" : "Hero image"} uploading...`);
 
     try {
-      const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const safeKind = kind === "gallery" ? "gallery" : kind;
-      const path = `${restaurantId}/${safeKind}-${Date.now()}.${extension}`;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      const { error: uploadError } = await supabase.storage
-        .from("restaurant-assets")
-        .upload(path, file, {
-          upsert: false,
-          contentType: file.type || undefined,
-        });
+      if (!session?.access_token) {
+        throw new Error("Your login session expired. Sign in again.");
+      }
 
-      if (uploadError) throw uploadError;
+      const form = new FormData();
+      form.append("restaurant_id", restaurantId);
+      form.append("kind", kind);
+      form.append("file", file);
 
-      const publicUrl = supabase.storage
-        .from("restaurant-assets")
-        .getPublicUrl(path).data.publicUrl;
+      const response = await fetch("/api/owner/media", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: form,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Image upload failed.");
+      }
 
       if (kind === "logo") {
-        setSettings((current) => ({ ...current, logo_url: publicUrl }));
-        setMessage("Logo uploaded. Click SAVE WEBSITE SETTINGS to finish.");
+        setSettings((current) => ({ ...current, logo_url: result.publicUrl }));
+        setMessage("Logo uploaded and saved.");
       } else if (kind === "hero") {
-        setSettings((current) => ({ ...current, hero_image_url: publicUrl }));
-        setMessage("Hero image uploaded. Click SAVE WEBSITE SETTINGS to finish.");
-      } else {
-        const { data, error } = await supabase
-          .from("restaurant_site_images")
-          .insert({
-            restaurant_id: restaurantId,
-            image_url: publicUrl,
-            image_type: "gallery",
-            sort_order: siteImages.length,
-            active: true,
-          })
-          .select("id,image_url,image_type,caption,sort_order")
-          .single();
-
-        if (error) throw error;
-        setSiteImages((current) => [...current, data as SiteImage]);
-        setMessage("Photo added to the site gallery.");
+        setSettings((current) => ({ ...current, hero_image_url: result.publicUrl }));
+        setMessage("Hero image uploaded and saved.");
+      } else if (result.image) {
+        setSiteImages((current) =>
+          [...current, result.image as SiteImage].sort(
+            (a, b) => a.sort_order - b.sort_order
+          )
+        );
+        setMessage("Restaurant photo uploaded.");
       }
     } catch (error) {
       setMessage(
-        error instanceof Error
-          ? error.message
-          : "Image upload failed. Confirm the restaurant-assets storage bucket is installed."
+        error instanceof Error ? error.message : "Image upload failed."
       );
     } finally {
       setUploading("");
@@ -774,9 +773,16 @@ export default function WebsiteManagerPage() {
             <input
               type="file"
               accept="image/*"
+              multiple
               disabled={Boolean(uploading)}
               style={{ display: "none" }}
-              onChange={(event) => uploadAsset(event.target.files?.[0] || null, "gallery")}
+              onChange={async (event) => {
+                const files = Array.from(event.target.files || []);
+                for (const file of files) {
+                  await uploadAsset(file, "gallery");
+                }
+                event.currentTarget.value = "";
+              }}
             />
           </label>
 
