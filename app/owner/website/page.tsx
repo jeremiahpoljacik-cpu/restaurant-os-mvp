@@ -413,6 +413,32 @@ export default function WebsiteManagerPage() {
     }
   }
 
+  async function removeSiteAsset(kind: "logo" | "hero") {
+    if (!restaurantId) return;
+
+    const column = kind === "logo" ? "logo_url" : "hero_image_url";
+
+    const { error } = await supabase
+      .from("restaurant_website_settings")
+      .update({
+        [column]: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("restaurant_id", restaurantId);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setSettings((current) => ({
+      ...current,
+      [kind === "logo" ? "logo_url" : "hero_image_url"]: "",
+    }));
+
+    setMessage(kind === "logo" ? "Logo removed." : "Hero image removed.");
+  }
+
   async function deleteGalleryImage(image: SiteImage) {
     if (!restaurantId) return;
 
@@ -870,6 +896,7 @@ export default function WebsiteManagerPage() {
                 imageUrl={settings.logo_url}
                 disabled={Boolean(uploading)}
                 onFile={(file) => uploadAsset(file, "logo")}
+                onRemove={() => removeSiteAsset("logo")}
               />
 
               <AssetUpload
@@ -878,6 +905,7 @@ export default function WebsiteManagerPage() {
                 imageUrl={settings.hero_image_url}
                 disabled={Boolean(uploading)}
                 onFile={(file) => uploadAsset(file, "hero")}
+                onRemove={() => removeSiteAsset("hero")}
               />
 
               <Field
@@ -1127,12 +1155,14 @@ function AssetUpload({
   imageUrl,
   disabled,
   onFile,
+  onRemove,
 }: {
   label: string;
   button: string;
   imageUrl: string;
   disabled: boolean;
   onFile: (file: File | null) => void;
+  onRemove?: () => void;
 }) {
   return (
     <div style={assetUploadCardStyle}>
@@ -1147,16 +1177,29 @@ function AssetUpload({
         <img src={imageUrl} alt="" style={assetPreviewStyle} />
       )}
 
-      <label style={uploadButtonStyle}>
-        {button}
-        <input
-          type="file"
-          accept="image/*"
-          disabled={disabled}
-          style={{ display: "none" }}
-          onChange={(event) => onFile(event.target.files?.[0] || null)}
-        />
-      </label>
+      <div style={assetActionRowStyle}>
+        <label style={uploadButtonStyle}>
+          {imageUrl ? "REPLACE IMAGE" : button}
+          <input
+            type="file"
+            accept="image/*"
+            disabled={disabled}
+            style={{ display: "none" }}
+            onChange={(event) => onFile(event.target.files?.[0] || null)}
+          />
+        </label>
+
+        {imageUrl && onRemove && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onRemove}
+            style={removeAssetButtonStyle}
+          >
+            REMOVE IMAGE
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -1360,6 +1403,24 @@ const galleryDeleteStyle = {
   color: "#ffffff",
   padding: "7px 9px",
   fontSize: "9px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const assetActionRowStyle = {
+  display: "flex",
+  gap: "8px",
+  flexWrap: "wrap" as const,
+  alignItems: "center",
+};
+
+const removeAssetButtonStyle = {
+  border: "1px solid #8f3e47",
+  borderRadius: "9px",
+  background: "#311922",
+  color: "#ffd6da",
+  padding: "11px 13px",
+  fontSize: "10px",
   fontWeight: 900,
   cursor: "pointer",
 };
