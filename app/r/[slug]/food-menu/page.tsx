@@ -394,12 +394,37 @@ function ViPollosFoodMenuPage() {
 }
 
 
-function StandardFoodMenuPage({ slug }: { slug: string }) {
+function StandardFoodMenuPage({ slug, themeKey }: { slug: string; themeKey: string | null }) {
   const [restaurant, setRestaurant] = useState<any>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const palette = (() => {
+    switch (themeKey) {
+      case "mex-jefe-bold":
+        return { bg:"#F5E6C8", surface:"#FFF4DD", nav:"#0A0A0A", accent:"#E43A2F", accent2:"#F4C443", text:"#101010", muted:"#6B5A45" };
+      case "mex-cantina-social":
+        return { bg:"#F3E4C9", surface:"#FFF5E4", nav:"#163D36", accent:"#E15B4D", accent2:"#F0D6A8", text:"#17352F", muted:"#6B756F" };
+      case "mex-coastal-taco":
+        return { bg:"#F7F4EE", surface:"#FFFFFF", nav:"#6B9C92", accent:"#E39A64", accent2:"#F0D9BF", text:"#213831", muted:"#718079" };
+      case "mex-cosmic-night":
+        return { bg:"#09090D", surface:"#15151D", nav:"#08080B", accent:"#A72D68", accent2:"#DDBB63", text:"#F6F1E7", muted:"#AAA4AA" };
+      case "mex-birria-street":
+        return { bg:"#170B08", surface:"#2A130D", nav:"#120805", accent:"#D83D22", accent2:"#F49A2C", text:"#FFF4EA", muted:"#D9BFB4" };
+      case "pizza-italian":
+        return { bg:"#F3E8D5", surface:"#FFF9EF", nav:"#1B2D22", accent:"#9D2F27", accent2:"#D8B98B", text:"#1E201A", muted:"#665F53" };
+      case "bbq-smokehouse":
+        return { bg:"#1D1713", surface:"#2A211B", nav:"#0D0B09", accent:"#C85C2D", accent2:"#D7A45F", text:"#F2E4CE", muted:"#C8B69E" };
+      case "cafe-bakery":
+        return { bg:"#F4EFE8", surface:"#FFFDF9", nav:"#6B4F3A", accent:"#9A6D4B", accent2:"#C7A57C", text:"#4A392F", muted:"#7C6C61" };
+      case "upscale-dining":
+        return { bg:"#0C0C0C", surface:"#151515", nav:"#080808", accent:"#C6A35B", accent2:"#E4D2A3", text:"#F4F0E8", muted:"#B9B3A9" };
+      default:
+        return { bg:"#F7F1E8", surface:"#FFFFFF", nav:"#0B2037", accent:"#0B5F9F", accent2:"#F4B400", text:"#0F2740", muted:"#607284" };
+    }
+  })();
 
   useEffect(() => {
     async function load() {
@@ -438,24 +463,24 @@ function StandardFoodMenuPage({ slug }: { slug: string }) {
   }));
 
   return (
-    <main style={{minHeight:"100vh",background:"#f6efe5",color:"#10253d",fontFamily:"Arial,Helvetica,sans-serif"}}>
-      <header style={{background:"#0b2037",color:"#fff"}}>
+    <main style={{minHeight:"100vh",background:palette.bg,color:palette.text,fontFamily:"Arial,Helvetica,sans-serif"}}>
+      <header style={{background:palette.nav,color:"#fff"}}>
         <div style={{maxWidth:1200,margin:"0 auto",padding:"20px 24px",display:"flex",alignItems:"center",gap:20}}>
           <a href={`/r/${slug}`} style={{fontSize:22,fontWeight:900,textDecoration:"none",color:"#fff"}}>
             {restaurant.name}
           </a>
           <nav style={{marginLeft:"auto",display:"flex",gap:18,fontSize:11,fontWeight:900}}>
             <a href={`/r/${slug}`} style={{color:"#fff",textDecoration:"none"}}>HOME</a>
-            <a href={`/r/${slug}/food-menu`} style={{color:"#f4b400",textDecoration:"none"}}>MENU</a>
+            <a href={`/r/${slug}/food-menu`} style={{color:palette.accent2,textDecoration:"none"}}>MENU</a>
             <a href={`/r/${slug}/offers`} style={{color:"#fff",textDecoration:"none"}}>OFFERS</a>
             <a href={`/r/${slug}/vip`} style={{color:"#fff",textDecoration:"none"}}>VIP</a>
           </nav>
         </div>
       </header>
 
-      <section style={{background:"#103a63",color:"#fff",padding:"70px 24px"}}>
+      <section style={{background:palette.nav,color:"#fff",padding:"70px 24px"}}>
         <div style={{maxWidth:1200,margin:"0 auto"}}>
-          <div style={{color:"#f4b400",fontSize:11,fontWeight:900,letterSpacing:2}}>OUR MENU</div>
+          <div style={{color:palette.accent2,fontSize:11,fontWeight:900,letterSpacing:2}}>OUR MENU</div>
           <h1 style={{fontSize:"clamp(52px,8vw,90px)",margin:"10px 0 8px",lineHeight:.95}}>
             {restaurant.name}
           </h1>
@@ -465,14 +490,14 @@ function StandardFoodMenuPage({ slug }: { slug: string }) {
 
       <section style={{maxWidth:1200,margin:"0 auto",padding:"46px 24px 80px"}}>
         {grouped.length === 0 ? (
-          <div style={{padding:30,background:"#fff",borderRadius:14}}>No menu categories yet.</div>
+          <div style={{padding:30,background:palette.surface,borderRadius:14}}>No menu categories yet.</div>
         ) : (
           <div style={{display:"grid",gap:22}}>
             {grouped.map((category:any) => (
-              <section key={category.id} style={{background:"#fff",border:"1px solid #e4d7c4",borderRadius:14,overflow:"hidden"}}>
-                <div style={{background:"#0b2037",color:"#fff",padding:"18px 22px",display:"flex",justifyContent:"space-between",gap:20}}>
+              <section key={category.id} style={{background:palette.surface,border:`1px solid ${palette.accent}33`,borderRadius:14,overflow:"hidden"}}>
+                <div style={{background:palette.nav,color:"#fff",padding:"18px 22px",display:"flex",justifyContent:"space-between",gap:20}}>
                   <h2 style={{margin:0,fontSize:26}}>{category.name}</h2>
-                  <span style={{color:"#f4b400",fontSize:11,fontWeight:900}}>{category.items.length} ITEMS</span>
+                  <span style={{color:palette.accent2,fontSize:11,fontWeight:900}}>{category.items.length} ITEMS</span>
                 </div>
 
                 <div>
@@ -485,10 +510,10 @@ function StandardFoodMenuPage({ slug }: { slug: string }) {
                           <strong style={{fontSize:18}}>{item.name}</strong>
                           {item.featured && <span style={{fontSize:9,fontWeight:900,color:"#b97800"}}>FEATURED</span>}
                           {item.price !== null && item.price !== undefined && (
-                            <strong style={{marginLeft:"auto",color:"#0b5f9f"}}>${Number(item.price).toFixed(2)}</strong>
+                            <strong style={{marginLeft:"auto",color:palette.accent}}>${Number(item.price).toFixed(2)}</strong>
                           )}
                         </div>
-                        {item.description && <p style={{margin:"8px 0 0",color:"#687585",lineHeight:1.55}}>{item.description}</p>}
+                        {item.description && <p style={{margin:"8px 0 0",color:palette.muted,lineHeight:1.55}}>{item.description}</p>}
                       </article>
                     ))
                   )}
@@ -534,6 +559,6 @@ export default function RestaurantFoodMenuPage() {
     return <ViPollosFoodMenuPage />;
   }
 
-  return <StandardFoodMenuPage slug={slug} />;
+  return <StandardFoodMenuPage slug={slug} themeKey={themeKey} />;
 }
 
