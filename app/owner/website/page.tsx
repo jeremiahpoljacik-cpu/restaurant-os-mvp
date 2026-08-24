@@ -127,10 +127,10 @@ const THEME_CATEGORIES = [
         swatches: ["#7C201A", "#E8D9BA", "#1F3529"],
       },
       {
-        key: "pizza-slice-shop",
-        name: "Slice Shop",
-        description: "Fast, loud, youthful and urban. Built for giant slices, late nights and high-volume ordering.",
-        swatches: ["#111111", "#F4C542", "#E8472B"],
+        key: "pizza-coastal-local",
+        name: "Coastal Local",
+        description: "Bright local hospitality site with food photography, drinks, parties, catering, reviews and destination-town energy.",
+        swatches: ["#F3E8CF", "#1F5A62", "#D86F3D"],
       },
       {
         key: "pizza-woodfire",
