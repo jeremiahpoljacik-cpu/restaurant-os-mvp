@@ -416,8 +416,9 @@ function StandardFoodMenuPage({ slug, themeKey }: { slug: string; themeKey: stri
       case "pizza-otto-editorial":
       case "pizza-red-brick":
         return { bg:"#F2EFE8", surface:"#FFFFFF", nav:"#050505", accent:"#B6182B", accent2:"#E8E3D8", text:"#111111", muted:"#67615A" };
+      case "pizza-ramuntos-heritage":
       case "pizza-napoli-modern":
-        return { bg:"#F4F0E8", surface:"#FFFFFF", nav:"#183A32", accent:"#B53D2F", accent2:"#EED4B1", text:"#1D2A27", muted:"#68736F" };
+        return { bg:"#F4EAD8", surface:"#FFFDF7", nav:"#1F3529", accent:"#7C201A", accent2:"#E8D9BA", text:"#211B18", muted:"#6D6258" };
       case "pizza-slice-shop":
         return { bg:"#111111", surface:"#1A1A1A", nav:"#000000", accent:"#E8472B", accent2:"#F4C542", text:"#FFFFFF", muted:"#BEBEBE" };
       case "pizza-woodfire":
