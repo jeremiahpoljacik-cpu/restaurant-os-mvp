@@ -187,12 +187,20 @@ const THEME_MEDIA: Record<string, { images: string[]; video?: string }> = {
       "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1400&q=88"
     ]
   },
+  "pizza-social-house": {
+    images: [
+      "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1800&q=90",
+      "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1400&q=88",
+      "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=1400&q=88",
+      "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=1400&q=88"
+    ]
+  },
   "pizza-supper-club": {
     images: [
-      "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1600&q=82",
-      "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=1200&q=82",
-      "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1200&q=82",
-      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1200&q=82"
+      "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1800&q=90",
+      "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1400&q=88",
+      "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=1400&q=88",
+      "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=1400&q=88"
     ]
   }
 };
@@ -315,7 +323,7 @@ export default function DefaultRestaurantTheme() {
   if (key === "pizza-ramuntos-heritage" || key === "pizza-napoli-modern") return <PizzaRamuntosHeritage data={data} />;
   if (key === "pizza-coastal-local" || key === "pizza-slice-shop") return <PizzaCoastalLocal data={data} />;
   if (key === "pizza-deal-machine" || key === "pizza-woodfire") return <PizzaDealMachine data={data} />;
-  if (key === "pizza-supper-club") return <PizzaSupperClub data={data} />;
+  if (key === "pizza-social-house" || key === "pizza-supper-club") return <PizzaSocialHouse data={data} />;
 
   return <StandardFallback data={data} themeKey={key} />;
 }
@@ -3825,59 +3833,829 @@ function PizzaDealMachine({ data }: { data: SiteData }) {
   );
 }
 
-function PizzaSupperClub({ data }: { data: SiteData }) {
-  const { restaurant, branding, website } = data;
-  const green = branding?.primary_color || "#102B24";
+function PizzaSocialHouse({ data }: { data: SiteData }) {
+  const { restaurant, branding, website, ordering } = data;
+
+  const ink = "#111715";
+  const panel = "#18201D";
+  const gold = branding?.primary_color || "#E3B341";
   const wine = branding?.secondary_color || "#7A2635";
-  const gold = "#E7D7B4";
-  const hero = getHeroImage(data, "pizza-supper-club");
-  const heroVideo = getHeroVideo(data, "pizza-supper-club");
+  const cream = "#F4EBDD";
+
+  const hero =
+    getHeroImage(data, "pizza-social-house") ||
+    getHeroImage(data, "pizza-supper-club");
+  const heroVideo = website.hero_video_url || null;
+
+  const address = [
+    restaurant.address_line_1,
+    restaurant.city,
+    restaurant.state,
+    restaurant.zip,
+  ].filter(Boolean).join(", ");
+
+  const featured = data.items.slice(0, 6);
 
   return (
-    <main style={{ minHeight:"100vh", background:"#0B1E19", color:"#F6EFE1", fontFamily:"Arial,Helvetica,sans-serif" }}>
+    <main className="social-shell">
       <SharedGlobal />
-      <Header data={data} bg="#081712" color="#fff" accent={wine} outline />
-      <section style={{ minHeight:780, position:"relative", display:"flex", alignItems:"end", overflow:"hidden", background:hero ? `url("${hero}") center/cover` : green }}>
-        {heroVideo ? <video autoPlay muted loop playsInline src={heroVideo} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", opacity:.7 }} /> : null}
-        <div style={{ position:"absolute", inset:0, background:"linear-gradient(0deg,rgba(5,19,15,.92),rgba(5,19,15,.18))" }} />
-        <div style={{ maxWidth:1180, width:"100%", margin:"0 auto", padding:"100px 28px 76px", position:"relative", zIndex:2 }}>
-          <div style={{ color:gold, fontSize:11, fontWeight:900, letterSpacing:3.5 }}>ITALIAN DINNER · WINE · LATE EVENINGS</div>
-          <h1 style={{ maxWidth:920, margin:"16px 0", fontFamily:'Georgia,"Times New Roman",serif', fontSize:"clamp(66px,9vw,118px)", lineHeight:.9, fontWeight:500 }}>{website.hero_headline || restaurant.name}</h1>
-          <p style={{ maxWidth:640, color:"#EEE5D6", fontSize:18, lineHeight:1.7 }}>{website.hero_subheadline || branding?.tagline || "Pizza, pasta, wine and a room worth staying in."}</p>
-          <HeroActions data={data} primary={wine} secondary={gold} darkText />
-        </div>
-      </section>
 
-      <section style={{ background:wine, color:"#fff" }}>
-        <div className="ros-four" style={{ maxWidth:1180, margin:"0 auto", display:"grid", gridTemplateColumns:"repeat(4,1fr)" }}>
-          {["DINNER","WINE","PRIVATE EVENTS","RESERVATIONS"].map((x) => <div key={x} style={{ padding:"24px 18px", textAlign:"center", fontSize:10, fontWeight:900, letterSpacing:2 }}>{x}</div>)}
-        </div>
-      </section>
+      <style jsx global>{`
+        body {
+          background: ${ink} !important;
+        }
 
-      <section id="story" style={{ background:"#0B1E19" }}>
-        <div className="ros-two" style={{ maxWidth:1180, margin:"0 auto", padding:"92px 28px", display:"grid", gridTemplateColumns:"1.15fr .85fr", gap:50, alignItems:"center" }}>
-          <div>
-            <div style={{ color:gold, fontSize:11, fontWeight:900, letterSpacing:2.8 }}>AT THE TABLE</div>
-            <h2 style={{ margin:"12px 0 20px", fontFamily:'Georgia,"Times New Roman",serif', fontSize:"clamp(46px,5vw,74px)", lineHeight:.98, fontWeight:500 }}>{website.about_title || "An Italian Night Out."}</h2>
-            <p style={{ color:"#B8C6C0", fontSize:17, lineHeight:1.85 }}>{website.about_body || branding?.short_description || "A little candlelight, a good bottle, handmade food and no reason to rush."}</p>
+        .social-shell {
+          min-height: 100vh;
+          background: ${ink};
+          color: ${cream};
+          font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .social-header {
+          position: sticky;
+          top: 0;
+          z-index: 70;
+          background: rgba(17,23,21,.95);
+          backdrop-filter: blur(16px);
+          border-bottom: 1px solid rgba(255,255,255,.1);
+        }
+
+        .social-header-inner {
+          max-width: 1320px;
+          margin: 0 auto;
+          padding: 15px 24px;
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+          gap: 18px;
+          align-items: center;
+        }
+
+        .social-nav {
+          display: flex;
+          gap: 18px;
+          align-items: center;
+          font-size: 9px;
+          font-weight: 900;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+        }
+
+        .social-nav.right {
+          justify-content: flex-end;
+        }
+
+        .social-brand {
+          text-align: center;
+          color: ${gold};
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: 32px;
+          font-style: italic;
+          font-weight: 900;
+          letter-spacing: -1px;
+          line-height: .9;
+        }
+
+        .social-brand small {
+          display: block;
+          margin-top: 6px;
+          color: #aeb8b3;
+          font-family: Arial, Helvetica, sans-serif;
+          font-size: 7px;
+          font-style: normal;
+          letter-spacing: 3px;
+          text-transform: uppercase;
+        }
+
+        .social-action {
+          border: 1px solid rgba(255,255,255,.55);
+          padding: 11px 14px;
+        }
+
+        .social-action.primary {
+          background: ${gold};
+          color: #111;
+          border-color: ${gold};
+        }
+
+        .social-hero {
+          min-height: 780px;
+          position: relative;
+          overflow: hidden;
+          display: flex;
+          align-items: flex-end;
+          background: ${panel};
+        }
+
+        .social-hero-media {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .social-hero-overlay {
+          position: absolute;
+          inset: 0;
+          background:
+            linear-gradient(180deg, rgba(10,14,13,.08), rgba(10,14,13,.35) 42%, rgba(10,14,13,.92) 100%);
+        }
+
+        .social-hero-content {
+          position: relative;
+          z-index: 2;
+          width: 100%;
+          max-width: 1240px;
+          margin: 0 auto;
+          padding: 110px 28px 72px;
+        }
+
+        .social-kicker {
+          color: ${gold};
+          font-size: 10px;
+          font-weight: 950;
+          letter-spacing: 3px;
+          text-transform: uppercase;
+        }
+
+        .social-hero h1 {
+          max-width: 900px;
+          margin: 14px 0 18px;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: clamp(62px, 8vw, 112px);
+          line-height: .9;
+          font-weight: 500;
+          letter-spacing: -3px;
+        }
+
+        .social-hero p {
+          max-width: 620px;
+          color: #ddd6ca;
+          font-size: 18px;
+          line-height: 1.7;
+        }
+
+        .social-hero-actions {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin-top: 28px;
+        }
+
+        .social-hero-actions a {
+          padding: 14px 18px;
+          font-size: 10px;
+          font-weight: 950;
+          letter-spacing: 1.3px;
+          text-transform: uppercase;
+        }
+
+        .social-hero-actions .main {
+          background: ${gold};
+          color: #111;
+        }
+
+        .social-hero-actions .alt {
+          border: 1px solid rgba(255,255,255,.55);
+          color: #fff;
+        }
+
+        .social-event-strip {
+          background: ${wine};
+          color: #fff;
+        }
+
+        .social-event-inner {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 22px 28px;
+          display: grid;
+          grid-template-columns: auto 1fr auto;
+          gap: 22px;
+          align-items: center;
+        }
+
+        .social-event-label {
+          color: #f2c8cf;
+          font-size: 9px;
+          font-weight: 950;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+        }
+
+        .social-event-title {
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: 28px;
+          font-weight: 700;
+        }
+
+        .social-event-link {
+          border-bottom: 1px solid #fff;
+          padding-bottom: 4px;
+          font-size: 9px;
+          font-weight: 950;
+          letter-spacing: 1.5px;
+          text-transform: uppercase;
+        }
+
+        .social-story {
+          max-width: 1220px;
+          margin: 0 auto;
+          padding: 96px 28px;
+          display: grid;
+          grid-template-columns: 1.1fr .9fr;
+          gap: 54px;
+          align-items: center;
+        }
+
+        .social-story-photo {
+          width: 100%;
+          height: 600px;
+          object-fit: cover;
+          filter: saturate(.85) contrast(1.02);
+        }
+
+        .social-story-copy h2 {
+          margin: 10px 0 20px;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: clamp(48px,5.6vw,78px);
+          line-height: .96;
+          font-weight: 500;
+          letter-spacing: -2px;
+        }
+
+        .social-story-copy p {
+          color: #aeb8b3;
+          font-size: 17px;
+          line-height: 1.85;
+        }
+
+        .social-details {
+          display: grid;
+          grid-template-columns: repeat(3,1fr);
+          gap: 10px;
+          margin-top: 28px;
+        }
+
+        .social-detail {
+          border-top: 1px solid rgba(255,255,255,.18);
+          padding-top: 14px;
+        }
+
+        .social-detail strong {
+          display: block;
+          color: ${gold};
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: 20px;
+        }
+
+        .social-detail span {
+          display: block;
+          margin-top: 6px;
+          color: #80908a;
+          font-size: 9px;
+          line-height: 1.5;
+          text-transform: uppercase;
+          letter-spacing: 1.3px;
+        }
+
+        .social-menu {
+          background: ${panel};
+          padding: 88px 28px;
+        }
+
+        .social-menu-inner {
+          max-width: 1180px;
+          margin: 0 auto;
+        }
+
+        .social-menu-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          gap: 20px;
+          margin-bottom: 34px;
+        }
+
+        .social-menu h2 {
+          margin: 8px 0 0;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: clamp(48px,5.8vw,80px);
+          line-height: .94;
+          font-weight: 500;
+        }
+
+        .social-menu-list {
+          border-top: 1px solid rgba(255,255,255,.15);
+        }
+
+        .social-menu-item {
+          display: grid;
+          grid-template-columns: 110px 1fr auto;
+          gap: 24px;
+          align-items: center;
+          padding: 18px 0;
+          border-bottom: 1px solid rgba(255,255,255,.13);
+        }
+
+        .social-menu-thumb {
+          width: 110px;
+          height: 80px;
+          object-fit: cover;
+        }
+
+        .social-menu-name {
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: 25px;
+          font-weight: 700;
+        }
+
+        .social-menu-desc {
+          margin-top: 5px;
+          color: #8e9a95;
+          font-size: 12px;
+          line-height: 1.55;
+        }
+
+        .social-menu-price {
+          color: ${gold};
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: 22px;
+          font-weight: 700;
+        }
+
+        .social-atmosphere {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          min-height: 640px;
+        }
+
+        .social-atmosphere-photo {
+          width: 100%;
+          height: 100%;
+          min-height: 640px;
+          object-fit: cover;
+        }
+
+        .social-atmosphere-copy {
+          background: ${wine};
+          color: #fff;
+          padding: 84px 7vw;
+          display: flex;
+          justify-content: center;
+          flex-direction: column;
+        }
+
+        .social-atmosphere-copy h2 {
+          margin: 10px 0 18px;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: clamp(48px,5.6vw,78px);
+          line-height: .95;
+          font-weight: 500;
+        }
+
+        .social-atmosphere-copy p {
+          color: #ebcfd5;
+          font-size: 16px;
+          line-height: 1.8;
+        }
+
+        .social-programs {
+          display: grid;
+          grid-template-columns: repeat(3,1fr);
+          gap: 10px;
+          margin-top: 26px;
+        }
+
+        .social-program {
+          border: 1px solid rgba(255,255,255,.25);
+          padding: 18px;
+        }
+
+        .social-program strong {
+          display: block;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: 20px;
+        }
+
+        .social-program span {
+          display: block;
+          margin-top: 6px;
+          color: #e6c7ce;
+          font-size: 9px;
+          letter-spacing: 1.2px;
+          text-transform: uppercase;
+        }
+
+        .social-visit {
+          max-width: 1180px;
+          margin: 0 auto;
+          padding: 90px 28px;
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 28px;
+          align-items: center;
+        }
+
+        .social-visit h2 {
+          margin: 8px 0 16px;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: clamp(48px,5.6vw,76px);
+          line-height: .95;
+          font-weight: 500;
+        }
+
+        .social-location {
+          color: #99a49f;
+          font-size: 13px;
+          line-height: 1.7;
+        }
+
+        .social-visit-actions {
+          display: grid;
+          gap: 10px;
+          min-width: 210px;
+        }
+
+        .social-visit-actions a {
+          text-align: center;
+          padding: 14px 16px;
+          font-size: 10px;
+          font-weight: 950;
+          letter-spacing: 1.2px;
+          text-transform: uppercase;
+          border: 1px solid rgba(255,255,255,.4);
+        }
+
+        .social-visit-actions a:first-child {
+          background: ${gold};
+          color: #111;
+          border-color: ${gold};
+        }
+
+        .social-footer {
+          background: #090D0C;
+          color: #69746F;
+          padding: 30px 28px;
+          display: flex;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+          font-size: 9px;
+          font-weight: 900;
+          letter-spacing: 1.4px;
+          text-transform: uppercase;
+        }
+
+        @media(max-width: 900px) {
+          .social-header-inner {
+            grid-template-columns: 1fr auto;
+          }
+
+          .social-nav:first-child {
+            display: none;
+          }
+
+          .social-brand {
+            text-align: left;
+          }
+
+          .social-story,
+          .social-atmosphere {
+            grid-template-columns: 1fr;
+          }
+
+          .social-atmosphere-photo {
+            min-height: 460px;
+          }
+
+          .social-visit {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media(max-width: 640px) {
+          .social-header-inner {
+            padding: 12px 15px;
+          }
+
+          .social-brand {
+            font-size: 24px;
+          }
+
+          .social-nav.right a:not(.primary) {
+            display: none;
+          }
+
+          .social-hero {
+            min-height: 650px;
+          }
+
+          .social-hero-content {
+            padding: 100px 22px 54px;
+          }
+
+          .social-event-inner {
+            grid-template-columns: 1fr;
+            text-align: center;
+          }
+
+          .social-story,
+          .social-menu,
+          .social-visit {
+            padding-left: 22px;
+            padding-right: 22px;
+          }
+
+          .social-story-photo {
+            height: 430px;
+          }
+
+          .social-details {
+            grid-template-columns: 1fr;
+          }
+
+          .social-menu-head {
+            display: block;
+          }
+
+          .social-menu-head a {
+            display: inline-block;
+            margin-top: 14px;
+          }
+
+          .social-menu-item {
+            grid-template-columns: 78px 1fr;
+          }
+
+          .social-menu-thumb {
+            width: 78px;
+            height: 68px;
+          }
+
+          .social-menu-price {
+            grid-column: 2;
+          }
+
+          .social-atmosphere-copy {
+            padding: 68px 22px;
+          }
+
+          .social-programs {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+
+      <header className="social-header">
+        <div className="social-header-inner">
+          <nav className="social-nav">
+            <a href={`/r/${restaurant.slug}/food-menu`}>Menu</a>
+            <a href="#story">About</a>
+            <a href="#events">Events</a>
+          </nav>
+
+          <a href={`/r/${restaurant.slug}`} className="social-brand">
+            {website.logo_url ? (
+              <img
+                src={website.logo_url}
+                alt={restaurant.name}
+                style={{ maxWidth: 210, maxHeight: 64, objectFit: "contain" }}
+              />
+            ) : (
+              <>
+                {restaurant.name}
+                <small>FAMILY PIZZERIA · SOCIAL HOUSE</small>
+              </>
+            )}
+          </a>
+
+          <nav className="social-nav right">
+            {restaurant.phone && <a href={`tel:${restaurant.phone}`}>{restaurant.phone}</a>}
+            {ordering?.online_ordering_url && (
+              <a
+                className="social-action primary"
+                href={ordering.online_ordering_url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Order Online
+              </a>
+            )}
+          </nav>
+        </div>
+      </header>
+
+      <section className="social-hero">
+        {heroVideo ? (
+          <video
+            className="social-hero-media"
+            src={heroVideo}
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+        ) : hero ? (
+          <img className="social-hero-media" src={hero} alt="" />
+        ) : null}
+
+        <div className="social-hero-overlay" />
+
+        <div className="social-hero-content">
+          <div className="social-kicker">PIZZA · BEER · LATE NIGHTS</div>
+          <h1>{website.hero_headline || restaurant.name}</h1>
+          <p>
+            {website.hero_subheadline ||
+              branding?.short_description ||
+              "A neighborhood pizzeria with destination energy: good pizza, cold drinks, local events and a room people actually want to spend time in."}
+          </p>
+
+          <div className="social-hero-actions">
+            {ordering?.online_ordering_url && (
+              <a
+                className="main"
+                href={ordering.online_ordering_url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {website.primary_cta_label || "ORDER ONLINE"}
+              </a>
+            )}
+            <a className="alt" href={`/r/${restaurant.slug}/food-menu`}>
+              {website.secondary_cta_label || "VIEW MENU"}
+            </a>
           </div>
-          <img src={getThemeImage(data,"pizza-supper-club",1)} alt="" style={{ width:"100%", height:520, objectFit:"cover", border:`1px solid ${gold}55` }} />
         </div>
       </section>
 
-      {data.items.length > 0 && (
-        <section style={{ background:"#132A24", padding:"82px 26px" }}>
-          <div style={{ maxWidth:1180, margin:"0 auto" }}>
-            <div style={{ color:gold, fontSize:11, fontWeight:900, letterSpacing:2.8 }}>DINNER MENU</div>
-            <h2 style={{ margin:"10px 0 30px", fontFamily:'Georgia,"Times New Roman",serif', fontSize:"clamp(46px,5vw,72px)", fontWeight:500 }}>From Our Kitchen</h2>
-            <FeaturedGrid data={data} themeKey="pizza-supper-club" cardBg="#0C1D18" text="#F6EFE1" muted="#AAB9B3" accent={gold} imageHeight={240} radius={0} />
+      <section className="social-event-strip" id="events">
+        <div className="social-event-inner">
+          <div className="social-event-label">HAPPENING HERE</div>
+          <div className="social-event-title">Trivia Nights · Local Beer · Group Gatherings</div>
+          <a className="social-event-link" href="#visit">Plan A Night →</a>
+        </div>
+      </section>
+
+      <section className="social-story" id="story">
+        <img
+          className="social-story-photo"
+          src={
+            getThemeImage(data, "pizza-social-house", 1) ||
+            getThemeImage(data, "pizza-supper-club", 1)
+          }
+          alt=""
+        />
+
+        <div className="social-story-copy">
+          <div className="social-kicker">THE HOUSE</div>
+          <h2>{website.about_title || "Come For The Pizza. Stay For The Night."}</h2>
+          <p>
+            {website.about_body ||
+              branding?.short_description ||
+              "The food matters, but so does the room. This is a pizzeria designed around atmosphere, regulars, local beer and making a casual dinner feel like the place to be."}
+          </p>
+
+          <div className="social-details">
+            <div className="social-detail">
+              <strong>Pizza</strong>
+              <span>Signature pies and house favorites</span>
+            </div>
+            <div className="social-detail">
+              <strong>Drinks</strong>
+              <span>Beer, wine and easy nights</span>
+            </div>
+            <div className="social-detail">
+              <strong>Events</strong>
+              <span>Trivia, groups and local happenings</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {featured.length > 0 && (
+        <section className="social-menu">
+          <div className="social-menu-inner">
+            <div className="social-menu-head">
+              <div>
+                <div className="social-kicker">SIGNATURES</div>
+                <h2>The Menu People Talk About.</h2>
+              </div>
+
+              <a
+                href={`/r/${restaurant.slug}/food-menu`}
+                style={{
+                  color: gold,
+                  fontSize: 9,
+                  fontWeight: 950,
+                  letterSpacing: 1.5,
+                  textTransform: "uppercase",
+                  borderBottom: `1px solid ${gold}`,
+                  paddingBottom: 5,
+                }}
+              >
+                Full Menu →
+              </a>
+            </div>
+
+            <div className="social-menu-list">
+              {featured.map((item, index) => (
+                <article className="social-menu-item" key={item.id}>
+                  <img
+                    className="social-menu-thumb"
+                    src={
+                      getThemeImage(data, "pizza-social-house", index % 4) ||
+                      getThemeImage(data, "pizza-supper-club", index % 4)
+                    }
+                    alt=""
+                  />
+
+                  <div>
+                    <div className="social-menu-name">{item.name}</div>
+                    {item.description && (
+                      <div className="social-menu-desc">{item.description}</div>
+                    )}
+                  </div>
+
+                  {item.price !== null && (
+                    <div className="social-menu-price">
+                      ${Number(item.price).toFixed(2)}
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
           </div>
         </section>
       )}
 
-      <PhotoMosaic data={data} themeKey="pizza-supper-club" bg="#0B1E19" cardBg="#132A24" rounded={0} />
-      <VisitBand data={data} bg={wine} text="#fff" accent={gold} />
-      <Footer data={data} bg="#06110E" color="#7D918A" />
+      <section className="social-atmosphere">
+        <img
+          className="social-atmosphere-photo"
+          src={
+            getThemeImage(data, "pizza-social-house", 2) ||
+            getThemeImage(data, "pizza-supper-club", 2)
+          }
+          alt=""
+        />
+
+        <div className="social-atmosphere-copy">
+          <div className="social-kicker" style={{ color: "#F2C7CF" }}>
+            GOOD NIGHTS LIVE HERE
+          </div>
+          <h2>Pizza Is Only Half The Story.</h2>
+          <p>
+            Give the restaurant a reason to be chosen beyond takeout. This design puts atmosphere,
+            drinks, community events and group occasions directly into the customer journey.
+          </p>
+
+          <div className="social-programs">
+            <div className="social-program">
+              <strong>Trivia</strong>
+              <span>Weekly Events</span>
+            </div>
+            <div className="social-program">
+              <strong>Beer</strong>
+              <span>Local & Cold</span>
+            </div>
+            <div className="social-program">
+              <strong>Groups</strong>
+              <span>Gather Here</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="social-visit" id="visit">
+        <div>
+          <div className="social-kicker">COME SEE US</div>
+          <h2>{restaurant.name}</h2>
+          {address && <div className="social-location">{address}</div>}
+          {restaurant.phone && (
+            <div className="social-location">
+              <a href={`tel:${restaurant.phone}`}>{restaurant.phone}</a>
+            </div>
+          )}
+        </div>
+
+        <div className="social-visit-actions">
+          {ordering?.online_ordering_url && (
+            <a href={ordering.online_ordering_url} target="_blank" rel="noreferrer">
+              Order Online
+            </a>
+          )}
+          <a href={`/r/${restaurant.slug}/food-menu`}>View Menu</a>
+          {ordering?.catering_email && (
+            <a href={`mailto:${ordering.catering_email}`}>Groups / Events</a>
+          )}
+        </div>
+      </section>
+
+      <footer className="social-footer">
+        <span>© {new Date().getFullYear()} {restaurant.name}</span>
+        <span>Restaurant OS · Hospitality-First Restaurant Website</span>
+      </footer>
     </main>
   );
 }
