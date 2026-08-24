@@ -63,6 +63,7 @@ export default function OwnerDashboardPage() {
 
     if (!error && ownedRestaurant) {
       data = ownedRestaurant as Restaurant;
+      setAdminMode(false);
     } else {
       const { data: adminRow } = await supabase
         .from("platform_admins")
@@ -80,6 +81,7 @@ export default function OwnerDashboardPage() {
 
         if (!adminError && adminRestaurant) {
           data = adminRestaurant as Restaurant;
+          setAdminMode(true);
         }
       }
     }
@@ -341,15 +343,19 @@ export default function OwnerDashboardPage() {
 
         {message && <div style={messageStyle}>{message}</div>}
 
-        <div style={adminViewBannerStyle}>
-          SUPER ADMIN VIEW · Managing {restaurant.name}
-          <button
-            style={adminViewButtonStyle}
-            onClick={() => (window.location.href = `/admin/restaurant?restaurant=${restaurant.id}`)}
-          >
-            RETURN TO ADMIN ACCOUNT
-          </button>
-        </div>
+        {adminMode && (
+          <div style={adminViewBannerStyle}>
+            SUPER ADMIN VIEW · Managing {restaurant.name}
+            <button
+              style={adminViewButtonStyle}
+              onClick={() =>
+                (window.location.href = `/admin/restaurant?restaurant=${restaurant.id}`)
+              }
+            >
+              RETURN TO ADMIN ACCOUNT
+            </button>
+          </div>
+        )}
 
         <section style={restaurantPanelStyle}>
           <div>
