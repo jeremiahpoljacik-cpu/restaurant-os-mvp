@@ -422,8 +422,9 @@ function StandardFoodMenuPage({ slug, themeKey }: { slug: string; themeKey: stri
       case "pizza-coastal-local":
       case "pizza-slice-shop":
         return { bg:"#F3E8CF", surface:"#FFF9EF", nav:"#1F5A62", accent:"#D86F3D", accent2:"#F7D4B8", text:"#15343A", muted:"#66777A" };
+      case "pizza-deal-machine":
       case "pizza-woodfire":
-        return { bg:"#E9DDC8", surface:"#F6EBDD", nav:"#2A211B", accent:"#C56A3A", accent2:"#E7D7BC", text:"#2B211A", muted:"#6C5A4B" };
+        return { bg:"#F7F7F5", surface:"#FFFFFF", nav:"#FFFFFF", accent:"#E31D2B", accent2:"#FFC400", text:"#111111", muted:"#666666" };
       case "pizza-supper-club":
         return { bg:"#0B1E19", surface:"#132A24", nav:"#081712", accent:"#7A2635", accent2:"#E7D7B4", text:"#F6EFE1", muted:"#B8C6C0" };
       case "pizza-italian":
