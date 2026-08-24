@@ -20,6 +20,7 @@ export default function OwnerLayout({
   const [restaurantId, setRestaurantId] = useState("");
   const [subscriptionStatus, setSubscriptionStatus] = useState("");
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
+  const [adminMode, setAdminMode] = useState(false);
 
   useEffect(() => {
     checkAccess();
@@ -28,17 +29,12 @@ export default function OwnerLayout({
   async function checkAccess() {
     setChecking(true);
     setAllowed(false);
+    setAdminMode(false);
+    setSubscriptionStatus("");
+    setTrialDaysLeft(null);
 
     const params = new URLSearchParams(window.location.search);
-    const restaurantId = params.get("restaurant");
-
-    if (!restaurantId) {
-      setAllowed(true);
-      setChecking(false);
-      return;
-    }
-
-    setRestaurantId(restaurantId);
+    const requestedRestaurantId = params.get("restaurant");
 
     const {
       data: { user },
@@ -49,44 +45,93 @@ export default function OwnerLayout({
       return;
     }
 
-    let restaurant: { id: string } | null = null;
-
-    const { data: ownedRestaurant, error: restaurantError } = await supabase
-      .from("restaurants")
-      .select("id")
-      .eq("id", restaurantId)
-      .eq("owner_user_id", user.id)
+    const { data: adminRow } = await supabase
+      .from("platform_admins")
+      .select("user_id,active")
+      .eq("user_id", user.id)
+      .eq("active", true)
       .maybeSingle();
 
-    if (!restaurantError && ownedRestaurant) {
-      restaurant = ownedRestaurant;
-    } else {
-      const { data: adminRow } = await supabase
-        .from("platform_admins")
-        .select("user_id,active")
-        .eq("user_id", user.id)
-        .eq("active", true)
-        .maybeSingle();
+    const isAdmin = Boolean(adminRow);
 
-      if (adminRow) {
-        const { data: adminRestaurant, error: adminRestaurantError } = await supabase
-          .from("restaurants")
-          .select("id")
-          .eq("id", restaurantId)
-          .maybeSingle();
+    const { data: ownedRestaurants, error: ownedError } = await supabase
+      .from("restaurants")
+      .select("id,name,status,created_at")
+      .eq("owner_user_id", user.id)
+      .order("created_at", { ascending: true });
 
-        if (!adminRestaurantError && adminRestaurant) {
-          restaurant = adminRestaurant;
-        }
-      }
+    if (ownedError) {
+      window.location.href = isAdmin ? "/admin" : "/login";
+      return;
     }
 
-    if (!restaurant) {
+    const owned = ownedRestaurants || [];
+
+    // No restaurant in the URL is never allowed to silently fall through to
+    // an arbitrary/default restaurant. Resolve explicitly.
+    if (!requestedRestaurantId) {
+      if (isAdmin) {
+        window.location.href = "/admin";
+        return;
+      }
+
+      if (owned.length === 1) {
+        window.location.href = `${pathname}?restaurant=${owned[0].id}`;
+        return;
+      }
+
+      if (owned.length > 1) {
+        window.location.href = "/owner/restaurants";
+        return;
+      }
+
       window.location.href = "/login";
       return;
     }
 
+    const ownedMatch = owned.find(
+      (restaurant) => restaurant.id === requestedRestaurantId
+    );
+
+    if (ownedMatch) {
+      setRestaurantId(ownedMatch.id);
+      setAdminMode(false);
+    } else if (isAdmin) {
+      const { data: adminRestaurant, error: adminRestaurantError } = await supabase
+        .from("restaurants")
+        .select("id")
+        .eq("id", requestedRestaurantId)
+        .maybeSingle();
+
+      if (adminRestaurantError || !adminRestaurant) {
+        window.location.href = "/admin";
+        return;
+      }
+
+      setRestaurantId(adminRestaurant.id);
+      setAdminMode(true);
+    } else {
+      // A legitimate owner tried to open a restaurant they do not own.
+      // Send them to their location selector rather than login or another account.
+      if (owned.length === 1) {
+        window.location.href = `/owner?restaurant=${owned[0].id}`;
+      } else if (owned.length > 1) {
+        window.location.href = "/owner/restaurants";
+      } else {
+        window.location.href = "/login";
+      }
+      return;
+    }
+
+    // Billing must remain reachable even when access is expired.
     if (pathname === "/owner/billing") {
+      setAllowed(true);
+      setChecking(false);
+      return;
+    }
+
+    // Super Admin override is operational access, not customer subscription access.
+    if (isAdmin && !ownedMatch) {
       setAllowed(true);
       setChecking(false);
       return;
@@ -95,11 +140,11 @@ export default function OwnerLayout({
     const { data: subscription, error: subscriptionError } = await supabase
       .from("restaurant_subscriptions")
       .select("status,trial_ends_at")
-      .eq("restaurant_id", restaurantId)
+      .eq("restaurant_id", requestedRestaurantId)
       .maybeSingle<SubscriptionRow>();
 
     if (subscriptionError || !subscription) {
-      window.location.href = `/owner/billing?restaurant=${restaurantId}&access=required`;
+      window.location.href = `/owner/billing?restaurant=${requestedRestaurantId}&access=required`;
       return;
     }
 
@@ -109,8 +154,6 @@ export default function OwnerLayout({
       const msLeft =
         new Date(subscription.trial_ends_at).getTime() - Date.now();
       setTrialDaysLeft(Math.max(0, Math.ceil(msLeft / 86400000)));
-    } else {
-      setTrialDaysLeft(null);
     }
 
     if (subscription.status === "active") {
@@ -119,18 +162,17 @@ export default function OwnerLayout({
       return;
     }
 
-    if (subscription.status === "trial") {
-      if (
-        !subscription.trial_ends_at ||
-        new Date(subscription.trial_ends_at).getTime() > Date.now()
-      ) {
-        setAllowed(true);
-        setChecking(false);
-        return;
-      }
+    if (
+      subscription.status === "trial" &&
+      (!subscription.trial_ends_at ||
+        new Date(subscription.trial_ends_at).getTime() > Date.now())
+    ) {
+      setAllowed(true);
+      setChecking(false);
+      return;
     }
 
-    window.location.href = `/owner/billing?restaurant=${restaurantId}&access=required`;
+    window.location.href = `/owner/billing?restaurant=${requestedRestaurantId}&access=required`;
   }
 
   if (checking) {
@@ -149,6 +191,7 @@ export default function OwnerLayout({
   return (
     <>
       {pathname !== "/owner/billing" &&
+        !adminMode &&
         restaurantId &&
         subscriptionStatus === "trial" &&
         trialDaysLeft !== null && (
@@ -229,6 +272,24 @@ export default function OwnerLayout({
         }
       `}</style>
 
+      {adminMode && pathname !== "/owner/billing" && (
+        <div style={adminModeBannerStyle}>
+          <div style={adminModeBannerInnerStyle}>
+            <span>
+              SUPER ADMIN OVERRIDE · Customer subscription rules are bypassed for this management session.
+            </span>
+            <button
+              style={adminModeButtonStyle}
+              onClick={() => {
+                window.location.href = `/admin/restaurant?restaurant=${restaurantId}`;
+              }}
+            >
+              RETURN TO ADMIN
+            </button>
+          </div>
+        </div>
+      )}
+
       {children}
     </>
   );
@@ -306,4 +367,37 @@ const trialButtonStyle = {
   fontWeight: 900,
   cursor: "pointer",
   minHeight: "40px",
+};
+
+
+const adminModeBannerStyle = {
+  background: "#103323",
+  color: "#dcfce7",
+  borderBottom: "1px solid #2f6f4e",
+  fontFamily: "Arial, Helvetica, sans-serif",
+};
+
+const adminModeBannerInnerStyle = {
+  maxWidth: "1180px",
+  margin: "0 auto",
+  padding: "9px 16px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "10px",
+  flexWrap: "wrap" as const,
+  fontSize: "10px",
+  fontWeight: 900,
+  letterSpacing: ".5px",
+};
+
+const adminModeButtonStyle = {
+  background: "#183f2d",
+  color: "#dcfce7",
+  border: "1px solid #34785a",
+  borderRadius: "8px",
+  padding: "8px 10px",
+  fontSize: "9px",
+  fontWeight: 900,
+  cursor: "pointer",
 };
