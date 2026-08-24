@@ -121,10 +121,10 @@ const THEME_CATEGORIES = [
         swatches: ["#050505", "#F5F2EA", "#B6182B"],
       },
       {
-        key: "pizza-napoli-modern",
-        name: "Napoli Modern",
-        description: "Clean, modern Italian design with premium photography, soft neutrals and restrained typography.",
-        swatches: ["#F3EFE7", "#183A32", "#B53D2F"],
+        key: "pizza-ramuntos-heritage",
+        name: "Brick Oven Heritage",
+        description: "Established regional pizzeria feel with brick-oven craftsmanship, family history, locations, catering and community credibility.",
+        swatches: ["#7C201A", "#E8D9BA", "#1F3529"],
       },
       {
         key: "pizza-slice-shop",
