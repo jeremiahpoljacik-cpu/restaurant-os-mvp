@@ -171,12 +171,20 @@ const THEME_MEDIA: Record<string, { images: string[]; video?: string }> = {
       "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1400&q=86"
     ]
   },
+  "pizza-deal-machine": {
+    images: [
+      "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1800&q=90",
+      "https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=1400&q=88",
+      "https://images.unsplash.com/photo-1594007654729-407eedc4be65?auto=format&fit=crop&w=1400&q=88",
+      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1400&q=88"
+    ]
+  },
   "pizza-woodfire": {
     images: [
-      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1600&q=82",
-      "https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=1200&q=82",
-      "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=1200&q=82",
-      "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=82"
+      "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1800&q=90",
+      "https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=1400&q=88",
+      "https://images.unsplash.com/photo-1594007654729-407eedc4be65?auto=format&fit=crop&w=1400&q=88",
+      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1400&q=88"
     ]
   },
   "pizza-supper-club": {
@@ -306,7 +314,7 @@ export default function DefaultRestaurantTheme() {
   if (key === "pizza-otto-editorial" || key === "pizza-red-brick") return <PizzaOttoEditorial data={data} />;
   if (key === "pizza-ramuntos-heritage" || key === "pizza-napoli-modern") return <PizzaRamuntosHeritage data={data} />;
   if (key === "pizza-coastal-local" || key === "pizza-slice-shop") return <PizzaCoastalLocal data={data} />;
-  if (key === "pizza-woodfire") return <PizzaWoodfire data={data} />;
+  if (key === "pizza-deal-machine" || key === "pizza-woodfire") return <PizzaDealMachine data={data} />;
   if (key === "pizza-supper-club") return <PizzaSupperClub data={data} />;
 
   return <StandardFallback data={data} themeKey={key} />;
@@ -3058,52 +3066,763 @@ function PizzaCoastalLocal({ data }: { data: SiteData }) {
   );
 }
 
-function PizzaWoodfire({ data }: { data: SiteData }) {
-  const { restaurant, branding, website } = data;
-  const rust = branding?.primary_color || "#C56A3A";
-  const sand = branding?.secondary_color || "#E7D7BC";
-  const hero = getHeroImage(data, "pizza-woodfire");
-  const heroVideo = getHeroVideo(data, "pizza-woodfire");
+function PizzaDealMachine({ data }: { data: SiteData }) {
+  const { restaurant, branding, website, ordering } = data;
+
+  const red = branding?.primary_color || "#E31D2B";
+  const black = "#111111";
+  const soft = "#F5F5F3";
+  const yellow = branding?.secondary_color || "#FFC400";
+
+  const hero =
+    getHeroImage(data, "pizza-deal-machine") ||
+    getHeroImage(data, "pizza-woodfire");
+  const heroVideo = website.hero_video_url || null;
+
+  const address = [
+    restaurant.address_line_1,
+    restaurant.city,
+    restaurant.state,
+    restaurant.zip,
+  ].filter(Boolean).join(", ");
+
+  const categories = Array.from(
+    new Set(data.items.map((item) => item.category_name).filter(Boolean))
+  ).slice(0, 7);
+
+  const featured = data.items.slice(0, 6);
 
   return (
-    <main style={{ minHeight:"100vh", background:"#E9DDC8", color:"#2B211A", fontFamily:"Arial,Helvetica,sans-serif" }}>
+    <main className="deal-shell">
       <SharedGlobal />
-      <Header data={data} bg="#2A211B" color="#fff" accent={rust} compact />
-      <section style={{ minHeight:740, position:"relative", display:"flex", alignItems:"center", color:"#fff", overflow:"hidden", background:hero ? `url("${hero}") center/cover` : "#2A211B" }}>
-        {heroVideo ? <video autoPlay muted loop playsInline src={heroVideo} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} /> : null}
-        <div style={{ position:"absolute", inset:0, background:"linear-gradient(90deg,rgba(30,22,17,.88),rgba(30,22,17,.18))" }} />
-        <div style={{ maxWidth:1180, width:"100%", margin:"0 auto", padding:"90px 28px", position:"relative", zIndex:2 }}>
-          <div style={{ color:sand, fontSize:11, fontWeight:900, letterSpacing:3 }}>FERMENTED DOUGH · LIVE FIRE · SEASONAL INGREDIENTS</div>
-          <h1 style={{ maxWidth:820, margin:"14px 0", fontFamily:'Georgia,"Times New Roman",serif', fontSize:"clamp(62px,8vw,108px)", lineHeight:.92, fontWeight:500 }}>{website.hero_headline || restaurant.name}</h1>
-          <p style={{ maxWidth:640, color:"#EFE6D8", fontSize:18, lineHeight:1.7 }}>{website.hero_subheadline || branding?.tagline || "Fire, flour, time and a few really good ingredients."}</p>
-          <HeroActions data={data} primary={rust} secondary={sand} darkText />
-        </div>
-      </section>
 
-      <section id="story" style={{ background:"#E9DDC8" }}>
-        <div className="ros-two" style={{ maxWidth:1180, margin:"0 auto", padding:"88px 28px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:48, alignItems:"center" }}>
-          <div>
-            <div style={{ color:rust, fontSize:11, fontWeight:950, letterSpacing:2.4 }}>THE OVEN IS THE HEART</div>
-            <h2 style={{ margin:"12px 0 18px", fontFamily:'Georgia,"Times New Roman",serif', fontSize:"clamp(46px,5vw,72px)", lineHeight:.98, fontWeight:500 }}>{website.about_title || "Made By Fire."}</h2>
-            <p style={{ color:"#6C5A4B", fontSize:17, lineHeight:1.85 }}>{website.about_body || branding?.short_description || "Long-fermented dough, blistered crust and ingredients chosen because they belong together."}</p>
+      <style jsx global>{`
+        body {
+          background: #ffffff !important;
+        }
+
+        .deal-shell {
+          min-height: 100vh;
+          background: #fff;
+          color: ${black};
+          font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .deal-header {
+          position: sticky;
+          top: 0;
+          z-index: 70;
+          background: #fff;
+          box-shadow: 0 2px 14px rgba(0,0,0,.08);
+        }
+
+        .deal-header-main {
+          max-width: 1320px;
+          margin: 0 auto;
+          min-height: 76px;
+          padding: 12px 24px;
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+          align-items: center;
+          gap: 18px;
+        }
+
+        .deal-brand {
+          font-family: Arial Black, Arial, Helvetica, sans-serif;
+          color: ${red};
+          font-size: 28px;
+          font-weight: 950;
+          text-transform: uppercase;
+          letter-spacing: -1.5px;
+          line-height: .9;
+          text-align: center;
+        }
+
+        .deal-brand small {
+          display: block;
+          margin-top: 5px;
+          color: #7b7b7b;
+          font-family: Arial, Helvetica, sans-serif;
+          font-size: 8px;
+          letter-spacing: 2.5px;
+          font-weight: 900;
+        }
+
+        .deal-header-side {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+          font-size: 10px;
+          font-weight: 900;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+        }
+
+        .deal-header-side.right {
+          justify-content: flex-end;
+        }
+
+        .deal-order-top {
+          background: ${red};
+          color: #fff;
+          padding: 12px 15px;
+          border-radius: 8px;
+        }
+
+        .deal-category-rail {
+          border-top: 1px solid #ececec;
+          border-bottom: 1px solid #e7e7e7;
+          padding: 12px 18px;
+          display: flex;
+          gap: 10px;
+          overflow-x: auto;
+          background: #fff;
+          scrollbar-width: none;
+        }
+
+        .deal-category-rail::-webkit-scrollbar {
+          display: none;
+        }
+
+        .deal-pill {
+          flex: 0 0 auto;
+          border: 1px solid #e0e0e0;
+          border-radius: 999px;
+          background: #fff;
+          padding: 10px 16px;
+          box-shadow: 0 3px 10px rgba(0,0,0,.06);
+          font-size: 11px;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        .deal-modebar {
+          background: ${soft};
+          border-bottom: 1px solid #e5e5e5;
+          padding: 14px 22px;
+        }
+
+        .deal-modebar-inner {
+          max-width: 1180px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: 1fr auto;
+          align-items: center;
+          gap: 18px;
+        }
+
+        .deal-mode-copy {
+          color: #555;
+          font-size: 13px;
+          font-weight: 700;
+        }
+
+        .deal-mode-actions {
+          display: flex;
+          gap: 10px;
+        }
+
+        .deal-mode {
+          border: 2px solid ${red};
+          color: ${black};
+          background: #fff;
+          padding: 11px 18px;
+          border-radius: 8px;
+          font-size: 10px;
+          font-weight: 950;
+          letter-spacing: .8px;
+          text-transform: uppercase;
+        }
+
+        .deal-hero-wrap {
+          background: #fff;
+          padding: 28px 24px 18px;
+        }
+
+        .deal-hero {
+          position: relative;
+          max-width: 1180px;
+          margin: 0 auto;
+          min-height: 520px;
+          border-radius: 18px;
+          overflow: hidden;
+          background: ${black};
+          box-shadow: 0 10px 32px rgba(0,0,0,.12);
+        }
+
+        .deal-hero-media {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .deal-hero-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(90deg, rgba(0,0,0,.76) 0%, rgba(0,0,0,.45) 44%, rgba(0,0,0,.12) 100%);
+        }
+
+        .deal-hero-copy {
+          position: relative;
+          z-index: 2;
+          min-height: 520px;
+          max-width: 660px;
+          padding: 66px 56px;
+          color: #fff;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+        }
+
+        .deal-eyebrow {
+          color: ${yellow};
+          font-size: 11px;
+          font-weight: 950;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+        }
+
+        .deal-hero h1 {
+          margin: 10px 0 14px;
+          font-family: Arial Black, Arial, Helvetica, sans-serif;
+          font-size: clamp(58px,7vw,96px);
+          line-height: .86;
+          text-transform: uppercase;
+          letter-spacing: -4px;
+        }
+
+        .deal-hero p {
+          max-width: 540px;
+          color: #f0f0f0;
+          font-size: 17px;
+          line-height: 1.6;
+        }
+
+        .deal-hero-cta {
+          display: inline-block;
+          margin-top: 24px;
+          width: fit-content;
+          background: ${red};
+          color: #fff;
+          padding: 15px 20px;
+          border-radius: 8px;
+          font-size: 11px;
+          font-weight: 950;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+        }
+
+        .deal-start {
+          max-width: 1180px;
+          margin: 16px auto 0;
+          border: 2px solid ${red};
+          border-radius: 12px;
+          padding: 14px 18px;
+          display: grid;
+          grid-template-columns: auto 1fr auto;
+          gap: 18px;
+          align-items: center;
+        }
+
+        .deal-start strong {
+          font-family: Arial Black, Arial, Helvetica, sans-serif;
+          font-size: 24px;
+          text-transform: uppercase;
+        }
+
+        .deal-start span {
+          color: #555;
+          text-align: center;
+          font-size: 14px;
+        }
+
+        .deal-start a {
+          background: ${red};
+          color: #fff;
+          padding: 12px 22px;
+          border-radius: 7px;
+          font-size: 10px;
+          font-weight: 950;
+          text-transform: uppercase;
+        }
+
+        .deal-featured {
+          max-width: 1180px;
+          margin: 0 auto;
+          padding: 48px 24px 74px;
+        }
+
+        .deal-section-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          gap: 20px;
+          margin-bottom: 22px;
+        }
+
+        .deal-section-head h2 {
+          margin: 0;
+          font-family: Arial Black, Arial, Helvetica, sans-serif;
+          font-size: clamp(38px,4.6vw,62px);
+          line-height: .92;
+          text-transform: uppercase;
+        }
+
+        .deal-section-head a {
+          color: ${red};
+          font-size: 10px;
+          font-weight: 950;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+        }
+
+        .deal-grid {
+          display: grid;
+          grid-template-columns: repeat(3,1fr);
+          gap: 14px;
+        }
+
+        .deal-card {
+          background: #fff;
+          border: 1px solid #e5e5e5;
+          border-radius: 14px;
+          overflow: hidden;
+          box-shadow: 0 6px 18px rgba(0,0,0,.07);
+        }
+
+        .deal-card-image {
+          width: 100%;
+          height: 220px;
+          object-fit: cover;
+          display: block;
+        }
+
+        .deal-card-copy {
+          padding: 16px;
+        }
+
+        .deal-card-name {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          font-size: 17px;
+          font-weight: 950;
+        }
+
+        .deal-card-price {
+          color: ${red};
+          white-space: nowrap;
+        }
+
+        .deal-card-desc {
+          margin-top: 8px;
+          color: #6b6b6b;
+          font-size: 12px;
+          line-height: 1.55;
+        }
+
+        .deal-card-button {
+          display: block;
+          margin: 15px 0 2px;
+          background: ${red};
+          color: #fff;
+          padding: 11px 13px;
+          border-radius: 7px;
+          text-align: center;
+          font-size: 10px;
+          font-weight: 950;
+          text-transform: uppercase;
+        }
+
+        .deal-band {
+          background: ${black};
+          color: #fff;
+          padding: 72px 24px;
+        }
+
+        .deal-band-inner {
+          max-width: 1180px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 42px;
+          align-items: center;
+        }
+
+        .deal-band h2 {
+          margin: 8px 0 16px;
+          font-family: Arial Black, Arial, Helvetica, sans-serif;
+          font-size: clamp(42px,5vw,72px);
+          line-height: .9;
+          text-transform: uppercase;
+        }
+
+        .deal-band p {
+          color: #bbb;
+          font-size: 16px;
+          line-height: 1.75;
+        }
+
+        .deal-band-image {
+          width: 100%;
+          height: 430px;
+          object-fit: cover;
+          border-radius: 14px;
+        }
+
+        .deal-visit {
+          max-width: 1180px;
+          margin: 0 auto;
+          padding: 72px 24px;
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 24px;
+          align-items: center;
+        }
+
+        .deal-visit h2 {
+          margin: 8px 0 14px;
+          font-family: Arial Black, Arial, Helvetica, sans-serif;
+          font-size: clamp(38px,4.5vw,60px);
+          text-transform: uppercase;
+        }
+
+        .deal-detail {
+          color: #666;
+          font-size: 13px;
+          line-height: 1.7;
+        }
+
+        .deal-big-order {
+          background: ${red};
+          color: #fff;
+          padding: 16px 26px;
+          border-radius: 8px;
+          font-size: 11px;
+          font-weight: 950;
+          text-transform: uppercase;
+        }
+
+        .deal-footer {
+          background: #f5f5f3;
+          color: #777;
+          padding: 28px 24px;
+          display: flex;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+          font-size: 9px;
+          font-weight: 900;
+          letter-spacing: 1.2px;
+          text-transform: uppercase;
+        }
+
+        @media(max-width: 900px) {
+          .deal-header-main {
+            grid-template-columns: 1fr auto;
+          }
+
+          .deal-header-side:first-child {
+            display: none;
+          }
+
+          .deal-brand {
+            text-align: left;
+          }
+
+          .deal-grid {
+            grid-template-columns: repeat(2,1fr);
+          }
+
+          .deal-band-inner {
+            grid-template-columns: 1fr;
+          }
+
+          .deal-visit {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media(max-width: 640px) {
+          .deal-header-main {
+            padding: 10px 14px;
+          }
+
+          .deal-brand {
+            font-size: 22px;
+          }
+
+          .deal-header-side.right a:not(.deal-order-top) {
+            display: none;
+          }
+
+          .deal-modebar-inner {
+            grid-template-columns: 1fr;
+          }
+
+          .deal-mode-copy {
+            text-align: center;
+          }
+
+          .deal-mode-actions {
+            justify-content: center;
+          }
+
+          .deal-hero-wrap {
+            padding: 16px 14px 10px;
+          }
+
+          .deal-hero,
+          .deal-hero-copy {
+            min-height: 500px;
+          }
+
+          .deal-hero-copy {
+            padding: 46px 24px;
+          }
+
+          .deal-start {
+            margin-left: 14px;
+            margin-right: 14px;
+            grid-template-columns: 1fr;
+            text-align: center;
+          }
+
+          .deal-start span {
+            text-align: center;
+          }
+
+          .deal-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .deal-section-head {
+            display: block;
+          }
+
+          .deal-section-head a {
+            display: inline-block;
+            margin-top: 12px;
+          }
+
+          .deal-featured,
+          .deal-band,
+          .deal-visit {
+            padding-left: 18px;
+            padding-right: 18px;
+          }
+        }
+      `}</style>
+
+      <header className="deal-header">
+        <div className="deal-header-main">
+          <div className="deal-header-side">
+            <a href={`/r/${restaurant.slug}/food-menu`}>Menu</a>
+            <a href="#featured">Deals</a>
           </div>
-          <img src={getThemeImage(data,"pizza-woodfire",1)} alt="" style={{ width:"100%", height:500, objectFit:"cover", borderRadius:220 }} />
+
+          <a href={`/r/${restaurant.slug}`} className="deal-brand">
+            {website.logo_url ? (
+              <img
+                src={website.logo_url}
+                alt={restaurant.name}
+                style={{ maxWidth: 190, maxHeight: 58, objectFit: "contain" }}
+              />
+            ) : (
+              <>
+                {restaurant.name}
+                <small>Pizza · Wings · More</small>
+              </>
+            )}
+          </a>
+
+          <div className="deal-header-side right">
+            {restaurant.phone && <a href={`tel:${restaurant.phone}`}>{restaurant.phone}</a>}
+            {ordering?.online_ordering_url && (
+              <a
+                className="deal-order-top"
+                href={ordering.online_ordering_url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Order Now
+              </a>
+            )}
+          </div>
+        </div>
+
+        <div className="deal-category-rail">
+          {(categories.length ? categories : ["Deals","Pizza","Wings","Sides","Pasta","Desserts","Drinks"]).map((category) => (
+            <a
+              className="deal-pill"
+              key={category}
+              href={`/r/${restaurant.slug}/food-menu`}
+            >
+              {category}
+            </a>
+          ))}
+        </div>
+      </header>
+
+      <section className="deal-modebar">
+        <div className="deal-modebar-inner">
+          <div className="deal-mode-copy">
+            Start your order and choose how you want it.
+          </div>
+          <div className="deal-mode-actions">
+            {ordering?.online_ordering_url ? (
+              <>
+                <a className="deal-mode" href={ordering.online_ordering_url} target="_blank" rel="noreferrer">
+                  Carryout
+                </a>
+                <a className="deal-mode" href={ordering.online_ordering_url} target="_blank" rel="noreferrer">
+                  Delivery
+                </a>
+              </>
+            ) : (
+              <a className="deal-mode" href={`/r/${restaurant.slug}/food-menu`}>
+                View Menu
+              </a>
+            )}
+          </div>
         </div>
       </section>
 
-      {data.items.length > 0 && (
-        <section style={{ background:"#2A211B", color:"#fff", padding:"82px 26px" }}>
-          <div style={{ maxWidth:1180, margin:"0 auto" }}>
-            <div style={{ color:sand, fontSize:11, fontWeight:900, letterSpacing:2.6 }}>FROM THE OVEN</div>
-            <h2 style={{ margin:"10px 0 30px", fontFamily:'Georgia,"Times New Roman",serif', fontSize:"clamp(46px,5vw,72px)", fontWeight:500 }}>Pies, Plates & Fire</h2>
-            <FeaturedGrid data={data} themeKey="pizza-woodfire" cardBg="#3A2D24" text="#fff" muted="#D2C4B4" accent={sand} imageHeight={235} radius={14} />
+      <section className="deal-hero-wrap">
+        <div className="deal-hero">
+          {heroVideo ? (
+            <video className="deal-hero-media" src={heroVideo} autoPlay muted loop playsInline />
+          ) : hero ? (
+            <img className="deal-hero-media" src={hero} alt="" />
+          ) : null}
+
+          <div className="deal-hero-overlay" />
+
+          <div className="deal-hero-copy">
+            <div className="deal-eyebrow">HOT · FAST · READY</div>
+            <h1>{website.hero_headline || "Pizza Night Starts Here."}</h1>
+            <p>
+              {website.hero_subheadline ||
+                branding?.short_description ||
+                "Big pies, fast ordering and easy deals built for family dinners, game nights and last-minute cravings."}
+            </p>
+
+            {ordering?.online_ordering_url && (
+              <a
+                className="deal-hero-cta"
+                href={ordering.online_ordering_url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {website.primary_cta_label || "ORDER NOW"}
+              </a>
+            )}
+          </div>
+        </div>
+
+        <div className="deal-start">
+          <strong>Start Here</strong>
+          <span>Find your favorites and build your order fast.</span>
+          <a href={`/r/${restaurant.slug}/food-menu`}>See Menu</a>
+        </div>
+      </section>
+
+      {featured.length > 0 && (
+        <section className="deal-featured" id="featured">
+          <div className="deal-section-head">
+            <h2>Featured</h2>
+            <a href={`/r/${restaurant.slug}/food-menu`}>See More →</a>
+          </div>
+
+          <div className="deal-grid">
+            {featured.map((item, index) => (
+              <article className="deal-card" key={item.id}>
+                <img
+                  className="deal-card-image"
+                  src={
+                    getThemeImage(data, "pizza-deal-machine", index % 4) ||
+                    getThemeImage(data, "pizza-woodfire", index % 4)
+                  }
+                  alt=""
+                />
+
+                <div className="deal-card-copy">
+                  <div className="deal-card-name">
+                    <span>{item.name}</span>
+                    {item.price !== null && (
+                      <span className="deal-card-price">
+                        ${Number(item.price).toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+
+                  {item.description && (
+                    <div className="deal-card-desc">{item.description}</div>
+                  )}
+
+                  <a className="deal-card-button" href={`/r/${restaurant.slug}/food-menu`}>
+                    Add To Order
+                  </a>
+                </div>
+              </article>
+            ))}
           </div>
         </section>
       )}
 
-      <PhotoMosaic data={data} themeKey="pizza-woodfire" bg="#E9DDC8" cardBg="#fff" rounded={14} />
-      <VisitBand data={data} bg={rust} text="#fff" accent={sand} />
-      <Footer data={data} bg="#1A1410" color="#A99989" />
+      <section className="deal-band">
+        <div className="deal-band-inner">
+          <div>
+            <div className="deal-eyebrow">BUILT FOR BUSY NIGHTS</div>
+            <h2>Fast Decisions. Fast Orders.</h2>
+            <p>
+              This layout is built around conversion: menu categories up front, ordering mode immediately visible, big promotional media and clear paths into the checkout flow.
+            </p>
+          </div>
+
+          <img
+            className="deal-band-image"
+            src={
+              getThemeImage(data, "pizza-deal-machine", 2) ||
+              getThemeImage(data, "pizza-woodfire", 2)
+            }
+            alt=""
+          />
+        </div>
+      </section>
+
+      <section className="deal-visit">
+        <div>
+          <div className="deal-eyebrow" style={{ color: red }}>
+            YOUR LOCAL STORE
+          </div>
+          <h2>{restaurant.name}</h2>
+          {address && <div className="deal-detail">{address}</div>}
+          {restaurant.phone && (
+            <div className="deal-detail">
+              <a href={`tel:${restaurant.phone}`}>{restaurant.phone}</a>
+            </div>
+          )}
+        </div>
+
+        {ordering?.online_ordering_url && (
+          <a
+            className="deal-big-order"
+            href={ordering.online_ordering_url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Order Online
+          </a>
+        )}
+      </section>
+
+      <footer className="deal-footer">
+        <span>© {new Date().getFullYear()} {restaurant.name}</span>
+        <span>Restaurant OS · Order-First Restaurant Website</span>
+      </footer>
     </main>
   );
 }
