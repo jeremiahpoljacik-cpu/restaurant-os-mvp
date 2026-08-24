@@ -23,6 +23,7 @@ export default function OwnerDashboardPage() {
   const [setupPercent, setSetupPercent] = useState(0);
   const [setupReady, setSetupReady] = useState(false);
   const [restaurantCount, setRestaurantCount] = useState(1);
+  const [adminMode, setAdminMode] = useState(false);
   const [blockers, setBlockers] = useState<
     { label: string; path: string; action: string }[]
   >([]);
