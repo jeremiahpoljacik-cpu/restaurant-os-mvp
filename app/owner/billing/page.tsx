@@ -7,7 +7,7 @@ type Subscription = {
   id: string;
   restaurant_id: string;
   plan: string;
-  status: "trial" | "active" | "past_due" | "canceled" | "paused";
+  status: string;
   provider: string | null;
   provider_customer_id: string | null;
   provider_subscription_id: string | null;
@@ -23,43 +23,10 @@ export default function OwnerBillingPage() {
   const [message, setMessage] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
-  const [confirmingPayment, setConfirmingPayment] = useState(false);
-  const [adminMode, setAdminMode] = useState(false);
 
   useEffect(() => {
     load();
   }, []);
-
-  async function waitForActiveSubscription(restaurantId: string) {
-    setConfirmingPayment(true);
-
-    for (let attempt = 0; attempt < 8; attempt++) {
-      const { data } = await supabase
-        .from("restaurant_subscriptions")
-        .select("*")
-        .eq("restaurant_id", restaurantId)
-        .maybeSingle();
-
-      if (data?.status === "active") {
-        setSubscription(data);
-        setMessage("Payment confirmed. Your Restaurant OS subscription is ACTIVE.");
-        setConfirmingPayment(false);
-        window.history.replaceState(
-          {},
-          "",
-          `/owner/billing?restaurant=${restaurantId}`
-        );
-        return;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-    }
-
-    setMessage(
-      "Payment completed, but billing confirmation is still syncing. Refresh this page in a few seconds."
-    );
-    setConfirmingPayment(false);
-  }
 
   async function load() {
     const params = new URLSearchParams(window.location.search);
@@ -73,15 +40,10 @@ export default function OwnerBillingPage() {
 
     setRestaurantId(id);
 
-    const checkoutState = params.get("checkout");
-    const accessState = params.get("access");
-
-    if (checkoutState === "success") {
-      setMessage("Payment completed. Confirming your subscription with Stripe...");
-    } else if (checkoutState === "canceled") {
-      setMessage("Checkout was canceled. Your current access has not changed.");
-    } else if (accessState === "required") {
-      setMessage("Subscription access is required to continue using Restaurant OS.");
+    if (params.get("checkout") === "success") {
+      setMessage("Payment completed. Confirming Restaurant OS access...");
+    } else if (params.get("checkout") === "canceled") {
+      setMessage("Checkout canceled. No billing change was made.");
     }
 
     const {
@@ -93,115 +55,44 @@ export default function OwnerBillingPage() {
       return;
     }
 
-    const { data: restaurant, error: restaurantError } = await supabase
+    const { data: restaurant } = await supabase
       .from("restaurants")
-      .select("id,name,owner_user_id")
+      .select("id,name")
       .eq("id", id)
+      .eq("owner_user_id", user.id)
       .maybeSingle();
 
-    if (restaurantError || !restaurant) {
-      setMessage(restaurantError?.message || "Restaurant not found.");
+    if (!restaurant) {
+      setMessage("Restaurant not found or access denied.");
       setLoading(false);
       return;
     }
 
-    if (restaurant.owner_user_id !== user.id) {
-      const { data: adminRow } = await supabase
-        .from("platform_admins")
-        .select("user_id,active")
-        .eq("user_id", user.id)
-        .eq("active", true)
-        .maybeSingle();
-
-      if (!adminRow) {
-        setMessage("Restaurant access denied.");
-        setLoading(false);
-        return;
-      }
-
-      setAdminMode(true);
-    } else {
-      setAdminMode(false);
-    }
-
     setRestaurantName(restaurant.name);
 
-    const { data: existing, error: subscriptionError } = await supabase
+    const { data: sub, error } = await supabase
       .from("restaurant_subscriptions")
       .select("*")
       .eq("restaurant_id", id)
       .maybeSingle();
 
-    if (subscriptionError) {
-      setMessage(subscriptionError.message);
-      setLoading(false);
-      return;
+    if (error) {
+      setMessage(error.message);
+    } else {
+      setSubscription(sub);
     }
 
-    if (existing) {
-      setSubscription(existing);
-      setLoading(false);
-
-      if (checkoutState === "success" && existing.status !== "active") {
-        waitForActiveSubscription(id);
-      } else if (checkoutState === "success" && existing.status === "active") {
-        setMessage("Payment confirmed. Your Restaurant OS subscription is ACTIVE.");
-        window.history.replaceState(
-          {},
-          "",
-          `/owner/billing?restaurant=${id}`
-        );
-      }
-
-      return;
-    }
-
-    const trialEnd = new Date();
-    trialEnd.setDate(trialEnd.getDate() + 14);
-
-    const { data: created, error: createError } = await supabase
-      .from("restaurant_subscriptions")
-      .insert({
-        restaurant_id: id,
-        plan: "founder",
-        status: "trial",
-        trial_ends_at: trialEnd.toISOString(),
-      })
-      .select("*")
-      .single();
-
-    if (createError) {
-      setMessage(createError.message);
-      setLoading(false);
-      return;
-    }
-
-    setSubscription(created);
     setLoading(false);
-
-    if (checkoutState === "success") {
-      waitForActiveSubscription(id);
-    }
   }
 
   async function startCheckout() {
-    if (!restaurantId || checkoutLoading) return;
-
     setCheckoutLoading(true);
     setMessage("");
-
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 20000);
 
     try {
       const {
         data: { session },
-        error: sessionError,
       } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        throw new Error(sessionError.message);
-      }
 
       if (!session?.access_token) {
         window.location.href = "/login";
@@ -217,62 +108,33 @@ export default function OwnerBillingPage() {
         body: JSON.stringify({
           restaurant_id: restaurantId,
         }),
-        signal: controller.signal,
       });
 
-      const raw = await response.text();
+      const data = await response.json();
 
-      let data: any = {};
-      try {
-        data = raw ? JSON.parse(raw) : {};
-      } catch {
-        throw new Error(
-          `Checkout endpoint returned an unexpected response (${response.status}).`
-        );
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          data.error || `Checkout failed with status ${response.status}.`
-        );
-      }
-
-      if (!data.checkout_url) {
-        throw new Error("Stripe checkout URL was not returned.");
+      if (!response.ok || !data.checkout_url) {
+        throw new Error(data.error || "Unable to open checkout.");
       }
 
       window.location.assign(data.checkout_url);
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        setMessage(
-          "Checkout timed out after 20 seconds. The billing API is not responding."
-        );
-      } else {
-        setMessage(
-          error instanceof Error ? error.message : "Unable to start checkout."
-        );
-      }
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to start checkout."
+      );
       setCheckoutLoading(false);
-    } finally {
-      window.clearTimeout(timeout);
     }
   }
 
-  async function openBillingPortal() {
-    if (!restaurantId || portalLoading) return;
-
+  async function openPortal() {
     setPortalLoading(true);
     setMessage("");
 
     try {
       const {
         data: { session },
-        error: sessionError,
       } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        throw new Error(sessionError.message);
-      }
 
       if (!session?.access_token) {
         window.location.href = "/login";
@@ -301,121 +163,11 @@ export default function OwnerBillingPage() {
       setMessage(
         error instanceof Error
           ? error.message
-          : "Unable to open billing portal."
+          : "Unable to open billing."
       );
       setPortalLoading(false);
     }
   }
-
-  function daysLeft() {
-    if (!subscription?.trial_ends_at) return null;
-
-    const diff =
-      new Date(subscription.trial_ends_at).getTime() - new Date().getTime();
-
-    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  }
-
-  const rawStatus = String(subscription?.status || "").toLowerCase();
-  const statusLabel = rawStatus ? rawStatus.replace("_", " ").toUpperCase() : "NO SUBSCRIPTION";
-
-  const trialExpired =
-    rawStatus === "trial" &&
-    Boolean(subscription?.trial_ends_at) &&
-    new Date(subscription!.trial_ends_at as string).getTime() <= Date.now();
-
-  const hasStripeCustomer = Boolean(subscription?.provider_customer_id);
-  const hasStripeSubscription = Boolean(subscription?.provider_subscription_id);
-
-  const accessAllowed =
-    rawStatus === "active" || (rawStatus === "trial" && !trialExpired);
-
-  const needsPaymentMethod =
-    rawStatus === "past_due" ||
-    rawStatus === "unpaid" ||
-    rawStatus === "incomplete";
-
-  const inactiveState =
-    rawStatus === "canceled" ||
-    rawStatus === "paused" ||
-    rawStatus === "incomplete_expired" ||
-    trialExpired ||
-    !subscription;
-
-  const accessTitle =
-    rawStatus === "past_due"
-      ? "PAYMENT PAST DUE"
-      : rawStatus === "unpaid"
-      ? "PAYMENT FAILED"
-      : rawStatus === "incomplete"
-      ? "PAYMENT INCOMPLETE"
-      : rawStatus === "incomplete_expired"
-      ? "CHECKOUT EXPIRED"
-      : rawStatus === "canceled"
-      ? "SUBSCRIPTION CANCELED"
-      : rawStatus === "paused"
-      ? "SUBSCRIPTION PAUSED"
-      : trialExpired
-      ? "TRIAL EXPIRED"
-      : rawStatus === "active"
-      ? "ACTIVE"
-      : rawStatus === "trial"
-      ? "TRIAL ACTIVE"
-      : "NO ACTIVE SUBSCRIPTION";
-
-  const accessText =
-    rawStatus === "past_due"
-      ? "Your subscription is still on file, but payment is past due. Open billing to update the payment method."
-      : rawStatus === "unpaid"
-      ? "Stripe could not collect payment. Update billing before Restaurant OS access is restored."
-      : rawStatus === "incomplete"
-      ? "Subscription setup started but payment was not completed. Finish billing to activate access."
-      : rawStatus === "incomplete_expired"
-      ? "The prior checkout expired. Start a new checkout to activate Restaurant OS."
-      : rawStatus === "canceled"
-      ? "This subscription is canceled. Use billing to reactivate or start a new subscription."
-      : rawStatus === "paused"
-      ? "This subscription is paused. Resume billing to restore paid Restaurant OS access."
-      : trialExpired
-      ? "The founder trial has ended. Activate the Founder Plan to continue using Restaurant OS."
-      : rawStatus === "active"
-      ? "Restaurant OS subscription access is active."
-      : rawStatus === "trial"
-      ? `Founder trial active with ${daysLeft()} day${daysLeft() === 1 ? "" : "s"} remaining.`
-      : "No active Restaurant OS subscription was found for this restaurant.";
-
-  const primaryActionUsesPortal =
-    hasStripeCustomer &&
-    ["active", "past_due", "unpaid", "canceled", "paused"].includes(rawStatus);
-
-  const primaryActionLabel = primaryActionUsesPortal
-    ? rawStatus === "active"
-      ? "MANAGE BILLING"
-      : rawStatus === "past_due" || rawStatus === "unpaid"
-      ? "FIX PAYMENT METHOD"
-      : rawStatus === "canceled"
-      ? "REACTIVATE / MANAGE BILLING"
-      : rawStatus === "paused"
-      ? "RESUME / MANAGE BILLING"
-      : "OPEN BILLING"
-    : rawStatus === "trial" && !trialExpired
-    ? "ACTIVATE FOUNDER PLAN"
-    : "START FOUNDER PLAN";
-
-  const billingHealthLabel = accessAllowed
-    ? "ACCESS OK"
-    : needsPaymentMethod
-    ? "PAYMENT ACTION"
-    : inactiveState
-    ? "INACTIVE"
-    : "REVIEW";
-
-  const billingHealthTone = accessAllowed
-    ? "#22c55e"
-    : needsPaymentMethod
-    ? "#ef4444"
-    : "#f59e0b";
-
 
   if (loading) {
     return (
@@ -425,6 +177,10 @@ export default function OwnerBillingPage() {
     );
   }
 
+  const status = String(subscription?.status || "inactive").toUpperCase();
+  const active = subscription?.status === "active";
+  const hasCustomer = Boolean(subscription?.provider_customer_id);
+
   return (
     <main style={pageStyle}>
       <div style={shellStyle}>
@@ -432,13 +188,11 @@ export default function OwnerBillingPage() {
           <div>
             <div style={eyebrowStyle}>RESTAURANT OS</div>
             <h1 style={titleStyle}>Billing</h1>
-            <p style={subStyle}>
-              {restaurantName} — manage your Restaurant OS subscription.
-            </p>
+            <p style={subStyle}>{restaurantName}</p>
           </div>
 
           <button
-            style={secondaryButtonStyle}
+            style={secondaryStyle}
             onClick={() =>
               (window.location.href = `/owner?restaurant=${restaurantId}`)
             }
@@ -447,199 +201,63 @@ export default function OwnerBillingPage() {
           </button>
         </header>
 
-        {message && <div style={messageStyle}>{message}</div>}
+        {message && <div style={noticeStyle}>{message}</div>}
 
-        {adminMode && (
-          <div style={adminBannerStyle}>
-            SUPER ADMIN VIEW · Managing billing for {restaurantName}
-            <button
-              style={adminBannerButtonStyle}
-              onClick={() =>
-                (window.location.href = `/admin/restaurant?restaurant=${restaurantId}`)
-              }
-            >
-              RETURN TO ADMIN ACCOUNT
-            </button>
-          </div>
-        )}
-
-        <section style={billingHealthStyle}>
-          <div>
-            <div style={eyebrowStyle}>BILLING HEALTH</div>
-            <div style={billingHealthTitleStyle}>{billingHealthLabel}</div>
-            <div style={billingHealthTextStyle}>
-              Stripe customer: {hasStripeCustomer ? "YES" : "NO"} · Subscription ID:{" "}
-              {hasStripeSubscription ? "YES" : "NO"}
-            </div>
-          </div>
-
-          <div
-            style={{
-              ...billingHealthBadgeStyle,
-              color: billingHealthTone,
-              borderColor: billingHealthTone,
-            }}
-          >
-            {statusLabel}
-          </div>
-        </section>
-
-        <section style={statusPanelStyle}>
+        <section style={statusCardStyle}>
           <div>
             <div style={eyebrowStyle}>CURRENT ACCESS</div>
-            <h2 style={statusTitleStyle}>{accessTitle}</h2>
-            <p style={statusTextStyle}>{accessText}</p>
+            <div style={statusTitleStyle}>
+              {active ? "ACTIVE" : status}
+            </div>
+            <p style={copyStyle}>
+              {active
+                ? "Restaurant OS is active and ready to use."
+                : "Activate Restaurant OS to unlock your full growth operating system."}
+            </p>
           </div>
 
-          <div style={statusBadgeStyle}>{accessTitle}</div>
-        </section>
-
-        {confirmingPayment && (
-          <section style={syncCardStyle}>
-            <div style={syncDotStyle} />
-            <div>
-              <div style={syncTitleStyle}>CONFIRMING PAYMENT</div>
-              <div style={syncTextStyle}>
-                Stripe checkout succeeded. Restaurant OS is waiting for the billing webhook to confirm ACTIVE status.
-              </div>
-            </div>
-          </section>
-        )}
-
-        <section style={billingDetailsStyle}>
-          <BillingDetail
-            label="ACCESS"
-            value={accessAllowed ? "ENABLED" : "REQUIRES ACTION"}
-            ok={accessAllowed}
-          />
-          <BillingDetail
-            label="TRIAL"
-            value={
-              rawStatus === "trial"
-                ? trialExpired
-                  ? "EXPIRED"
-                  : `${daysLeft()} DAYS LEFT`
-                : "—"
-            }
-            ok={rawStatus !== "trial" || !trialExpired}
-          />
-          <BillingDetail
-            label="STRIPE CUSTOMER"
-            value={hasStripeCustomer ? "CONNECTED" : "NOT CONNECTED"}
-            ok={hasStripeCustomer}
-          />
-          <BillingDetail
-            label="STRIPE SUBSCRIPTION"
-            value={hasStripeSubscription ? "CONNECTED" : "NOT CONNECTED"}
-            ok={hasStripeSubscription || rawStatus === "trial"}
-          />
+          <div style={badgeStyle}>{status}</div>
         </section>
 
         <section style={planCardStyle}>
-          <div style={planTopStyle}>
-            <div>
-              <div style={eyebrowStyle}>PLAN</div>
-              <h2 style={planTitleStyle}>Founder Plan</h2>
-              <p style={planTextStyle}>
-                Website, menu, VIP customers, offers, campaigns, attribution,
-                redemption tracking and Restaurant OS owner tools.
-              </p>
-            </div>
-
-            <div style={priceBlockStyle}>
-              <div style={priceStyle}>$99</div>
-              <div style={priceMetaStyle}>/ MONTH</div>
-            </div>
+          <div>
+            <div style={eyebrowStyle}>ONE SIMPLE PLAN</div>
+            <h2 style={planTitleStyle}>Restaurant OS</h2>
+            <p style={copyStyle}>
+              Website, menu, VIP database, loyalty, offers, QR codes, text and
+              email campaigns, campaign tracking, reviews, catering tools and
+              the Owner Command Center.
+            </p>
           </div>
 
-          <div style={featuresGridStyle}>
-            <Feature text="Restaurant website" />
-            <Feature text="Menu manager" />
-            <Feature text="VIP customer database" />
-            <Feature text="Offers & redemptions" />
-            <Feature text="Campaign tracking" />
-            <Feature text="Campaign attribution" />
-            <Feature text="Owner dashboard" />
-            <Feature text="Founder access" />
+          <div style={priceWrapStyle}>
+            <div style={priceStyle}>$375</div>
+            <div style={priceMetaStyle}>/ MONTH</div>
+            <div style={weeklyStyle}>ABOUT $87/WEEK</div>
           </div>
 
           <button
-            style={primaryButtonStyle}
-            onClick={primaryActionUsesPortal ? openBillingPortal : startCheckout}
-            disabled={checkoutLoading || portalLoading || confirmingPayment}
+            style={primaryStyle}
+            disabled={checkoutLoading || portalLoading}
+            onClick={hasCustomer ? openPortal : startCheckout}
           >
-            {portalLoading
-              ? "OPENING BILLING PORTAL..."
+            {hasCustomer
+              ? portalLoading
+                ? "OPENING..."
+                : "MANAGE BILLING"
               : checkoutLoading
-              ? "STARTING CHECKOUT..."
-              : confirmingPayment
-              ? "CONFIRMING PAYMENT..."
-              : primaryActionLabel}
+              ? "OPENING CHECKOUT..."
+              : "ACTIVATE RESTAURANT OS"}
           </button>
-
-        </section>
-
-        <section style={noticeStyle}>
-          <div style={eyebrowStyle}>
-            {subscription?.status === "active" ? "BILLING READY" : "ACCESS CONTROL"}
-          </div>
-          <div style={noticeTitleStyle}>
-            {subscription?.status === "active"
-              ? "Your Restaurant OS subscription is active."
-              : accessTitle}
-          </div>
-          <p style={noticeTextStyle}>
-            {subscription?.status === "active"
-              ? "Use Manage Subscription to update payment methods, view invoices, or manage your Stripe subscription securely."
-              : accessText}
-          </p>
         </section>
       </div>
     </main>
   );
 }
 
-function BillingDetail({
-  label,
-  value,
-  ok,
-}: {
-  label: string;
-  value: string;
-  ok: boolean;
-}) {
-  return (
-    <div
-      style={{
-        ...billingDetailCardStyle,
-        borderColor: ok ? "#245b40" : "#6d4d1b",
-      }}
-    >
-      <div style={billingDetailLabelStyle}>{label}</div>
-      <div
-        style={{
-          ...billingDetailValueStyle,
-          color: ok ? "#86efac" : "#fde68a",
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function Feature({ text }: { text: string }) {
-  return (
-    <div style={featureStyle}>
-      <span style={checkStyle}>✓</span>
-      <span>{text}</span>
-    </div>
-  );
-}
-
 const pageStyle = {
   minHeight: "100vh",
-  background: "#08111f",
+  background: "#050505",
   color: "#ffffff",
   padding: "28px",
   fontFamily: "Arial, Helvetica, sans-serif",
@@ -653,298 +271,122 @@ const shellStyle = {
 const headerStyle = {
   display: "flex",
   justifyContent: "space-between",
-  alignItems: "flex-start",
   gap: "20px",
   flexWrap: "wrap" as const,
   marginBottom: "24px",
 };
 
 const eyebrowStyle = {
-  color: "#f5b82e",
-  fontSize: "11px",
+  color: "#e1222d",
+  fontSize: "10px",
   fontWeight: 900,
-  letterSpacing: "2px",
+  letterSpacing: "1.8px",
 };
 
 const titleStyle = {
-  fontSize: "clamp(42px,7vw,72px)",
-  lineHeight: ".95",
+  fontSize: "60px",
   margin: "8px 0",
-  fontWeight: 900,
-  letterSpacing: "-2px",
+  letterSpacing: "-3px",
 };
 
 const subStyle = {
-  color: "#94a3b8",
-  fontSize: "16px",
+  color: "#777777",
 };
 
-const statusPanelStyle = {
-  background: "#0f1d2e",
-  border: "1px solid #23364d",
-  borderRadius: "18px",
-  padding: "22px",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "18px",
-  flexWrap: "wrap" as const,
-  marginBottom: "18px",
-};
-
-const statusTitleStyle = {
-  fontSize: "34px",
-  margin: "6px 0 8px",
-};
-
-const statusTextStyle = {
-  color: "#94a3b8",
-  margin: 0,
-};
-
-const statusBadgeStyle = {
-  background: "#13263b",
-  border: "1px solid #2d4661",
-  borderRadius: "999px",
-  padding: "10px 14px",
-  fontSize: "11px",
-  fontWeight: 900,
-  color: "#f5b82e",
-};
-
-const syncCardStyle = {
-  background: "#13263b",
-  border: "1px solid #2d4661",
-  borderRadius: "14px",
-  padding: "16px",
-  marginBottom: "18px",
-  display: "flex",
-  gap: "12px",
-  alignItems: "center",
-};
-
-const syncDotStyle = {
-  width: "12px",
-  height: "12px",
-  borderRadius: "999px",
-  background: "#f5b82e",
-  flexShrink: 0,
-};
-
-const syncTitleStyle = {
-  color: "#f5b82e",
-  fontSize: "10px",
-  fontWeight: 900,
-  letterSpacing: "1px",
-};
-
-const syncTextStyle = {
-  color: "#cbd5e1",
-  fontSize: "13px",
-  lineHeight: 1.45,
-  marginTop: "4px",
-};
-
-const planCardStyle = {
-  background: "#0f1d2e",
-  border: "1px solid #23364d",
-  borderRadius: "18px",
-  padding: "26px",
-};
-
-const planTopStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: "24px",
-  flexWrap: "wrap" as const,
-};
-
-const planTitleStyle = {
-  fontSize: "36px",
-  margin: "7px 0 10px",
-};
-
-const planTextStyle = {
-  color: "#94a3b8",
-  maxWidth: "650px",
-  lineHeight: 1.55,
-};
-
-const priceBlockStyle = {
-  textAlign: "right" as const,
-};
-
-const priceStyle = {
-  fontSize: "52px",
-  fontWeight: 900,
-};
-
-const priceMetaStyle = {
-  color: "#64748b",
-  fontSize: "11px",
-  fontWeight: 900,
-  letterSpacing: "1px",
-};
-
-const featuresGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
-  gap: "10px",
-  margin: "24px 0",
-};
-
-const featureStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "9px",
-  background: "#08111f",
-  border: "1px solid #23364d",
-  borderRadius: "10px",
-  padding: "12px",
-  color: "#cbd5e1",
-  fontSize: "13px",
-};
-
-const checkStyle = {
-  color: "#f5b82e",
-  fontWeight: 900,
-};
-
-const primaryButtonStyle = {
-  width: "100%",
-  background: "#f5b82e",
-  color: "#08111f",
-  border: 0,
-  borderRadius: "10px",
-  padding: "15px",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const secondaryButtonStyle = {
-  background: "transparent",
+const secondaryStyle = {
+  border: "1px solid #303030",
+  borderRadius: "8px",
+  background: "#111111",
   color: "#ffffff",
-  border: "1px solid #334155",
-  borderRadius: "10px",
-  padding: "12px 16px",
+  padding: "11px 13px",
   fontWeight: 900,
   cursor: "pointer",
 };
 
 const noticeStyle = {
-  background: "#13263b",
-  border: "1px solid #2d4661",
-  borderRadius: "18px",
-  padding: "22px",
-  marginTop: "18px",
+  border: "1px solid #54272a",
+  borderRadius: "10px",
+  padding: "12px",
+  marginBottom: "14px",
+  background: "#16090a",
+  color: "#ff969c",
 };
 
-const noticeTitleStyle = {
-  fontSize: "22px",
+const statusCardStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: "18px",
+  alignItems: "center",
+  flexWrap: "wrap" as const,
+  border: "1px solid #252525",
+  borderRadius: "14px",
+  padding: "22px",
+  background: "#0c0c0c",
+};
+
+const statusTitleStyle = {
+  fontSize: "34px",
   fontWeight: 900,
   marginTop: "6px",
 };
 
-const noticeTextStyle = {
-  color: "#94a3b8",
+const copyStyle = {
+  color: "#888888",
   lineHeight: 1.55,
-  marginBottom: 0,
+  maxWidth: "650px",
 };
 
-const messageStyle = {
-  background: "#13263b",
-  border: "1px solid #2d4661",
-  borderRadius: "10px",
-  padding: "14px",
-  marginBottom: "18px",
-};
-
-const adminBannerStyle = {
-  background: "#103323",
-  border: "1px solid #2f6f4e",
-  color: "#b7f7d0",
-  borderRadius: 12,
-  padding: "12px 14px",
-  marginBottom: 14,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 12,
-  flexWrap: "wrap" as const,
-  fontSize: 10,
+const badgeStyle = {
+  border: "1px solid #444444",
+  borderRadius: "999px",
+  padding: "8px 11px",
+  fontSize: "10px",
   fontWeight: 900,
-  letterSpacing: .5,
 };
 
-const adminBannerButtonStyle = {
-  background: "#183f2d",
-  color: "#dcfce7",
-  border: "1px solid #34785a",
-  borderRadius: 8,
-  padding: "8px 10px",
-  fontSize: 9,
+const planCardStyle = {
+  marginTop: "14px",
+  border: "1px solid #6a262c",
+  borderRadius: "16px",
+  padding: "26px",
+  background: "linear-gradient(135deg,#17090a,#0c0c0c)",
+};
+
+const planTitleStyle = {
+  fontSize: "36px",
+  margin: "7px 0 5px",
+};
+
+const priceWrapStyle = {
+  margin: "24px 0",
+};
+
+const priceStyle = {
+  fontSize: "66px",
+  fontWeight: 900,
+  letterSpacing: "-4px",
+};
+
+const priceMetaStyle = {
+  color: "#777777",
+  fontSize: "10px",
+  fontWeight: 900,
+};
+
+const weeklyStyle = {
+  color: "#e1222d",
+  fontSize: "10px",
+  fontWeight: 900,
+  marginTop: "7px",
+};
+
+const primaryStyle = {
+  width: "100%",
+  border: 0,
+  borderRadius: "9px",
+  background: "#e1222d",
+  color: "#ffffff",
+  padding: "14px",
   fontWeight: 900,
   cursor: "pointer",
-};
-
-const billingHealthStyle = {
-  background: "#0c1827",
-  border: "1px solid #2a4058",
-  borderRadius: 15,
-  padding: 18,
-  marginBottom: 14,
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 16,
-  alignItems: "center",
-  flexWrap: "wrap" as const,
-};
-
-const billingHealthTitleStyle = {
-  marginTop: 5,
-  fontSize: 24,
-  fontWeight: 900,
-};
-
-const billingHealthTextStyle = {
-  marginTop: 5,
-  color: "#8fa4ba",
-  fontSize: 10,
-};
-
-const billingHealthBadgeStyle = {
-  border: "1px solid",
-  borderRadius: 999,
-  padding: "8px 10px",
-  fontSize: 8,
-  fontWeight: 900,
-  letterSpacing: 1,
-};
-
-const billingDetailsStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(4,minmax(0,1fr))",
-  gap: 9,
-  marginBottom: 14,
-};
-
-const billingDetailCardStyle = {
-  background: "#0f1d2e",
-  border: "1px solid",
-  borderRadius: 11,
-  padding: 12,
-};
-
-const billingDetailLabelStyle = {
-  color: "#6f849b",
-  fontSize: 8,
-  fontWeight: 900,
-  letterSpacing: 1,
-};
-
-const billingDetailValueStyle = {
-  marginTop: 5,
-  fontSize: 14,
-  fontWeight: 900,
 };
