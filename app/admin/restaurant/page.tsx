@@ -267,6 +267,132 @@ export default function AdminRestaurantDetailPage() {
           <div style={actionMessageStyle}>{actionMessage}</div>
         )}
 
+        <section style={commandCenterStyle}>
+          <div style={commandCenterHeaderStyle}>
+            <div>
+              <div style={cardEyebrowStyle}>SUPER ADMIN COMMAND CENTER</div>
+              <h2 style={commandCenterTitleStyle}>Operate This Restaurant</h2>
+              <p style={commandCenterTextStyle}>
+                One place for launch status, owner access, QA, website, billing and domain control.
+              </p>
+            </div>
+
+            <div
+              style={{
+                ...commandStatusStyle,
+                background: detail.website?.published ? "#133925" : "#3a2b08",
+                color: detail.website?.published ? "#86efac" : "#fde68a",
+                borderColor: detail.website?.published ? "#286846" : "#856317",
+              }}
+            >
+              {detail.website?.published ? "PUBLIC SITE LIVE" : "PUBLIC SITE DRAFT"}
+            </div>
+          </div>
+
+          <div style={commandGridStyle}>
+            <button
+              style={commandPrimaryStyle}
+              onClick={() =>
+                (window.location.href = `/owner?restaurant=${restaurant.id}`)
+              }
+            >
+              <span style={commandLabelStyle}>OWNER OVERRIDE</span>
+              <strong style={commandTitleStyle}>Open Owner Command</strong>
+              <span style={commandTextStyle}>
+                Enter the customer workspace as Super Admin.
+              </span>
+            </button>
+
+            <button
+              style={commandCardStyle}
+              onClick={() =>
+                (window.location.href = `/owner/setup?restaurant=${restaurant.id}`)
+              }
+            >
+              <span style={commandLabelStyle}>LAUNCH WIZARD</span>
+              <strong style={commandTitleStyle}>Setup & Launch</strong>
+              <span style={commandTextStyle}>
+                Review blockers and finish onboarding.
+              </span>
+            </button>
+
+            <button
+              style={commandCardStyle}
+              onClick={() =>
+                (window.location.href = `/owner/qa?restaurant=${restaurant.id}`)
+              }
+            >
+              <span style={commandLabelStyle}>SYSTEM CHECK</span>
+              <strong style={commandTitleStyle}>Run QA</strong>
+              <span style={commandTextStyle}>
+                Verify website, menu, billing, theme and launch readiness.
+              </span>
+            </button>
+
+            <button
+              style={commandCardStyle}
+              onClick={() =>
+                (window.location.href = `/owner/website?restaurant=${restaurant.id}`)
+              }
+            >
+              <span style={commandLabelStyle}>WEBSITE</span>
+              <strong style={commandTitleStyle}>Manage Website</strong>
+              <span style={commandTextStyle}>
+                Theme, media, pages and publish controls.
+              </span>
+            </button>
+
+            <button
+              style={commandCardStyle}
+              onClick={() =>
+                (window.location.href = `/owner/billing?restaurant=${restaurant.id}`)
+              }
+            >
+              <span style={commandLabelStyle}>BILLING</span>
+              <strong style={commandTitleStyle}>Subscription</strong>
+              <span style={commandTextStyle}>
+                Review Stripe status, trial and account access.
+              </span>
+            </button>
+
+            <button
+              style={commandCardStyle}
+              onClick={() =>
+                (window.location.href = `/admin/restaurant/domain?restaurant=${restaurant.id}`)
+              }
+            >
+              <span style={commandLabelStyle}>DOMAIN</span>
+              <strong style={commandTitleStyle}>Domain Control</strong>
+              <span style={commandTextStyle}>
+                Stage, connect, verify DNS and SSL.
+              </span>
+            </button>
+          </div>
+
+          <div style={commandHealthGridStyle}>
+            <CommandHealth
+              label="RESTAURANT"
+              value={(restaurant.status || "unknown").toUpperCase()}
+              ok={restaurant.status === "active" && !restaurant.admin_suspended}
+            />
+            <CommandHealth
+              label="WEBSITE"
+              value={detail.website?.published ? "LIVE" : "DRAFT"}
+              ok={Boolean(detail.website?.published)}
+            />
+            <CommandHealth
+              label="BILLING"
+              value={(subscription?.status || "NONE").toUpperCase()}
+              ok={subscription?.status === "active" || subscription?.status === "trial"}
+            />
+            <CommandHealth
+              label="READINESS"
+              value={`${metrics.readiness_percent}%`}
+              ok={metrics.readiness_percent >= 80}
+            />
+          </div>
+        </section>
+
         <section style={statsGridStyle}>
           <Metric label="READINESS" value={`${metrics.readiness_percent}%`} />
           <Metric label="MENU ITEMS" value={metrics.menu_count} />
@@ -491,6 +617,36 @@ export default function AdminRestaurantDetailPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function CommandHealth({
+  label,
+  value,
+  ok,
+}: {
+  label: string;
+  value: string;
+  ok: boolean;
+}) {
+  return (
+    <div
+      style={{
+        ...commandHealthStyle,
+        borderColor: ok ? "#286846" : "#6b4a1a",
+        background: ok ? "#0e211c" : "#251d0f",
+      }}
+    >
+      <div style={commandHealthLabelStyle}>{label}</div>
+      <div
+        style={{
+          ...commandHealthValueStyle,
+          color: ok ? "#86efac" : "#fde68a",
+        }}
+      >
+        {value}
+      </div>
+    </div>
   );
 }
 
@@ -830,3 +986,116 @@ const errorCardStyle = {
 };
 
 const errorTitleStyle = { fontSize: 36, margin: "8px 0" };
+
+
+const commandCenterStyle = {
+  background: "#0b1726",
+  border: "1px solid #2b4058",
+  borderRadius: 18,
+  padding: 20,
+  marginBottom: 18,
+};
+
+const commandCenterHeaderStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 18,
+  flexWrap: "wrap" as const,
+  marginBottom: 16,
+};
+
+const commandCenterTitleStyle = {
+  margin: "6px 0 5px",
+  fontSize: 28,
+  lineHeight: 1,
+  fontWeight: 900,
+};
+
+const commandCenterTextStyle = {
+  color: "#8fa4ba",
+  margin: 0,
+  maxWidth: 680,
+  fontSize: 12,
+  lineHeight: 1.5,
+};
+
+const commandStatusStyle = {
+  border: "1px solid",
+  borderRadius: 999,
+  padding: "8px 10px",
+  fontSize: 8,
+  fontWeight: 900,
+  letterSpacing: 1,
+};
+
+const commandGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3,minmax(0,1fr))",
+  gap: 10,
+};
+
+const commandCardStyle = {
+  minHeight: 135,
+  background: "#0f1d2e",
+  border: "1px solid #2a4058",
+  borderRadius: 13,
+  padding: 15,
+  textAlign: "left" as const,
+  color: "#fff",
+  cursor: "pointer",
+  display: "flex",
+  flexDirection: "column" as const,
+  gap: 7,
+};
+
+const commandPrimaryStyle = {
+  ...commandCardStyle,
+  background: "#f4b82d",
+  color: "#07111f",
+  border: "1px solid #f6ca5e",
+};
+
+const commandLabelStyle = {
+  fontSize: 8,
+  fontWeight: 900,
+  letterSpacing: 1.2,
+  opacity: .72,
+};
+
+const commandTitleStyle = {
+  fontSize: 17,
+  fontWeight: 900,
+};
+
+const commandTextStyle = {
+  fontSize: 10,
+  lineHeight: 1.45,
+  opacity: .75,
+};
+
+const commandHealthGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(4,minmax(0,1fr))",
+  gap: 9,
+  marginTop: 12,
+};
+
+const commandHealthStyle = {
+  border: "1px solid",
+  borderRadius: 11,
+  padding: 12,
+};
+
+const commandHealthLabelStyle = {
+  color: "#7890a8",
+  fontSize: 7,
+  fontWeight: 900,
+  letterSpacing: 1.1,
+};
+
+const commandHealthValueStyle = {
+  marginTop: 5,
+  fontSize: 16,
+  fontWeight: 900,
+};
