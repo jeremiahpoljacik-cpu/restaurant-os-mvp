@@ -234,6 +234,22 @@ export default function AdminDomainControlPage() {
     recommendedCnames[0] ||
     "";
 
+  const staged = Boolean(record?.normalized_domain || record?.domain);
+  const connected = Boolean(status?.connected);
+  const verified = String(record?.verification_status || "").toLowerCase() === "verified";
+  const dnsReady = String(record?.dns_status || "").toLowerCase() === "configured";
+  const sslReady = String(record?.ssl_status || "").toLowerCase() === "active";
+  const fullyReady = staged && connected && verified && dnsReady && sslReady;
+
+  const canConnect = staged && vercelConnected;
+  const canCheck = staged && connected;
+
+  function openPublicDomain() {
+    const host = record?.normalized_domain || record?.domain || domain;
+    if (!host) return;
+    window.open(`https://${host}`, "_blank", "noopener,noreferrer");
+  }
+
   if (loading) {
     return (
       <main style={pageStyle}>
@@ -293,7 +309,7 @@ export default function AdminDomainControlPage() {
 
               <button
                 style={primaryButtonStyle}
-                disabled={running !== ""}
+                disabled={running !== "" || !canConnect}
                 onClick={() => runAction("connect")}
               >
                 {running === "connect"
@@ -303,13 +319,28 @@ export default function AdminDomainControlPage() {
 
               <button
                 style={checkButtonStyle}
-                disabled={running !== ""}
+                disabled={running !== "" || !canCheck}
                 onClick={() => runAction("check")}
               >
                 {running === "check"
                   ? "CHECKING..."
                   : "3. CHECK DNS / SSL"}
               </button>
+            </div>
+
+            <div style={sequenceHelpStyle}>
+              <div style={sequenceItemStyle}>
+                <span style={sequenceNumberStyle}>1</span>
+                <span>Stage creates the Restaurant OS domain record only.</span>
+              </div>
+              <div style={sequenceItemStyle}>
+                <span style={sequenceNumberStyle}>2</span>
+                <span>Connect adds the staged domain to the Vercel project.</span>
+              </div>
+              <div style={sequenceItemStyle}>
+                <span style={sequenceNumberStyle}>3</span>
+                <span>Check verifies DNS, ownership and SSL after registrar changes.</span>
+              </div>
             </div>
 
             {!vercelConnected && (
@@ -382,6 +413,52 @@ export default function AdminDomainControlPage() {
           </div>
         </section>
 
+        <section
+          style={{
+            ...launchGateStyle,
+            borderColor: fullyReady ? "#2f855a" : "#856317",
+            background: fullyReady ? "#0f2b20" : "#2e250d",
+          }}
+        >
+          <div>
+            <div style={cardEyebrowStyle}>DOMAIN LAUNCH GATE</div>
+            <h2 style={launchGateTitleStyle}>
+              {fullyReady ? "DOMAIN READY" : "NOT READY FOR CUTOVER"}
+            </h2>
+            <p style={launchGateTextStyle}>
+              {fullyReady
+                ? "Restaurant OS confirms the domain is staged, connected, verified, DNS configured and SSL active."
+                : "Do not treat the custom domain as complete until all five checks are green."}
+            </p>
+          </div>
+
+          <div style={launchGateChecksStyle}>
+            <GateCheck label="STAGED" ok={staged} />
+            <GateCheck label="VERCEL" ok={connected} />
+            <GateCheck label="VERIFIED" ok={verified} />
+            <GateCheck label="DNS" ok={dnsReady} />
+            <GateCheck label="SSL" ok={sslReady} />
+          </div>
+
+          <div style={launchGateActionsStyle}>
+            <button
+              style={refreshButtonStyle}
+              disabled={running !== "" || !staged}
+              onClick={() => runAction("check")}
+            >
+              {running === "check" ? "CHECKING..." : "REFRESH DOMAIN STATUS"}
+            </button>
+
+            <button
+              style={fullyReady ? liveDomainButtonStyle : disabledDomainButtonStyle}
+              disabled={!fullyReady}
+              onClick={openPublicDomain}
+            >
+              {fullyReady ? "OPEN LIVE DOMAIN" : "DOMAIN NOT READY"}
+            </button>
+          </div>
+        </section>
+
         {(verificationRecords.length > 0 ||
           recommendedIps.length > 0 ||
           cname) && (
@@ -390,7 +467,7 @@ export default function AdminDomainControlPage() {
             <h2 style={cardTitleStyle}>Use These Only at Final Cutover</h2>
 
             <p style={helpStyle}>
-              Do not change the live Vi Pollo domain yet. These are the records
+              Do not change the live customer domain yet. These are the records
               Vercel is asking for when we are ready to switch traffic.
             </p>
 
@@ -435,7 +512,7 @@ export default function AdminDomainControlPage() {
             <div style={cardEyebrowStyle}>FINAL CUTOVER</div>
             <h2 style={cutoverTitleStyle}>Do Not Touch DNS Yet</h2>
             <p style={helpStyle}>
-              We will switch Vi Pollo only after the Restaurant OS preview,
+              Switch DNS only after the Restaurant OS preview,
               owner edits, public menu, mobile layout and Stripe/access checks
               all pass.
             </p>
@@ -449,6 +526,22 @@ export default function AdminDomainControlPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function GateCheck({ label, ok }: { label: string; ok: boolean }) {
+  return (
+    <div
+      style={{
+        ...gateCheckStyle,
+        borderColor: ok ? "#34785a" : "#7c5c16",
+        background: ok ? "#133925" : "#3a2b08",
+        color: ok ? "#86efac" : "#fde68a",
+      }}
+    >
+      <span>{ok ? "✓" : "•"}</span>
+      <span>{label}</span>
+    </div>
   );
 }
 
@@ -750,4 +843,117 @@ const cutoverBadgeStyle = {
   fontSize: "9px",
   fontWeight: 900,
   letterSpacing: "1px",
+};
+
+
+const sequenceHelpStyle = {
+  display: "grid",
+  gap: 8,
+  marginTop: 14,
+  padding: 12,
+  background: "#08111f",
+  border: "1px solid #23364d",
+  borderRadius: 10,
+};
+
+const sequenceItemStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 9,
+  color: "#9fb0c2",
+  fontSize: 10,
+  lineHeight: 1.4,
+};
+
+const sequenceNumberStyle = {
+  width: 22,
+  height: 22,
+  borderRadius: 999,
+  display: "grid",
+  placeItems: "center",
+  background: "#13263b",
+  color: "#dbeafe",
+  fontWeight: 900,
+  flex: "0 0 auto",
+};
+
+const launchGateStyle = {
+  border: "1px solid",
+  borderRadius: 16,
+  padding: 20,
+  marginTop: 18,
+  marginBottom: 18,
+};
+
+const launchGateTitleStyle = {
+  margin: "7px 0 6px",
+  fontSize: 26,
+  fontWeight: 900,
+};
+
+const launchGateTextStyle = {
+  margin: 0,
+  color: "#a8b7c8",
+  fontSize: 12,
+  lineHeight: 1.6,
+  maxWidth: 760,
+};
+
+const launchGateChecksStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(5,minmax(0,1fr))",
+  gap: 8,
+  marginTop: 16,
+};
+
+const gateCheckStyle = {
+  border: "1px solid",
+  borderRadius: 10,
+  padding: "10px 11px",
+  display: "flex",
+  alignItems: "center",
+  gap: 7,
+  fontSize: 8,
+  fontWeight: 900,
+  letterSpacing: .8,
+};
+
+const launchGateActionsStyle = {
+  display: "flex",
+  gap: 10,
+  flexWrap: "wrap" as const,
+  marginTop: 16,
+};
+
+const refreshButtonStyle = {
+  background: "#16324d",
+  color: "#dbeafe",
+  border: "1px solid #36516d",
+  borderRadius: 9,
+  padding: "11px 14px",
+  fontSize: 9,
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const liveDomainButtonStyle = {
+  background: "#22c55e",
+  color: "#052e16",
+  border: 0,
+  borderRadius: 9,
+  padding: "11px 14px",
+  fontSize: 9,
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const disabledDomainButtonStyle = {
+  background: "#332a13",
+  color: "#8f8059",
+  border: "1px solid #5d4c20",
+  borderRadius: 9,
+  padding: "11px 14px",
+  fontSize: 9,
+  fontWeight: 900,
+  cursor: "not-allowed",
 };
