@@ -413,8 +413,9 @@ function StandardFoodMenuPage({ slug, themeKey }: { slug: string; themeKey: stri
         return { bg:"#09090D", surface:"#15151D", nav:"#08080B", accent:"#A72D68", accent2:"#DDBB63", text:"#F6F1E7", muted:"#AAA4AA" };
       case "mex-birria-street":
         return { bg:"#170B08", surface:"#2A130D", nav:"#120805", accent:"#D83D22", accent2:"#F49A2C", text:"#FFF4EA", muted:"#D9BFB4" };
+      case "pizza-otto-editorial":
       case "pizza-red-brick":
-        return { bg:"#F3E5CB", surface:"#FFF7E8", nav:"#153C2E", accent:"#A72B22", accent2:"#F2D39B", text:"#241711", muted:"#6D594A" };
+        return { bg:"#F2EFE8", surface:"#FFFFFF", nav:"#050505", accent:"#B6182B", accent2:"#E8E3D8", text:"#111111", muted:"#67615A" };
       case "pizza-napoli-modern":
         return { bg:"#F4F0E8", surface:"#FFFFFF", nav:"#183A32", accent:"#B53D2F", accent2:"#EED4B1", text:"#1D2A27", muted:"#68736F" };
       case "pizza-slice-shop":
