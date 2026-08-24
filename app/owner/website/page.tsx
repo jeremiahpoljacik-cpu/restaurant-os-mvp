@@ -133,10 +133,10 @@ const THEME_CATEGORIES = [
         swatches: ["#F3E8CF", "#1F5A62", "#D86F3D"],
       },
       {
-        key: "pizza-woodfire",
-        name: "Woodfire Artisan",
-        description: "Rustic wood-fired concept with earthy tones, chef-driven storytelling and oven-first imagery.",
-        swatches: ["#2A211B", "#C56A3A", "#E7D7BC"],
+        key: "pizza-deal-machine",
+        name: "Deal Machine",
+        description: "Order-first conversion site with giant promo hero, menu category rail, featured deals, carryout/delivery focus and fast checkout energy.",
+        swatches: ["#FFFFFF", "#E31D2B", "#111111"],
       },
       {
         key: "pizza-supper-club",
