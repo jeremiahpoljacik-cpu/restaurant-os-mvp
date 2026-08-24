@@ -207,6 +207,7 @@ export default function WebsiteManagerPage() {
   const [settings, setSettings] = useState<WebsiteSettings>(initialSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [publishBusy, setPublishBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [selectedTheme, setSelectedTheme] = useState("family-casual");
   const [themeCategory, setThemeCategory] = useState("mexican");
@@ -672,6 +673,45 @@ export default function WebsiteManagerPage() {
     setMessage(error ? error.message : "Website settings saved.");
   }
 
+  async function setPublished(nextPublished: boolean) {
+    if (!restaurantId) return;
+
+    setPublishBusy(true);
+    setMessage("");
+
+    // Save all current website content first so the public site never launches
+    // with stale edits, then explicitly set the publish state.
+    const { error } = await supabase
+      .from("restaurant_website_settings")
+      .upsert(
+        {
+          restaurant_id: restaurantId,
+          ...settings,
+          published: nextPublished,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "restaurant_id" }
+      );
+
+    setPublishBusy(false);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setSettings((current) => ({
+      ...current,
+      published: nextPublished,
+    }));
+
+    setMessage(
+      nextPublished
+        ? "Website published. Public visitors can now access the restaurant site."
+        : "Website returned to draft. Public access is now disabled."
+    );
+  }
+
   if (loading) {
     return (
       <main style={pageStyle}>
@@ -1081,13 +1121,75 @@ export default function WebsiteManagerPage() {
                 checked={settings.show_vip}
                 onChange={(value) => update("show_vip", value)}
               />
-
-              <Toggle
-                label="PUBLISH WEBSITE"
-                checked={settings.published}
-                onChange={(value) => update("published", value)}
-              />
             </section>
+
+            <section
+              style={{
+                ...launchControlStyle,
+                borderColor: settings.published ? "#2f855a" : "#7c5c16",
+                background: settings.published ? "#0f2b20" : "#2e250d",
+              }}
+            >
+              <div style={launchControlTopStyle}>
+                <div>
+                  <div style={eyebrowStyle}>PUBLIC WEBSITE STATUS</div>
+                  <div style={launchControlTitleStyle}>
+                    {settings.published ? "LIVE ON THE WEB" : "DRAFT / NOT PUBLIC"}
+                  </div>
+                  <p style={launchControlTextStyle}>
+                    {settings.published
+                      ? "Your public restaurant website is currently available to visitors."
+                      : "Your restaurant website is hidden from public visitors until you explicitly publish it."}
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    ...launchStatusBadgeStyle,
+                    background: settings.published ? "#173d2c" : "#46340b",
+                    color: settings.published ? "#86efac" : "#fde68a",
+                    borderColor: settings.published ? "#34785a" : "#8a691b",
+                  }}
+                >
+                  {settings.published ? "PUBLISHED" : "DRAFT"}
+                </div>
+              </div>
+
+              <div style={launchControlActionsStyle}>
+                {restaurant.slug && settings.published && (
+                  <button
+                    style={previewLiveButtonStyle}
+                    onClick={() =>
+                      window.open(`/r/${restaurant.slug}`, "_blank", "noopener,noreferrer")
+                    }
+                  >
+                    VIEW LIVE SITE
+                  </button>
+                )}
+
+                <button
+                  style={
+                    settings.published
+                      ? unpublishButtonStyle
+                      : publishButtonStyle
+                  }
+                  disabled={publishBusy}
+                  onClick={() => setPublished(!settings.published)}
+                >
+                  {publishBusy
+                    ? "UPDATING..."
+                    : settings.published
+                    ? "RETURN SITE TO DRAFT"
+                    : "PUBLISH WEBSITE NOW"}
+                </button>
+              </div>
+
+              <div style={launchControlNoteStyle}>
+                Publishing saves the current website settings first. Returning to draft
+                immediately disables normal public access while keeping all website content intact.
+              </div>
+            </section>
+
 
             <button
               style={saveButtonStyle}
@@ -2030,6 +2132,93 @@ const miniCardStyle = {
 const hintStyle = {
   color: "#64748b",
   fontSize: "12px",
+  lineHeight: 1.5,
+  marginTop: "14px",
+};
+
+
+const launchControlStyle = {
+  border: "1px solid",
+  borderRadius: "16px",
+  padding: "20px",
+  marginTop: "18px",
+  marginBottom: "14px",
+};
+
+const launchControlTopStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: "16px",
+  flexWrap: "wrap" as const,
+};
+
+const launchControlTitleStyle = {
+  marginTop: "6px",
+  fontSize: "25px",
+  fontWeight: 900,
+};
+
+const launchControlTextStyle = {
+  color: "#a8b7c8",
+  fontSize: "12px",
+  lineHeight: 1.6,
+  maxWidth: "620px",
+  margin: "7px 0 0",
+};
+
+const launchStatusBadgeStyle = {
+  border: "1px solid",
+  borderRadius: "999px",
+  padding: "8px 10px",
+  fontSize: "8px",
+  fontWeight: 900,
+  letterSpacing: "1px",
+};
+
+const launchControlActionsStyle = {
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap" as const,
+  marginTop: "18px",
+};
+
+const publishButtonStyle = {
+  background: "#22c55e",
+  color: "#052e16",
+  border: 0,
+  borderRadius: "9px",
+  padding: "12px 15px",
+  fontSize: "9px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const unpublishButtonStyle = {
+  background: "#7f1d1d",
+  color: "#fecaca",
+  border: "1px solid #b91c1c",
+  borderRadius: "9px",
+  padding: "12px 15px",
+  fontSize: "9px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const previewLiveButtonStyle = {
+  background: "#10253a",
+  color: "#dbeafe",
+  border: "1px solid #36516d",
+  borderRadius: "9px",
+  padding: "12px 15px",
+  fontSize: "9px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const launchControlNoteStyle = {
+  color: "#74879b",
+  fontSize: "10px",
   lineHeight: 1.5,
   marginTop: "14px",
 };
