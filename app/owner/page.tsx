@@ -24,6 +24,7 @@ export default function OwnerDashboardPage() {
   const [setupReady, setSetupReady] = useState(false);
   const [restaurantCount, setRestaurantCount] = useState(1);
   const [adminMode, setAdminMode] = useState(false);
+  const [sitePublished, setSitePublished] = useState(false);
   const [blockers, setBlockers] = useState<
     { label: string; path: string; action: string }[]
   >([]);
@@ -170,6 +171,8 @@ export default function OwnerDashboardPage() {
     );
 
     const website = websiteResult.data;
+    setSitePublished(Boolean(website?.published));
+
     const websiteComplete = Boolean(
       website?.hero_headline && website?.about_body
     );
@@ -308,7 +311,7 @@ export default function OwnerDashboardPage() {
   return (
     <main style={pageStyle}>
       <div style={shellStyle}>
-        <header style={headerStyle}>
+        <header className="ros-owner-header" style={headerStyle}>
           <div>
             <div style={eyebrowStyle}>RESTAURANT OS</div>
             <h1 style={titleStyle}>Owner Command Center</h1>
@@ -358,7 +361,7 @@ export default function OwnerDashboardPage() {
           </div>
         )}
 
-        <section style={restaurantPanelStyle}>
+        <section className="ros-restaurant-panel" style={restaurantPanelStyle}>
           <div>
             <div style={restaurantNameStyle}>{restaurant.name}</div>
             <div style={restaurantMetaStyle}>
@@ -372,8 +375,51 @@ export default function OwnerDashboardPage() {
             <span style={statusPillStyle}>
               {restaurant.status.toUpperCase()}
             </span>
+
+            {sitePublished && restaurant.slug && (
+              <button
+                style={liveSiteMiniButtonStyle}
+                onClick={() =>
+                  window.open(`/r/${restaurant.slug}`, "_blank", "noopener,noreferrer")
+                }
+              >
+                VIEW LIVE SITE ↗
+              </button>
+            )}
           </div>
         </section>
+
+        {blockers.length === 0 && setupReady && (
+          <section style={liveReadyPanelStyle}>
+            <div>
+              <div style={liveReadyEyebrowStyle}>RESTAURANT OS READY</div>
+              <div style={liveReadyTitleStyle}>Everything is live and operational.</div>
+              <div style={liveReadyTextStyle}>
+                Your core setup is complete. Keep the menu current, run campaigns and use the growth tools to drive repeat business.
+              </div>
+            </div>
+
+            <div style={liveReadyActionsStyle}>
+              {restaurant.slug && sitePublished && (
+                <button
+                  style={liveReadyPrimaryStyle}
+                  onClick={() =>
+                    window.open(`/r/${restaurant.slug}`, "_blank", "noopener,noreferrer")
+                  }
+                >
+                  VIEW LIVE WEBSITE
+                </button>
+              )}
+
+              <button
+                style={liveReadySecondaryStyle}
+                onClick={() => go("/owner/campaigns")}
+              >
+                LAUNCH A CAMPAIGN
+              </button>
+            </div>
+          </section>
+        )}
 
         {blockers.length > 0 && (
           <section style={alertPanelStyle}>
@@ -414,7 +460,7 @@ export default function OwnerDashboardPage() {
           </section>
         )}
 
-        <section style={launchPanelStyle}>
+        <section className="ros-launch-panel" style={launchPanelStyle}>
           <div>
             <div style={eyebrowStyle}>LAUNCH STATUS</div>
             <div style={launchTitleStyle}>
@@ -453,7 +499,7 @@ export default function OwnerDashboardPage() {
           </div>
         </section>
 
-        <section style={cardGridStyle}>
+        <section className="ros-core-grid" style={cardGridStyle}>
           <DashboardCard
             kicker="WEBSITE"
             title="Website Manager"
@@ -529,7 +575,7 @@ export default function OwnerDashboardPage() {
           </div>
         </section>
 
-        <section style={growthGridStyle}>
+        <section className="ros-growth-grid" style={growthGridStyle}>
           <GrowthCard
             number="01"
             title="Campaigns"
@@ -557,7 +603,7 @@ export default function OwnerDashboardPage() {
 
         <section style={flowPanelStyle}>
           <div style={eyebrowStyle}>RESTAURANT OS GROWTH LOOP</div>
-          <div style={flowStyle}>
+          <div className="ros-flow" style={flowStyle}>
             <FlowStep number="1" text="CREATE CAMPAIGN" />
             <FlowArrow />
             <FlowStep number="2" text="ATTACH OFFER" />
@@ -569,6 +615,51 @@ export default function OwnerDashboardPage() {
             <FlowStep number="5" text="REDEEM & MEASURE" />
           </div>
         </section>
+        <style jsx global>{`
+          @media (max-width: 860px) {
+            .ros-owner-header,
+            .ros-restaurant-panel,
+            .ros-launch-panel {
+              display: flex !important;
+              flex-direction: column !important;
+              align-items: stretch !important;
+            }
+
+            .ros-core-grid,
+            .ros-growth-grid {
+              grid-template-columns: 1fr 1fr !important;
+            }
+
+            .ros-flow {
+              overflow-x: auto !important;
+              justify-content: flex-start !important;
+              padding-bottom: 6px !important;
+            }
+          }
+
+          @media (max-width: 620px) {
+            .ros-core-grid,
+            .ros-growth-grid {
+              grid-template-columns: 1fr !important;
+            }
+
+            .ros-owner-header button,
+            .ros-restaurant-panel button,
+            .ros-launch-panel button {
+              width: 100% !important;
+            }
+
+            .ros-flow {
+              display: grid !important;
+              grid-template-columns: 1fr !important;
+              gap: 8px !important;
+            }
+
+            .ros-flow > div {
+              width: 100% !important;
+            }
+          }
+        `}</style>
       </div>
     </main>
   );
@@ -1066,4 +1157,78 @@ const messageStyle = {
   borderRadius: "10px",
   padding: "14px",
   marginBottom: "18px",
+};
+
+
+const liveSiteMiniButtonStyle = {
+  background: "#102a1f",
+  color: "#a7f3d0",
+  border: "1px solid #2f6f4e",
+  borderRadius: "8px",
+  padding: "8px 10px",
+  fontSize: "8px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const liveReadyPanelStyle = {
+  marginBottom: "16px",
+  background: "#0d2a1f",
+  border: "1px solid #347150",
+  borderRadius: "16px",
+  padding: "20px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "18px",
+  flexWrap: "wrap" as const,
+};
+
+const liveReadyEyebrowStyle = {
+  color: "#86efac",
+  fontSize: "9px",
+  fontWeight: 900,
+  letterSpacing: "1.4px",
+};
+
+const liveReadyTitleStyle = {
+  marginTop: "5px",
+  fontSize: "24px",
+  fontWeight: 900,
+};
+
+const liveReadyTextStyle = {
+  marginTop: "6px",
+  maxWidth: "680px",
+  color: "#9fcab3",
+  fontSize: "11px",
+  lineHeight: 1.55,
+};
+
+const liveReadyActionsStyle = {
+  display: "flex",
+  gap: "9px",
+  flexWrap: "wrap" as const,
+};
+
+const liveReadyPrimaryStyle = {
+  background: "#22c55e",
+  color: "#052e16",
+  border: 0,
+  borderRadius: "9px",
+  padding: "11px 13px",
+  fontSize: "9px",
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const liveReadySecondaryStyle = {
+  background: "#143527",
+  color: "#dcfce7",
+  border: "1px solid #347150",
+  borderRadius: "9px",
+  padding: "11px 13px",
+  fontSize: "9px",
+  fontWeight: 900,
+  cursor: "pointer",
 };
