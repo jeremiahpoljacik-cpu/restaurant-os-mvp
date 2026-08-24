@@ -24,6 +24,7 @@ export default function OwnerBillingPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [adminMode, setAdminMode] = useState(false);
 
   useEffect(() => {
     load();
@@ -94,15 +95,33 @@ export default function OwnerBillingPage() {
 
     const { data: restaurant, error: restaurantError } = await supabase
       .from("restaurants")
-      .select("id,name")
+      .select("id,name,owner_user_id")
       .eq("id", id)
-      .eq("owner_user_id", user.id)
       .maybeSingle();
 
     if (restaurantError || !restaurant) {
       setMessage(restaurantError?.message || "Restaurant not found.");
       setLoading(false);
       return;
+    }
+
+    if (restaurant.owner_user_id !== user.id) {
+      const { data: adminRow } = await supabase
+        .from("platform_admins")
+        .select("user_id,active")
+        .eq("user_id", user.id)
+        .eq("active", true)
+        .maybeSingle();
+
+      if (!adminRow) {
+        setMessage("Restaurant access denied.");
+        setLoading(false);
+        return;
+      }
+
+      setAdminMode(true);
+    } else {
+      setAdminMode(false);
     }
 
     setRestaurantName(restaurant.name);
@@ -297,38 +316,106 @@ export default function OwnerBillingPage() {
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   }
 
-  const statusLabel = subscription?.status?.replace("_", " ").toUpperCase();
+  const rawStatus = String(subscription?.status || "").toLowerCase();
+  const statusLabel = rawStatus ? rawStatus.replace("_", " ").toUpperCase() : "NO SUBSCRIPTION";
 
   const trialExpired =
-    subscription?.status === "trial" &&
-    subscription?.trial_ends_at &&
-    new Date(subscription.trial_ends_at).getTime() <= Date.now();
+    rawStatus === "trial" &&
+    Boolean(subscription?.trial_ends_at) &&
+    new Date(subscription!.trial_ends_at as string).getTime() <= Date.now();
+
+  const hasStripeCustomer = Boolean(subscription?.provider_customer_id);
+  const hasStripeSubscription = Boolean(subscription?.provider_subscription_id);
+
+  const accessAllowed =
+    rawStatus === "active" || (rawStatus === "trial" && !trialExpired);
+
+  const needsPaymentMethod =
+    rawStatus === "past_due" ||
+    rawStatus === "unpaid" ||
+    rawStatus === "incomplete";
+
+  const inactiveState =
+    rawStatus === "canceled" ||
+    rawStatus === "paused" ||
+    rawStatus === "incomplete_expired" ||
+    trialExpired ||
+    !subscription;
 
   const accessTitle =
-    subscription?.status === "past_due"
+    rawStatus === "past_due"
       ? "PAYMENT PAST DUE"
-      : subscription?.status === "canceled"
+      : rawStatus === "unpaid"
+      ? "PAYMENT FAILED"
+      : rawStatus === "incomplete"
+      ? "PAYMENT INCOMPLETE"
+      : rawStatus === "incomplete_expired"
+      ? "CHECKOUT EXPIRED"
+      : rawStatus === "canceled"
       ? "SUBSCRIPTION CANCELED"
-      : subscription?.status === "paused"
+      : rawStatus === "paused"
       ? "SUBSCRIPTION PAUSED"
       : trialExpired
       ? "TRIAL EXPIRED"
-      : subscription?.status === "active"
+      : rawStatus === "active"
       ? "ACTIVE"
-      : "TRIAL";
+      : rawStatus === "trial"
+      ? "TRIAL ACTIVE"
+      : "NO ACTIVE SUBSCRIPTION";
 
   const accessText =
-    subscription?.status === "past_due"
-      ? "Your payment needs attention before paid Restaurant OS tools can be used."
-      : subscription?.status === "canceled"
-      ? "Your subscription is canceled. Reactivate to restore paid Restaurant OS tools."
-      : subscription?.status === "paused"
-      ? "Your subscription is paused. Resume billing to restore paid Restaurant OS tools."
+    rawStatus === "past_due"
+      ? "Your subscription is still on file, but payment is past due. Open billing to update the payment method."
+      : rawStatus === "unpaid"
+      ? "Stripe could not collect payment. Update billing before Restaurant OS access is restored."
+      : rawStatus === "incomplete"
+      ? "Subscription setup started but payment was not completed. Finish billing to activate access."
+      : rawStatus === "incomplete_expired"
+      ? "The prior checkout expired. Start a new checkout to activate Restaurant OS."
+      : rawStatus === "canceled"
+      ? "This subscription is canceled. Use billing to reactivate or start a new subscription."
+      : rawStatus === "paused"
+      ? "This subscription is paused. Resume billing to restore paid Restaurant OS access."
       : trialExpired
-      ? "Your founder trial has ended. Activate the Founder Plan to continue using Restaurant OS."
-      : subscription?.status === "active"
-      ? "Your Restaurant OS subscription is active."
-      : `Your founder trial has ${daysLeft()} day${daysLeft() === 1 ? "" : "s"} remaining.`;
+      ? "The founder trial has ended. Activate the Founder Plan to continue using Restaurant OS."
+      : rawStatus === "active"
+      ? "Restaurant OS subscription access is active."
+      : rawStatus === "trial"
+      ? `Founder trial active with ${daysLeft()} day${daysLeft() === 1 ? "" : "s"} remaining.`
+      : "No active Restaurant OS subscription was found for this restaurant.";
+
+  const primaryActionUsesPortal =
+    hasStripeCustomer &&
+    ["active", "past_due", "unpaid", "canceled", "paused"].includes(rawStatus);
+
+  const primaryActionLabel = primaryActionUsesPortal
+    ? rawStatus === "active"
+      ? "MANAGE BILLING"
+      : rawStatus === "past_due" || rawStatus === "unpaid"
+      ? "FIX PAYMENT METHOD"
+      : rawStatus === "canceled"
+      ? "REACTIVATE / MANAGE BILLING"
+      : rawStatus === "paused"
+      ? "RESUME / MANAGE BILLING"
+      : "OPEN BILLING"
+    : rawStatus === "trial" && !trialExpired
+    ? "ACTIVATE FOUNDER PLAN"
+    : "START FOUNDER PLAN";
+
+  const billingHealthLabel = accessAllowed
+    ? "ACCESS OK"
+    : needsPaymentMethod
+    ? "PAYMENT ACTION"
+    : inactiveState
+    ? "INACTIVE"
+    : "REVIEW";
+
+  const billingHealthTone = accessAllowed
+    ? "#22c55e"
+    : needsPaymentMethod
+    ? "#ef4444"
+    : "#f59e0b";
+
 
   if (loading) {
     return (
@@ -362,6 +449,41 @@ export default function OwnerBillingPage() {
 
         {message && <div style={messageStyle}>{message}</div>}
 
+        {adminMode && (
+          <div style={adminBannerStyle}>
+            SUPER ADMIN VIEW · Managing billing for {restaurantName}
+            <button
+              style={adminBannerButtonStyle}
+              onClick={() =>
+                (window.location.href = `/admin/restaurant?restaurant=${restaurantId}`)
+              }
+            >
+              RETURN TO ADMIN ACCOUNT
+            </button>
+          </div>
+        )}
+
+        <section style={billingHealthStyle}>
+          <div>
+            <div style={eyebrowStyle}>BILLING HEALTH</div>
+            <div style={billingHealthTitleStyle}>{billingHealthLabel}</div>
+            <div style={billingHealthTextStyle}>
+              Stripe customer: {hasStripeCustomer ? "YES" : "NO"} · Subscription ID:{" "}
+              {hasStripeSubscription ? "YES" : "NO"}
+            </div>
+          </div>
+
+          <div
+            style={{
+              ...billingHealthBadgeStyle,
+              color: billingHealthTone,
+              borderColor: billingHealthTone,
+            }}
+          >
+            {statusLabel}
+          </div>
+        </section>
+
         <section style={statusPanelStyle}>
           <div>
             <div style={eyebrowStyle}>CURRENT ACCESS</div>
@@ -383,6 +505,35 @@ export default function OwnerBillingPage() {
             </div>
           </section>
         )}
+
+        <section style={billingDetailsStyle}>
+          <BillingDetail
+            label="ACCESS"
+            value={accessAllowed ? "ENABLED" : "REQUIRES ACTION"}
+            ok={accessAllowed}
+          />
+          <BillingDetail
+            label="TRIAL"
+            value={
+              rawStatus === "trial"
+                ? trialExpired
+                  ? "EXPIRED"
+                  : `${daysLeft()} DAYS LEFT`
+                : "—"
+            }
+            ok={rawStatus !== "trial" || !trialExpired}
+          />
+          <BillingDetail
+            label="STRIPE CUSTOMER"
+            value={hasStripeCustomer ? "CONNECTED" : "NOT CONNECTED"}
+            ok={hasStripeCustomer}
+          />
+          <BillingDetail
+            label="STRIPE SUBSCRIPTION"
+            value={hasStripeSubscription ? "CONNECTED" : "NOT CONNECTED"}
+            ok={hasStripeSubscription || rawStatus === "trial"}
+          />
+        </section>
 
         <section style={planCardStyle}>
           <div style={planTopStyle}>
@@ -414,25 +565,18 @@ export default function OwnerBillingPage() {
 
           <button
             style={primaryButtonStyle}
-            onClick={
-              subscription?.provider_customer_id &&
-              ["active", "past_due", "canceled", "paused"].includes(subscription.status)
-                ? openBillingPortal
-                : startCheckout
-            }
-            disabled={checkoutLoading || portalLoading}
+            onClick={primaryActionUsesPortal ? openBillingPortal : startCheckout}
+            disabled={checkoutLoading || portalLoading || confirmingPayment}
           >
-            {subscription?.provider_customer_id &&
-            ["active", "past_due", "canceled", "paused"].includes(subscription.status)
-              ? portalLoading
-                ? "OPENING BILLING PORTAL..."
-                : subscription.status === "active"
-                ? "MANAGE SUBSCRIPTION"
-                : "FIX BILLING / REACTIVATE"
+            {portalLoading
+              ? "OPENING BILLING PORTAL..."
               : checkoutLoading
-              ? "OPENING CHECKOUT..."
-              : "ACTIVATE FOUNDER PLAN"}
+              ? "STARTING CHECKOUT..."
+              : confirmingPayment
+              ? "CONFIRMING PAYMENT..."
+              : primaryActionLabel}
           </button>
+
         </section>
 
         <section style={noticeStyle}>
@@ -452,6 +596,35 @@ export default function OwnerBillingPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function BillingDetail({
+  label,
+  value,
+  ok,
+}: {
+  label: string;
+  value: string;
+  ok: boolean;
+}) {
+  return (
+    <div
+      style={{
+        ...billingDetailCardStyle,
+        borderColor: ok ? "#245b40" : "#6d4d1b",
+      }}
+    >
+      <div style={billingDetailLabelStyle}>{label}</div>
+      <div
+        style={{
+          ...billingDetailValueStyle,
+          color: ok ? "#86efac" : "#fde68a",
+        }}
+      >
+        {value}
+      </div>
+    </div>
   );
 }
 
@@ -685,4 +858,93 @@ const messageStyle = {
   borderRadius: "10px",
   padding: "14px",
   marginBottom: "18px",
+};
+
+const adminBannerStyle = {
+  background: "#103323",
+  border: "1px solid #2f6f4e",
+  color: "#b7f7d0",
+  borderRadius: 12,
+  padding: "12px 14px",
+  marginBottom: 14,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  flexWrap: "wrap" as const,
+  fontSize: 10,
+  fontWeight: 900,
+  letterSpacing: .5,
+};
+
+const adminBannerButtonStyle = {
+  background: "#183f2d",
+  color: "#dcfce7",
+  border: "1px solid #34785a",
+  borderRadius: 8,
+  padding: "8px 10px",
+  fontSize: 9,
+  fontWeight: 900,
+  cursor: "pointer",
+};
+
+const billingHealthStyle = {
+  background: "#0c1827",
+  border: "1px solid #2a4058",
+  borderRadius: 15,
+  padding: 18,
+  marginBottom: 14,
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 16,
+  alignItems: "center",
+  flexWrap: "wrap" as const,
+};
+
+const billingHealthTitleStyle = {
+  marginTop: 5,
+  fontSize: 24,
+  fontWeight: 900,
+};
+
+const billingHealthTextStyle = {
+  marginTop: 5,
+  color: "#8fa4ba",
+  fontSize: 10,
+};
+
+const billingHealthBadgeStyle = {
+  border: "1px solid",
+  borderRadius: 999,
+  padding: "8px 10px",
+  fontSize: 8,
+  fontWeight: 900,
+  letterSpacing: 1,
+};
+
+const billingDetailsStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(4,minmax(0,1fr))",
+  gap: 9,
+  marginBottom: 14,
+};
+
+const billingDetailCardStyle = {
+  background: "#0f1d2e",
+  border: "1px solid",
+  borderRadius: 11,
+  padding: 12,
+};
+
+const billingDetailLabelStyle = {
+  color: "#6f849b",
+  fontSize: 8,
+  fontWeight: 900,
+  letterSpacing: 1,
+};
+
+const billingDetailValueStyle = {
+  marginTop: 5,
+  fontSize: 14,
+  fontWeight: 900,
 };
