@@ -1371,7 +1371,7 @@ function PizzaOttoEditorial({ data }: { data: SiteData }) {
 }
 
 function PizzaRamuntosHeritage({ data }: { data: SiteData }) {
-  const { restaurant, branding, website, ordering, hours } = data;
+  const { restaurant, branding, website, ordering } = data;
 
   const brick = branding?.primary_color || "#7C201A";
   const cream = branding?.secondary_color || "#E8D9BA";
@@ -2153,12 +2153,6 @@ function PizzaRamuntosHeritage({ data }: { data: SiteData }) {
           {restaurant.phone && (
             <div className="heritage-detail">
               <a href={`tel:${restaurant.phone}`}>{restaurant.phone}</a>
-            </div>
-          )}
-
-          {hours && (
-            <div className="heritage-detail" style={{ marginTop: 18 }}>
-              Hours and availability are managed directly inside Restaurant OS.
             </div>
           )}
 
