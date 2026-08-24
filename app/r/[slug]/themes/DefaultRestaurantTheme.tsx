@@ -139,12 +139,20 @@ const THEME_MEDIA: Record<string, { images: string[]; video?: string }> = {
       "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1400&q=86"
     ]
   },
+  "pizza-ramuntos-heritage": {
+    images: [
+      "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=1800&q=88",
+      "https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=1400&q=86",
+      "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1400&q=86",
+      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1400&q=86"
+    ]
+  },
   "pizza-napoli-modern": {
     images: [
-      "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=1600&q=82",
-      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1200&q=82",
-      "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=82",
-      "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1200&q=82"
+      "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=1800&q=88",
+      "https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=1400&q=86",
+      "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1400&q=86",
+      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1400&q=86"
     ]
   },
   "pizza-slice-shop": {
@@ -288,7 +296,7 @@ export default function DefaultRestaurantTheme() {
   if (key === "mex-birria-street") return <BirriaStreet data={data} />;
 
   if (key === "pizza-otto-editorial" || key === "pizza-red-brick") return <PizzaOttoEditorial data={data} />;
-  if (key === "pizza-napoli-modern") return <PizzaNapoliModern data={data} />;
+  if (key === "pizza-ramuntos-heritage" || key === "pizza-napoli-modern") return <PizzaRamuntosHeritage data={data} />;
   if (key === "pizza-slice-shop") return <PizzaSliceShop data={data} />;
   if (key === "pizza-woodfire") return <PizzaWoodfire data={data} />;
   if (key === "pizza-supper-club") return <PizzaSupperClub data={data} />;
@@ -1362,50 +1370,834 @@ function PizzaOttoEditorial({ data }: { data: SiteData }) {
   );
 }
 
-function PizzaNapoliModern({ data }: { data: SiteData }) {
-  const { restaurant, branding, website } = data;
-  const green = branding?.primary_color || "#183A32";
-  const tomato = branding?.secondary_color || "#B53D2F";
-  const hero = getHeroImage(data, "pizza-napoli-modern");
-  const heroVideo = getHeroVideo(data, "pizza-napoli-modern");
+function PizzaRamuntosHeritage({ data }: { data: SiteData }) {
+  const { restaurant, branding, website, ordering, hours } = data;
+
+  const brick = branding?.primary_color || "#7C201A";
+  const cream = branding?.secondary_color || "#E8D9BA";
+  const green = "#1F3529";
+  const charcoal = "#211B18";
+  const hero =
+    getHeroImage(data, "pizza-ramuntos-heritage") ||
+    getHeroImage(data, "pizza-napoli-modern");
+  const heroVideo = website.hero_video_url || null;
+
+  const address = [
+    restaurant.address_line_1,
+    restaurant.city,
+    restaurant.state,
+    restaurant.zip,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const featured = data.items.slice(0, 6);
 
   return (
-    <main style={{ minHeight:"100vh", background:"#F4F0E8", color:"#1D2A27", fontFamily:"Arial,Helvetica,sans-serif" }}>
+    <main className="heritage-shell">
       <SharedGlobal />
-      <Header data={data} bg="#F4F0E8" color="#1D2A27" accent={tomato} compact outline />
-      <section style={{ position:"relative", minHeight:760, display:"flex", alignItems:"end", overflow:"hidden", color:"#fff", background:hero ? `url("${hero}") center/cover` : green }}>
-        {heroVideo ? <video autoPlay muted loop playsInline src={heroVideo} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} /> : null}
-        <div style={{ position:"absolute", inset:0, background:"linear-gradient(0deg,rgba(16,37,31,.88),rgba(16,37,31,.10))" }} />
-        <div style={{ maxWidth:1180, width:"100%", margin:"0 auto", padding:"98px 28px 72px", position:"relative", zIndex:2 }}>
-          <div style={{ color:"#EED4B1", fontSize:11, fontWeight:900, letterSpacing:3 }}>NAPOLI INSPIRED · MODERN ITALIAN</div>
-          <h1 style={{ maxWidth:900, margin:"14px 0", fontFamily:'Georgia,"Times New Roman",serif', fontSize:"clamp(64px,8vw,112px)", lineHeight:.9, fontWeight:500 }}>{website.hero_headline || restaurant.name}</h1>
-          <p style={{ maxWidth:650, fontSize:18, lineHeight:1.7 }}>{website.hero_subheadline || branding?.tagline || "Simple ingredients. High heat. Beautiful pizza."}</p>
-          <HeroActions data={data} primary={tomato} secondary="#F4F0E8" darkText />
+
+      <style jsx global>{`
+        body {
+          background: #f4ead8 !important;
+        }
+
+        .heritage-shell {
+          min-height: 100vh;
+          background: #f4ead8;
+          color: #211b18;
+          font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .heritage-topbar {
+          background: ${green};
+          color: #fff;
+          min-height: 42px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 10px 24px;
+          text-align: center;
+          font-size: 10px;
+          font-weight: 900;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+        }
+
+        .heritage-header {
+          background: #f4ead8;
+          border-bottom: 1px solid rgba(33,27,24,.15);
+          padding: 18px 26px;
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+          align-items: center;
+          gap: 18px;
+          position: sticky;
+          top: 0;
+          z-index: 50;
+        }
+
+        .heritage-left,
+        .heritage-right {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          font-size: 10px;
+          font-weight: 900;
+          letter-spacing: 1.3px;
+          text-transform: uppercase;
+        }
+
+        .heritage-right {
+          justify-content: flex-end;
+        }
+
+        .heritage-logo {
+          text-align: center;
+          color: ${brick};
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: 34px;
+          font-weight: 900;
+          line-height: .9;
+          letter-spacing: -1px;
+        }
+
+        .heritage-logo small {
+          display: block;
+          margin-top: 6px;
+          color: #7d6f61;
+          font-family: Arial, Helvetica, sans-serif;
+          font-size: 8px;
+          letter-spacing: 3px;
+          font-weight: 900;
+        }
+
+        .heritage-order {
+          background: ${brick};
+          color: #fff;
+          padding: 12px 15px;
+          border-radius: 2px;
+        }
+
+        .heritage-hero {
+          position: relative;
+          min-height: 720px;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          background: ${charcoal};
+        }
+
+        .heritage-hero-media {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .heritage-hero-overlay {
+          position: absolute;
+          inset: 0;
+          background:
+            linear-gradient(90deg, rgba(24,18,15,.86) 0%, rgba(24,18,15,.52) 45%, rgba(24,18,15,.18) 72%, rgba(24,18,15,.24) 100%);
+        }
+
+        .heritage-hero-content {
+          position: relative;
+          z-index: 2;
+          width: 100%;
+          max-width: 1320px;
+          margin: 0 auto;
+          padding: 80px 42px;
+          color: #fff;
+        }
+
+        .heritage-kicker {
+          color: ${cream};
+          font-size: 11px;
+          font-weight: 950;
+          letter-spacing: 3px;
+          text-transform: uppercase;
+        }
+
+        .heritage-hero h1 {
+          max-width: 860px;
+          margin: 14px 0 18px;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: clamp(64px, 8vw, 116px);
+          line-height: .88;
+          letter-spacing: -4px;
+          font-weight: 900;
+        }
+
+        .heritage-hero p {
+          max-width: 620px;
+          color: #efe6dc;
+          font-size: 18px;
+          line-height: 1.7;
+        }
+
+        .heritage-cta-row {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin-top: 28px;
+        }
+
+        .heritage-primary,
+        .heritage-secondary {
+          display: inline-block;
+          padding: 15px 18px;
+          font-size: 10px;
+          font-weight: 950;
+          letter-spacing: 1.3px;
+          text-transform: uppercase;
+        }
+
+        .heritage-primary {
+          background: ${brick};
+          color: #fff;
+        }
+
+        .heritage-secondary {
+          border: 1px solid rgba(255,255,255,.65);
+          color: #fff;
+        }
+
+        .heritage-ribbon {
+          display: grid;
+          grid-template-columns: repeat(4,1fr);
+          background: ${brick};
+          color: #fff;
+        }
+
+        .heritage-ribbon > div {
+          padding: 24px 18px;
+          text-align: center;
+          border-right: 1px solid rgba(255,255,255,.18);
+        }
+
+        .heritage-ribbon strong {
+          display: block;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: 22px;
+        }
+
+        .heritage-ribbon span {
+          display: block;
+          margin-top: 5px;
+          font-size: 8px;
+          font-weight: 900;
+          letter-spacing: 1.8px;
+          text-transform: uppercase;
+          color: #f5d9d5;
+        }
+
+        .heritage-story {
+          max-width: 1240px;
+          margin: 0 auto;
+          padding: 92px 30px;
+          display: grid;
+          grid-template-columns: .95fr 1.05fr;
+          gap: 52px;
+          align-items: center;
+        }
+
+        .heritage-frame {
+          position: relative;
+          padding: 18px;
+          background: #fff;
+          box-shadow: 0 16px 45px rgba(36,25,18,.14);
+          transform: rotate(-1deg);
+        }
+
+        .heritage-frame img {
+          width: 100%;
+          height: 560px;
+          object-fit: cover;
+          display: block;
+        }
+
+        .heritage-story-copy h2 {
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: clamp(48px, 5.7vw, 78px);
+          line-height: .95;
+          letter-spacing: -2.5px;
+          margin: 12px 0 20px;
+        }
+
+        .heritage-story-copy p {
+          color: #6d6258;
+          font-size: 17px;
+          line-height: 1.85;
+          max-width: 620px;
+        }
+
+        .heritage-stamp {
+          display: inline-block;
+          margin-top: 24px;
+          border: 2px solid ${brick};
+          color: ${brick};
+          border-radius: 50%;
+          width: 126px;
+          height: 126px;
+          padding: 24px 14px;
+          text-align: center;
+          font-size: 9px;
+          font-weight: 950;
+          letter-spacing: 1.7px;
+          line-height: 1.6;
+          transform: rotate(7deg);
+        }
+
+        .heritage-menu {
+          background: ${charcoal};
+          color: #fff;
+          padding: 88px 28px;
+        }
+
+        .heritage-menu-inner {
+          max-width: 1180px;
+          margin: 0 auto;
+        }
+
+        .heritage-menu-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          gap: 30px;
+          margin-bottom: 34px;
+        }
+
+        .heritage-menu h2 {
+          margin: 9px 0 0;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: clamp(50px, 6vw, 82px);
+          line-height: .9;
+        }
+
+        .heritage-menu-grid {
+          display: grid;
+          grid-template-columns: repeat(2,1fr);
+          border-top: 1px solid rgba(255,255,255,.18);
+        }
+
+        .heritage-menu-item {
+          padding: 24px 22px 24px 0;
+          border-bottom: 1px solid rgba(255,255,255,.16);
+        }
+
+        .heritage-menu-item:nth-child(odd) {
+          border-right: 1px solid rgba(255,255,255,.16);
+          padding-right: 30px;
+        }
+
+        .heritage-menu-item:nth-child(even) {
+          padding-left: 30px;
+        }
+
+        .heritage-menu-name {
+          display: flex;
+          justify-content: space-between;
+          gap: 20px;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: 24px;
+          font-weight: 900;
+        }
+
+        .heritage-menu-price {
+          color: ${cream};
+          white-space: nowrap;
+        }
+
+        .heritage-menu-desc {
+          margin-top: 8px;
+          color: #afa8a1;
+          font-size: 13px;
+          line-height: 1.65;
+        }
+
+        .heritage-proof {
+          background: ${green};
+          color: #fff;
+          padding: 82px 28px;
+        }
+
+        .heritage-proof-inner {
+          max-width: 1180px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: .8fr 1.2fr;
+          gap: 52px;
+          align-items: center;
+        }
+
+        .heritage-proof h2 {
+          margin: 8px 0 16px;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: clamp(46px, 5vw, 72px);
+          line-height: .95;
+        }
+
+        .heritage-proof p {
+          color: #cfddd5;
+          font-size: 16px;
+          line-height: 1.8;
+        }
+
+        .heritage-proof-cards {
+          display: grid;
+          grid-template-columns: repeat(2,1fr);
+          gap: 10px;
+        }
+
+        .heritage-proof-card {
+          background: rgba(255,255,255,.06);
+          border: 1px solid rgba(255,255,255,.14);
+          padding: 24px;
+          min-height: 150px;
+        }
+
+        .heritage-proof-card strong {
+          display: block;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: 24px;
+          margin-bottom: 8px;
+        }
+
+        .heritage-proof-card span {
+          color: #c5d3cb;
+          font-size: 12px;
+          line-height: 1.55;
+        }
+
+        .heritage-location {
+          display: grid;
+          grid-template-columns: 1.2fr .8fr;
+          background: #f4ead8;
+        }
+
+        .heritage-location-photo {
+          min-height: 520px;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .heritage-location-copy {
+          padding: 70px 6vw;
+          display: flex;
+          justify-content: center;
+          flex-direction: column;
+        }
+
+        .heritage-location-copy h2 {
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: clamp(48px, 5.6vw, 76px);
+          line-height: .95;
+          margin: 10px 0 18px;
+        }
+
+        .heritage-detail {
+          margin-top: 10px;
+          color: #6d6258;
+          font-size: 14px;
+          line-height: 1.7;
+        }
+
+        .heritage-footer {
+          background: #120f0d;
+          color: #9c938b;
+          padding: 36px 28px;
+          display: flex;
+          justify-content: space-between;
+          gap: 18px;
+          flex-wrap: wrap;
+          font-size: 9px;
+          font-weight: 900;
+          letter-spacing: 1.4px;
+          text-transform: uppercase;
+        }
+
+        @media(max-width: 900px) {
+          .heritage-header {
+            grid-template-columns: 1fr auto;
+          }
+
+          .heritage-left {
+            display: none;
+          }
+
+          .heritage-logo {
+            text-align: left;
+          }
+
+          .heritage-ribbon {
+            grid-template-columns: repeat(2,1fr);
+          }
+
+          .heritage-story,
+          .heritage-proof-inner,
+          .heritage-location {
+            grid-template-columns: 1fr;
+          }
+
+          .heritage-frame img {
+            height: 430px;
+          }
+
+          .heritage-location-photo {
+            min-height: 420px;
+          }
+        }
+
+        @media(max-width: 640px) {
+          .heritage-header {
+            padding: 14px 16px;
+          }
+
+          .heritage-logo {
+            font-size: 24px;
+          }
+
+          .heritage-right a:not(.heritage-order) {
+            display: none;
+          }
+
+          .heritage-hero {
+            min-height: 620px;
+          }
+
+          .heritage-hero-content {
+            padding: 70px 22px;
+          }
+
+          .heritage-ribbon {
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .heritage-ribbon strong {
+            font-size: 18px;
+          }
+
+          .heritage-story {
+            padding: 70px 22px;
+          }
+
+          .heritage-menu-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .heritage-menu-item:nth-child(odd),
+          .heritage-menu-item:nth-child(even) {
+            border-right: 0;
+            padding-left: 0;
+            padding-right: 0;
+          }
+
+          .heritage-menu-head {
+            display: block;
+          }
+
+          .heritage-menu-head a {
+            display: inline-block;
+            margin-top: 16px;
+          }
+
+          .heritage-proof-cards {
+            grid-template-columns: 1fr;
+          }
+
+          .heritage-location-copy {
+            padding: 60px 22px;
+          }
+        }
+      `}</style>
+
+      <div className="heritage-topbar">
+        {branding?.tagline || "NEW YORK STYLE · BRICK OVEN · FAMILY OWNED"}
+      </div>
+
+      <header className="heritage-header">
+        <nav className="heritage-left">
+          <a href={`/r/${restaurant.slug}/food-menu`}>Menu</a>
+          <a href="#story">Our Story</a>
+          <a href="#visit">Locations</a>
+        </nav>
+
+        <a href={`/r/${restaurant.slug}`} className="heritage-logo">
+          {website.logo_url ? (
+            <img
+              src={website.logo_url}
+              alt={restaurant.name}
+              style={{ maxWidth: 220, maxHeight: 72, objectFit: "contain" }}
+            />
+          ) : (
+            <>
+              {restaurant.name}
+              <small>BRICK OVEN PIZZERIA</small>
+            </>
+          )}
+        </a>
+
+        <nav className="heritage-right">
+          {restaurant.phone && <a href={`tel:${restaurant.phone}`}>{restaurant.phone}</a>}
+          {ordering?.online_ordering_url && (
+            <a
+              className="heritage-order"
+              href={ordering.online_ordering_url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Order Online
+            </a>
+          )}
+        </nav>
+      </header>
+
+      <section className="heritage-hero">
+        {heroVideo ? (
+          <video
+            className="heritage-hero-media"
+            src={heroVideo}
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+        ) : hero ? (
+          <img className="heritage-hero-media" src={hero} alt="" />
+        ) : null}
+
+        <div className="heritage-hero-overlay" />
+
+        <div className="heritage-hero-content">
+          <div className="heritage-kicker">BRICK OVEN TRADITION</div>
+          <h1>{website.hero_headline || restaurant.name}</h1>
+          <p>
+            {website.hero_subheadline ||
+              branding?.short_description ||
+              "A neighborhood pizzeria built on hand-tossed dough, hot ovens, generous portions and the kind of hospitality that keeps families coming back."}
+          </p>
+
+          <div className="heritage-cta-row">
+            {ordering?.online_ordering_url && (
+              <a
+                className="heritage-primary"
+                href={ordering.online_ordering_url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {website.primary_cta_label || "ORDER ONLINE"}
+              </a>
+            )}
+
+            <a className="heritage-secondary" href={`/r/${restaurant.slug}/food-menu`}>
+              {website.secondary_cta_label || "VIEW MENU"}
+            </a>
+          </div>
         </div>
       </section>
 
-      <section id="story" style={{ background:"#F4F0E8" }}>
-        <div style={{ maxWidth:900, margin:"0 auto", padding:"90px 28px", textAlign:"center" }}>
-          <div style={{ color:tomato, fontSize:11, fontWeight:900, letterSpacing:2.6 }}>LESS, BUT BETTER</div>
-          <h2 style={{ margin:"12px 0 18px", fontFamily:'Georgia,"Times New Roman",serif', fontSize:"clamp(46px,5vw,72px)", lineHeight:1, fontWeight:500 }}>{website.about_title || "Pizza With A Point Of View."}</h2>
-          <p style={{ color:"#68736F", fontSize:17, lineHeight:1.85 }}>{website.about_body || branding?.short_description || "Fermented dough, thoughtful toppings and a dining room designed around the oven."}</p>
+      <section className="heritage-ribbon">
+        <div>
+          <strong>Brick Oven</strong>
+          <span>High-Heat Pizza</span>
+        </div>
+        <div>
+          <strong>Family Style</strong>
+          <span>Built For The Table</span>
+        </div>
+        <div>
+          <strong>Local Favorite</strong>
+          <span>Neighborhood Driven</span>
+        </div>
+        <div>
+          <strong>Catering</strong>
+          <span>Parties & Events</span>
         </div>
       </section>
 
-      <PhotoMosaic data={data} themeKey="pizza-napoli-modern" bg="#F4F0E8" cardBg="#fff" rounded={2} />
+      <section className="heritage-story" id="story">
+        <div className="heritage-frame">
+          <img
+            src={
+              getThemeImage(data, "pizza-ramuntos-heritage", 1) ||
+              getThemeImage(data, "pizza-napoli-modern", 1)
+            }
+            alt=""
+          />
+        </div>
 
-      {data.items.length > 0 && (
-        <section style={{ background:green, color:"#fff", padding:"80px 26px" }}>
-          <div style={{ maxWidth:1180, margin:"0 auto" }}>
-            <div style={{ color:"#EED4B1", fontSize:11, fontWeight:900, letterSpacing:2.6 }}>PIZZE</div>
-            <h2 style={{ margin:"10px 0 30px", fontFamily:'Georgia,"Times New Roman",serif', fontSize:"clamp(46px,5vw,72px)", fontWeight:500 }}>From The Oven</h2>
-            <FeaturedGrid data={data} themeKey="pizza-napoli-modern" cardBg="#20483F" text="#fff" muted="#CFE0DA" accent="#EED4B1" imageHeight={220} radius={2} />
+        <div className="heritage-story-copy">
+          <div className="heritage-kicker" style={{ color: brick }}>
+            FAMILY. DOUGH. FIRE.
+          </div>
+          <h2>{website.about_title || "Built The Old-Fashioned Way."}</h2>
+          <p>
+            {website.about_body ||
+              branding?.short_description ||
+              "We believe the best pizza places feel like they have always been there. The dough gets better with time, the oven stays hot, and the regulars become part of the family."}
+          </p>
+
+          <div className="heritage-stamp">
+            FAMILY OWNED
+            <br />
+            BRICK OVEN
+            <br />
+            PIZZA
+          </div>
+        </div>
+      </section>
+
+      {featured.length > 0 && (
+        <section className="heritage-menu">
+          <div className="heritage-menu-inner">
+            <div className="heritage-menu-head">
+              <div>
+                <div className="heritage-kicker">HOUSE FAVORITES</div>
+                <h2>What We&apos;re Known For.</h2>
+              </div>
+
+              <a
+                href={`/r/${restaurant.slug}/food-menu`}
+                style={{
+                  color: cream,
+                  fontSize: 10,
+                  fontWeight: 950,
+                  letterSpacing: 1.4,
+                  textTransform: "uppercase",
+                  borderBottom: `1px solid ${cream}`,
+                  paddingBottom: 5,
+                }}
+              >
+                Full Menu →
+              </a>
+            </div>
+
+            <div className="heritage-menu-grid">
+              {featured.map((item) => (
+                <article className="heritage-menu-item" key={item.id}>
+                  <div className="heritage-menu-name">
+                    <span>{item.name}</span>
+                    {item.price !== null && (
+                      <span className="heritage-menu-price">
+                        ${Number(item.price).toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+
+                  {item.description && (
+                    <div className="heritage-menu-desc">{item.description}</div>
+                  )}
+                </article>
+              ))}
+            </div>
           </div>
         </section>
       )}
 
-      <VisitBand data={data} bg="#122A24" text="#fff" accent="#EED4B1" />
-      <Footer data={data} bg="#0E201C" color="#AFC2BB" />
+      <section className="heritage-proof">
+        <div className="heritage-proof-inner">
+          <div>
+            <div className="heritage-kicker">MORE THAN PIZZA</div>
+            <h2>A Place People Come Back To.</h2>
+            <p>
+              This layout is built for the established neighborhood restaurant:
+              dine-in, takeout, catering, families, local events and long-term community loyalty.
+            </p>
+          </div>
+
+          <div className="heritage-proof-cards">
+            <div className="heritage-proof-card">
+              <strong>Catering</strong>
+              <span>Make office lunches, family parties and local events an obvious revenue channel.</span>
+            </div>
+
+            <div className="heritage-proof-card">
+              <strong>Community</strong>
+              <span>Perfect for highlighting schools, teams, fundraisers and neighborhood partnerships.</span>
+            </div>
+
+            <div className="heritage-proof-card">
+              <strong>Family Meals</strong>
+              <span>Position large pies, pasta, salads and group meals as the easy dinner answer.</span>
+            </div>
+
+            <div className="heritage-proof-card">
+              <strong>Local Loyalty</strong>
+              <span>VIP offers and restaurant campaigns plug directly into the Restaurant OS growth engine.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="heritage-location" id="visit">
+        <img
+          className="heritage-location-photo"
+          src={
+            getThemeImage(data, "pizza-ramuntos-heritage", 2) ||
+            getThemeImage(data, "pizza-napoli-modern", 2)
+          }
+          alt=""
+        />
+
+        <div className="heritage-location-copy">
+          <div className="heritage-kicker" style={{ color: brick }}>
+            VISIT US
+          </div>
+          <h2>{restaurant.name}</h2>
+
+          {address && <div className="heritage-detail">{address}</div>}
+          {restaurant.phone && (
+            <div className="heritage-detail">
+              <a href={`tel:${restaurant.phone}`}>{restaurant.phone}</a>
+            </div>
+          )}
+
+          {hours && (
+            <div className="heritage-detail" style={{ marginTop: 18 }}>
+              Hours and availability are managed directly inside Restaurant OS.
+            </div>
+          )}
+
+          <div className="heritage-cta-row" style={{ marginTop: 24 }}>
+            {ordering?.online_ordering_url && (
+              <a
+                className="heritage-primary"
+                href={ordering.online_ordering_url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                ORDER NOW
+              </a>
+            )}
+
+            {ordering?.catering_email && (
+              <a
+                href={`mailto:${ordering.catering_email}`}
+                style={{
+                  color: brick,
+                  border: `1px solid ${brick}`,
+                  padding: "15px 18px",
+                  fontSize: 10,
+                  fontWeight: 950,
+                  letterSpacing: 1.3,
+                  textTransform: "uppercase",
+                }}
+              >
+                CATERING
+              </a>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <footer className="heritage-footer">
+        <span>© {new Date().getFullYear()} {restaurant.name}</span>
+        <span>Restaurant OS · Independent Restaurant Growth Platform</span>
+      </footer>
     </main>
   );
 }
