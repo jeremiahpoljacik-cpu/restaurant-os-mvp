@@ -425,8 +425,9 @@ function StandardFoodMenuPage({ slug, themeKey }: { slug: string; themeKey: stri
       case "pizza-deal-machine":
       case "pizza-woodfire":
         return { bg:"#F7F7F5", surface:"#FFFFFF", nav:"#FFFFFF", accent:"#E31D2B", accent2:"#FFC400", text:"#111111", muted:"#666666" };
+      case "pizza-social-house":
       case "pizza-supper-club":
-        return { bg:"#0B1E19", surface:"#132A24", nav:"#081712", accent:"#7A2635", accent2:"#E7D7B4", text:"#F6EFE1", muted:"#B8C6C0" };
+        return { bg:"#111715", surface:"#18201D", nav:"#0B0F0E", accent:"#E3B341", accent2:"#7A2635", text:"#F4EBDD", muted:"#9AA69F" };
       case "pizza-italian":
         return { bg:"#F3E8D5", surface:"#FFF9EF", nav:"#1B2D22", accent:"#9D2F27", accent2:"#D8B98B", text:"#1E201A", muted:"#665F53" };
       case "bbq-smokehouse":
