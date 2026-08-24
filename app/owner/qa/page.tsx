@@ -62,10 +62,9 @@ export default function OwnerQAPage() {
       supabase
         .from("restaurants")
         .select(
-          "id,name,slug,published,status,phone,address_line_1,city,state,zip"
+          "id,name,slug,status,phone,address_line_1,city,state,zip,owner_user_id,theme_key,theme_mode,admin_suspended"
         )
         .eq("id", id)
-        .eq("owner_user_id", session.user.id)
         .maybeSingle(),
 
       supabase
@@ -76,7 +75,7 @@ export default function OwnerQAPage() {
 
       supabase
         .from("restaurant_website_settings")
-        .select("restaurant_id,hero_headline,story_title,story_body")
+        .select("restaurant_id,hero_headline,about_title,about_body,published,logo_url,hero_image_url,hero_video_url")
         .eq("restaurant_id", id)
         .maybeSingle(),
 
@@ -115,14 +114,14 @@ export default function OwnerQAPage() {
 
       supabase
         .from("restaurant_subscriptions")
-        .select("status,trial_ends_at,stripe_customer_id,stripe_subscription_id")
+        .select("status,trial_ends_at,provider_customer_id,provider_subscription_id")
         .eq("restaurant_id", id)
         .maybeSingle(),
 
       supabase
         .from("restaurant_domains")
         .select(
-          "normalized_domain,dns_status,ssl_status,verification_status,provider_status"
+          "normalized_domain,dns_status,ssl_status,verification_status,provider,is_primary"
         )
         .eq("restaurant_id", id)
         .eq("is_primary", true)
@@ -139,6 +138,22 @@ export default function OwnerQAPage() {
     }
 
     const restaurant = restaurantResult.data;
+
+    if (restaurant.owner_user_id !== session.user.id) {
+      const { data: adminRow } = await supabase
+        .from("platform_admins")
+        .select("user_id,active")
+        .eq("user_id", session.user.id)
+        .eq("active", true)
+        .maybeSingle();
+
+      if (!adminRow) {
+        setMessage("Restaurant access denied.");
+        setLoading(false);
+        return;
+      }
+    }
+
     setRestaurantName(restaurant.name || "Restaurant");
 
     const branding = brandingResult.data;
@@ -164,8 +179,8 @@ export default function OwnerQAPage() {
 
     const websiteComplete = Boolean(
       website?.hero_headline &&
-        website?.story_title &&
-        website?.story_body
+        website?.about_title &&
+        website?.about_body
     );
 
     const menuReady =
@@ -174,7 +189,7 @@ export default function OwnerQAPage() {
 
     const orderingReady = Boolean(ordering?.online_ordering_url);
 
-    const publicPublished = Boolean(restaurant.published && restaurant.slug);
+    const publicPublished = Boolean(website?.published && restaurant.slug);
 
     const accessReady = Boolean(
       subscription &&
@@ -186,8 +201,8 @@ export default function OwnerQAPage() {
 
     const stripeLiveReady = Boolean(
       subscription?.status === "active" &&
-        subscription?.stripe_customer_id &&
-        subscription?.stripe_subscription_id
+        subscription?.provider_customer_id &&
+        subscription?.provider_subscription_id
     );
 
     const domainPrepared = Boolean(domain?.normalized_domain);
@@ -198,12 +213,43 @@ export default function OwnerQAPage() {
         domain?.ssl_status === "active"
     );
 
+    const themeReady = Boolean(
+      restaurant.theme_key &&
+        (restaurant.theme_mode === "template" || restaurant.theme_mode === "custom")
+    );
+
+    const restaurantOperational = Boolean(
+      restaurant.status === "active" && !restaurant.admin_suspended
+    );
+
     const nextChecks: Check[] = [
       {
         key: "owner",
         label: "Owner Account Isolation",
         detail: `${restaurant.name} is correctly loaded under this owner account.`,
         pass: true,
+      },
+      {
+        key: "restaurant-status",
+        label: "Restaurant Account Status",
+        detail: restaurantOperational
+          ? "Restaurant account is ACTIVE and not administratively suspended."
+          : `Restaurant status is ${String(restaurant.status || "unknown").toUpperCase()}${
+              restaurant.admin_suspended ? " and ADMIN SUSPENDED" : ""
+            }.`,
+        pass: restaurantOperational,
+        action: "OPEN ADMIN",
+        href: "/admin/restaurant",
+      },
+      {
+        key: "theme",
+        label: "Website Theme",
+        detail: themeReady
+          ? `${restaurant.theme_key} is configured in ${restaurant.theme_mode} mode.`
+          : "Website theme or valid theme mode is missing.",
+        pass: themeReady,
+        action: "FIX THEME",
+        href: "/owner/website",
       },
       {
         key: "profile",
@@ -292,8 +338,8 @@ export default function OwnerQAPage() {
         label: "Custom Domain Staged",
         detail: domainPrepared
           ? `${domain?.normalized_domain} is staged in Restaurant OS.`
-          : "No custom domain has been staged.",
-        pass: domainPrepared,
+          : "No custom domain staged — optional; Restaurant OS slug URL can launch without one.",
+        pass: true,
       },
       {
         key: "domain-live",
@@ -301,7 +347,7 @@ export default function OwnerQAPage() {
         detail: domainLiveReady
           ? `${domain?.normalized_domain} is verified with DNS + SSL active.`
           : "Custom domain is not fully cut over yet.",
-        pass: domainLiveReady,
+        pass: domainPrepared ? domainLiveReady : true,
       },
       {
         key: "growth",
@@ -334,7 +380,9 @@ export default function OwnerQAPage() {
 
   const launchCriticalKeys = new Set([
     "owner",
+    "restaurant-status",
     "profile",
+    "theme",
     "website",
     "menu",
     "published",
@@ -361,11 +409,10 @@ export default function OwnerQAPage() {
       <div style={shellStyle}>
         <header style={headerStyle}>
           <div>
-            <div style={eyebrowStyle}>FOUNDER QA · FINAL SMOKE TEST</div>
-            <h1 style={titleStyle}>Launch Readiness</h1>
+            <div style={eyebrowStyle}>RESTAURANT OS · SYSTEM CHECK</div>
+            <h1 style={titleStyle}>System Readiness</h1>
             <p style={subStyle}>
-              {restaurantName} — one screen to verify the SaaS-critical systems
-              before founder rollout.
+              {restaurantName} — one screen to verify the SaaS-critical systems before launch.
             </p>
           </div>
 
