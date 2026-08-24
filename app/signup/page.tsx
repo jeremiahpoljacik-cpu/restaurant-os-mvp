@@ -39,229 +39,33 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="page">
-      <style jsx global>{`
-        * { box-sizing: border-box; }
-        html, body {
-          margin: 0;
-          padding: 0;
-          background: #050505;
-          font-family: Arial, Helvetica, sans-serif;
-        }
-        input, button { font: inherit; }
-      `}</style>
+    <main style={pageStyle}>
+      <div style={shellStyle}>
+        <div style={brandStyle}>
+          RESTAURANT <span style={{ color: "#e1222d" }}>OS</span>
+        </div>
 
-      <style jsx>{`
-        .page {
-          min-height: 100vh;
-          color: #fff;
-          background:
-            radial-gradient(circle at 85% 8%, rgba(225,34,45,.15), transparent 28%),
-            #050505;
-          padding: 32px 22px 70px;
-        }
-
-        .shell {
-          max-width: 1120px;
-          margin: 0 auto;
-        }
-
-        .brand {
-          font-size: 19px;
-          font-weight: 1000;
-          letter-spacing: -1px;
-        }
-
-        .brand span { color: #e1222d; }
-
-        .grid {
-          display: grid;
-          grid-template-columns: 1fr 430px;
-          gap: 48px;
-          align-items: start;
-          margin-top: 70px;
-        }
-
-        .eyebrow {
-          color: #e1222d;
-          font-size: 10px;
-          font-weight: 1000;
-          letter-spacing: 2px;
-        }
-
-        h1 {
-          margin: 10px 0 18px;
-          font-size: clamp(54px,7vw,90px);
-          line-height: .88;
-          letter-spacing: -5px;
-          font-weight: 1000;
-          text-transform: uppercase;
-        }
-
-        h1 span { color: #e1222d; }
-
-        .lead {
-          max-width: 620px;
-          color: #8d8d8d;
-          font-size: 14px;
-          line-height: 1.65;
-        }
-
-        .price {
-          margin-top: 30px;
-          font-size: 70px;
-          line-height: .9;
-          font-weight: 1000;
-          letter-spacing: -4px;
-        }
-
-        .price span {
-          font-size: 12px;
-          color: #777;
-          letter-spacing: 0;
-        }
-
-        .weekly {
-          margin-top: 8px;
-          color: #e1222d;
-          font-size: 11px;
-          font-weight: 1000;
-        }
-
-        .included {
-          display: grid;
-          grid-template-columns: repeat(2,1fr);
-          gap: 9px;
-          margin-top: 28px;
-        }
-
-        .item {
-          border: 1px solid #222;
-          border-radius: 9px;
-          padding: 12px;
-          background: #0c0c0c;
-          color: #bdbdbd;
-          font-size: 9px;
-          font-weight: 800;
-        }
-
-        .item strong { color: #e1222d; margin-right: 6px; }
-
-        .card {
-          border: 1px solid #282828;
-          border-radius: 16px;
-          padding: 24px;
-          background: #0c0c0c;
-          box-shadow: 0 35px 90px rgba(0,0,0,.45);
-        }
-
-        .card h2 {
-          margin: 6px 0 5px;
-          font-size: 28px;
-        }
-
-        .sub {
-          margin: 0 0 20px;
-          color: #737373;
-          font-size: 10px;
-          line-height: 1.5;
-        }
-
-        .field {
-          display: grid;
-          gap: 6px;
-          margin-bottom: 11px;
-        }
-
-        label {
-          color: #747474;
-          font-size: 8px;
-          font-weight: 1000;
-          letter-spacing: .7px;
-        }
-
-        input {
-          width: 100%;
-          border: 1px solid #303030;
-          border-radius: 8px;
-          background: #111;
-          color: #fff;
-          padding: 12px 13px;
-          outline: none;
-        }
-
-        input:focus { border-color: #e1222d; }
-
-        .two {
-          display: grid;
-          grid-template-columns: 1fr 100px;
-          gap: 9px;
-        }
-
-        .error {
-          border: 1px solid #58272b;
-          border-radius: 8px;
-          padding: 10px;
-          margin: 10px 0;
-          background: #180b0c;
-          color: #ff949b;
-          font-size: 9px;
-        }
-
-        button {
-          width: 100%;
-          border: 0;
-          border-radius: 8px;
-          background: #e1222d;
-          color: #fff;
-          padding: 14px;
-          margin-top: 8px;
-          cursor: pointer;
-          font-weight: 1000;
-          font-size: 10px;
-          letter-spacing: .8px;
-        }
-
-        .fine {
-          margin-top: 12px;
-          color: #5e5e5e;
-          font-size: 8px;
-          line-height: 1.5;
-        }
-
-        @media(max-width:900px) {
-          .grid { grid-template-columns: 1fr; margin-top: 45px; }
-          .card { max-width: 540px; }
-        }
-
-        @media(max-width:600px) {
-          h1 { letter-spacing: -3px; }
-          .included { grid-template-columns: 1fr; }
-        }
-      `}</style>
-
-      <div className="shell">
-        <div className="brand">RESTAURANT <span>OS</span></div>
-
-        <div className="grid">
+        <div style={gridStyle}>
           <section>
-            <div className="eyebrow">ONE SYSTEM. ONE PRICE.</div>
-            <h1>
-              EVERYTHING YOU NEED TO <span>GROW.</span>
+            <div style={eyebrowStyle}>ONE SYSTEM. ONE PRICE.</div>
+            <h1 style={titleStyle}>
+              EVERYTHING YOU NEED TO{" "}
+              <span style={{ color: "#e1222d" }}>GROW.</span>
             </h1>
 
-            <p className="lead">
-              No confusing packages. No feature maze. Restaurant OS gives
-              independent restaurants the website, customer database, loyalty,
-              offers, campaigns and growth tools in one operating system.
+            <p style={leadStyle}>
+              Restaurant OS gives independent restaurants the website,
+              customer database, loyalty, offers, campaigns and growth tools
+              in one operating system.
             </p>
 
-            <div className="price">
-              $375 <span>/ MONTH</span>
+            <div style={priceStyle}>
+              $375 <span style={priceMetaStyle}>/ MONTH</span>
             </div>
-            <div className="weekly">ABOUT $87/WEEK</div>
 
-            <div className="included">
+            <div style={weeklyStyle}>ABOUT $87/WEEK</div>
+
+            <div style={includedStyle}>
               {[
                 "Restaurant website",
                 "Online menu management",
@@ -276,62 +80,235 @@ export default function SignupPage() {
                 "Owner Command Center",
                 "Growth recommendations",
               ].map((item) => (
-                <div className="item" key={item}>
-                  <strong>✓</strong>{item}
+                <div style={itemStyle} key={item}>
+                  <strong style={{ color: "#e1222d" }}>✓ </strong>
+                  {item}
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="card">
-            <div className="eyebrow">START RESTAURANT OS</div>
-            <h2>Tell us about your restaurant.</h2>
-            <p className="sub">
-              We&apos;ll carry this information into onboarding.
-            </p>
+          <section style={cardStyle}>
+            <div style={eyebrowStyle}>START RESTAURANT OS</div>
+            <h2 style={cardTitleStyle}>Tell us about your restaurant.</h2>
 
-            <div className="field">
-              <label>RESTAURANT NAME</label>
-              <input value={restaurantName} onChange={(e)=>setRestaurantName(e.target.value)} />
+            <Field
+              label="RESTAURANT NAME"
+              value={restaurantName}
+              onChange={setRestaurantName}
+            />
+            <Field
+              label="OWNER / OPERATOR"
+              value={ownerName}
+              onChange={setOwnerName}
+            />
+            <Field
+              label="PHONE"
+              value={phone}
+              onChange={setPhone}
+            />
+            <Field
+              label="EMAIL"
+              value={email}
+              onChange={setEmail}
+              type="email"
+            />
+
+            <div style={twoColStyle}>
+              <Field label="CITY" value={city} onChange={setCity} />
+              <Field
+                label="STATE"
+                value={state}
+                onChange={setState}
+                maxLength={2}
+              />
             </div>
 
-            <div className="field">
-              <label>OWNER / OPERATOR</label>
-              <input value={ownerName} onChange={(e)=>setOwnerName(e.target.value)} />
-            </div>
+            {error && <div style={errorStyle}>{error}</div>}
 
-            <div className="field">
-              <label>PHONE</label>
-              <input value={phone} onChange={(e)=>setPhone(e.target.value)} />
-            </div>
-
-            <div className="field">
-              <label>EMAIL</label>
-              <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} />
-            </div>
-
-            <div className="two">
-              <div className="field">
-                <label>CITY</label>
-                <input value={city} onChange={(e)=>setCity(e.target.value)} />
-              </div>
-              <div className="field">
-                <label>STATE</label>
-                <input maxLength={2} value={state} onChange={(e)=>setState(e.target.value)} />
-              </div>
-            </div>
-
-            {error && <div className="error">{error}</div>}
-
-            <button onClick={continueSignup}>START RESTAURANT OS →</button>
-
-            <div className="fine">
-              $375/month. Cancel according to your Restaurant OS service terms.
-              Advertising spend and third-party fees are separate where applicable.
-            </div>
+            <button style={buttonStyle} onClick={continueSignup}>
+              START RESTAURANT OS →
+            </button>
           </section>
         </div>
       </div>
     </main>
   );
 }
+
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+  maxLength,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  maxLength?: number;
+}) {
+  return (
+    <label style={fieldStyle}>
+      <span style={labelStyle}>{label}</span>
+      <input
+        type={type}
+        value={value}
+        maxLength={maxLength}
+        onChange={(event) => onChange(event.target.value)}
+        style={inputStyle}
+      />
+    </label>
+  );
+}
+
+const pageStyle = {
+  minHeight: "100vh",
+  background:
+    "radial-gradient(circle at 85% 8%, rgba(225,34,45,.15), transparent 28%), #050505",
+  color: "#ffffff",
+  padding: "32px 22px 70px",
+  fontFamily: "Arial, Helvetica, sans-serif",
+};
+
+const shellStyle = {
+  maxWidth: "1120px",
+  margin: "0 auto",
+};
+
+const brandStyle = {
+  fontSize: "19px",
+  fontWeight: 900,
+};
+
+const gridStyle = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0,1fr) minmax(340px,430px)",
+  gap: "48px",
+  alignItems: "start",
+  marginTop: "70px",
+};
+
+const eyebrowStyle = {
+  color: "#e1222d",
+  fontSize: "10px",
+  fontWeight: 900,
+  letterSpacing: "2px",
+};
+
+const titleStyle = {
+  margin: "10px 0 18px",
+  fontSize: "clamp(54px,7vw,90px)",
+  lineHeight: 0.88,
+  letterSpacing: "-5px",
+  fontWeight: 900,
+};
+
+const leadStyle = {
+  maxWidth: "620px",
+  color: "#8d8d8d",
+  fontSize: "14px",
+  lineHeight: 1.65,
+};
+
+const priceStyle = {
+  marginTop: "30px",
+  fontSize: "70px",
+  lineHeight: 0.9,
+  fontWeight: 900,
+  letterSpacing: "-4px",
+};
+
+const priceMetaStyle = {
+  fontSize: "12px",
+  color: "#777777",
+  letterSpacing: "0",
+};
+
+const weeklyStyle = {
+  marginTop: "8px",
+  color: "#e1222d",
+  fontSize: "11px",
+  fontWeight: 900,
+};
+
+const includedStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+  gap: "9px",
+  marginTop: "28px",
+};
+
+const itemStyle = {
+  border: "1px solid #222222",
+  borderRadius: "9px",
+  padding: "12px",
+  background: "#0c0c0c",
+  color: "#bdbdbd",
+  fontSize: "9px",
+  fontWeight: 800,
+};
+
+const cardStyle = {
+  border: "1px solid #282828",
+  borderRadius: "16px",
+  padding: "24px",
+  background: "#0c0c0c",
+};
+
+const cardTitleStyle = {
+  margin: "6px 0 20px",
+  fontSize: "28px",
+};
+
+const fieldStyle = {
+  display: "grid",
+  gap: "6px",
+  marginBottom: "11px",
+};
+
+const labelStyle = {
+  color: "#747474",
+  fontSize: "8px",
+  fontWeight: 900,
+};
+
+const inputStyle = {
+  width: "100%",
+  border: "1px solid #303030",
+  borderRadius: "8px",
+  background: "#111111",
+  color: "#ffffff",
+  padding: "12px 13px",
+  outline: "none",
+};
+
+const twoColStyle = {
+  display: "grid",
+  gridTemplateColumns: "1fr 100px",
+  gap: "9px",
+};
+
+const errorStyle = {
+  border: "1px solid #58272b",
+  borderRadius: "8px",
+  padding: "10px",
+  margin: "10px 0",
+  background: "#180b0c",
+  color: "#ff949b",
+  fontSize: "9px",
+};
+
+const buttonStyle = {
+  width: "100%",
+  border: 0,
+  borderRadius: "8px",
+  background: "#e1222d",
+  color: "#ffffff",
+  padding: "14px",
+  marginTop: "8px",
+  cursor: "pointer",
+  fontWeight: 900,
+  fontSize: "10px",
+};
