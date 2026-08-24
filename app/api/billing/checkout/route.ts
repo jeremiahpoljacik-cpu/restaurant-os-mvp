@@ -1,6 +1,10 @@
-"import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-async function getUser(accessToken: string, supabaseUrl: string, anonKey: string) {
+async function getUser(
+  accessToken: string,
+  supabaseUrl: string,
+  anonKey: string
+) {
   const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
     headers: {
       apikey: anonKey,
@@ -32,7 +36,10 @@ export async function POST(request: NextRequest) {
       : "";
 
     if (!accessToken) {
-      return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+      return NextResponse.json(
+        { error: "Authentication required." },
+        { status: 401 }
+      );
     }
 
     const user = await getUser(accessToken, supabaseUrl, anonKey);
@@ -115,7 +122,10 @@ export async function POST(request: NextRequest) {
     params.set("client_reference_id", restaurantId);
     params.set("metadata[restaurant_id]", restaurantId);
     params.set("metadata[plan]", "restaurant_os");
-    params.set("subscription_data[metadata][restaurant_id]", restaurantId);
+    params.set(
+      "subscription_data[metadata][restaurant_id]",
+      restaurantId
+    );
     params.set("subscription_data[metadata][plan]", "restaurant_os");
 
     if (user.email) {
@@ -156,7 +166,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Unexpected billing error.",
+          error instanceof Error
+            ? error.message
+            : "Unexpected billing error.",
       },
       { status: 500 }
     );
