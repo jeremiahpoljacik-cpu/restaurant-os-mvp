@@ -419,8 +419,9 @@ function StandardFoodMenuPage({ slug, themeKey }: { slug: string; themeKey: stri
       case "pizza-ramuntos-heritage":
       case "pizza-napoli-modern":
         return { bg:"#F4EAD8", surface:"#FFFDF7", nav:"#1F3529", accent:"#7C201A", accent2:"#E8D9BA", text:"#211B18", muted:"#6D6258" };
+      case "pizza-coastal-local":
       case "pizza-slice-shop":
-        return { bg:"#111111", surface:"#1A1A1A", nav:"#000000", accent:"#E8472B", accent2:"#F4C542", text:"#FFFFFF", muted:"#BEBEBE" };
+        return { bg:"#F3E8CF", surface:"#FFF9EF", nav:"#1F5A62", accent:"#D86F3D", accent2:"#F7D4B8", text:"#15343A", muted:"#66777A" };
       case "pizza-woodfire":
         return { bg:"#E9DDC8", surface:"#F6EBDD", nav:"#2A211B", accent:"#C56A3A", accent2:"#E7D7BC", text:"#2B211A", muted:"#6C5A4B" };
       case "pizza-supper-club":
