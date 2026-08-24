@@ -1,47 +1,30 @@
-import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-
-function parseStripeSignature(header: string) {
-  const parts = header.split(",");
-  const parsed: Record<string, string[]> = {};
-
-  for (const part of parts) {
-    const [key, value] = part.split("=");
-    if (!key || !value) continue;
-    parsed[key] = parsed[key] || [];
-    parsed[key].push(value);
-  }
-
-  return parsed;
-}
+import { NextRequest, NextResponse } from "next/server";
 
 function verifyStripeSignature(
   payload: string,
   signatureHeader: string,
-  endpointSecret: string
+  secret: string
 ) {
-  const parsed = parseStripeSignature(signatureHeader);
-  const timestamp = parsed.t?.[0];
-  const signatures = parsed.v1 || [];
+  const parts = signatureHeader.split(",");
+  const timestampPart = parts.find((part) => part.startsWith("t="));
+  const signatures = parts
+    .filter((part) => part.startsWith("v1="))
+    .map((part) => part.slice(3));
 
-  if (!timestamp || signatures.length === 0) return false;
+  if (!timestampPart || signatures.length === 0) return false;
 
-  const signedPayload = `${timestamp}.${payload}`;
+  const timestamp = timestampPart.slice(2);
   const expected = crypto
-    .createHmac("sha256", endpointSecret)
-    .update(signedPayload, "utf8")
+    .createHmac("sha256", secret)
+    .update(`${timestamp}.${payload}`, "utf8")
     .digest("hex");
-
-  const now = Math.floor(Date.now() / 1000);
-  const age = Math.abs(now - Number(timestamp));
-
-  if (!Number.isFinite(age) || age > 300) return false;
 
   return signatures.some((signature) => {
     try {
       return crypto.timingSafeEqual(
-        Buffer.from(expected),
-        Buffer.from(signature)
+        Buffer.from(signature, "hex"),
+        Buffer.from(expected, "hex")
       );
     } catch {
       return false;
@@ -49,13 +32,10 @@ function verifyStripeSignature(
   });
 }
 
-async function stripeRequest(
-  stripeSecretKey: string,
-  path: string
-) {
+async function stripeRequest(secretKey: string, path: string) {
   const response = await fetch(`https://api.stripe.com/v1/${path}`, {
     headers: {
-      Authorization: `Bearer ${stripeSecretKey}`,
+      Authorization: `Bearer ${secretKey}`,
     },
     cache: "no-store",
   });
@@ -63,34 +43,64 @@ async function stripeRequest(
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(
-      data?.error?.message || `Stripe request failed for ${path}`
-    );
+    throw new Error(data?.error?.message || "Stripe request failed.");
   }
 
   return data;
 }
 
-async function upsertSubscriptionRecord({
+function mapStripeStatus(status: string) {
+  switch (status) {
+    case "active":
+      return "active";
+    case "trialing":
+      return "trial";
+    case "past_due":
+    case "unpaid":
+      return "past_due";
+    case "canceled":
+    case "incomplete_expired":
+      return "canceled";
+    case "paused":
+      return "paused";
+    case "incomplete":
+      return "incomplete";
+    default:
+      return "paused";
+  }
+}
+
+async function upsertSubscription({
   supabaseUrl,
   serviceRoleKey,
   restaurantId,
-  stripeCustomerId,
-  stripeSubscriptionId,
+  customerId,
+  subscriptionId,
   status,
-  currentPeriodEnd,
-  trialEndsAt,
+  periodEnd,
+  trialEnd,
 }: {
   supabaseUrl: string;
   serviceRoleKey: string;
   restaurantId: string;
-  stripeCustomerId: string | null;
-  stripeSubscriptionId: string | null;
+  customerId: string | null;
+  subscriptionId: string | null;
   status: string;
-  currentPeriodEnd: string | null;
-  trialEndsAt: string | null;
+  periodEnd: string | null;
+  trialEnd: string | null;
 }) {
-  const response = await fetch(
+  const payload = {
+    plan: "restaurant_os",
+    provider: "stripe",
+    provider_customer_id: customerId,
+    provider_subscription_id: subscriptionId,
+    status,
+    current_period_end: periodEnd,
+    trial_ends_at: trialEnd,
+    updated_at: new Date().toISOString(),
+  };
+
+  const patchResponse = await fetch(
     `${supabaseUrl}/rest/v1/restaurant_subscriptions?restaurant_id=eq.${encodeURIComponent(
       restaurantId
     )}`,
@@ -102,25 +112,18 @@ async function upsertSubscriptionRecord({
         "Content-Type": "application/json",
         Prefer: "return=representation",
       },
-      body: JSON.stringify({
-        provider: "stripe",
-        provider_customer_id: stripeCustomerId,
-        provider_subscription_id: stripeSubscriptionId,
-        status,
-        current_period_end: currentPeriodEnd,
-        trial_ends_at: trialEndsAt,
-        updated_at: new Date().toISOString(),
-      }),
+      body: JSON.stringify(payload),
       cache: "no-store",
     }
   );
 
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(detail || "Failed to update Restaurant OS subscription.");
+  if (!patchResponse.ok) {
+    throw new Error(
+      (await patchResponse.text()) || "Subscription update failed."
+    );
   }
 
-  const rows = await response.json();
+  const rows = await patchResponse.json();
 
   if (Array.isArray(rows) && rows.length > 0) {
     return;
@@ -138,40 +141,16 @@ async function upsertSubscriptionRecord({
       },
       body: JSON.stringify({
         restaurant_id: restaurantId,
-        plan: "founder",
-        provider: "stripe",
-        provider_customer_id: stripeCustomerId,
-        provider_subscription_id: stripeSubscriptionId,
-        status,
-        current_period_end: currentPeriodEnd,
-        trial_ends_at: trialEndsAt,
+        ...payload,
       }),
       cache: "no-store",
     }
   );
 
   if (!insertResponse.ok) {
-    const detail = await insertResponse.text();
-    throw new Error(detail || "Failed to create Restaurant OS subscription.");
-  }
-}
-
-function mapStripeStatus(stripeStatus: string) {
-  switch (stripeStatus) {
-    case "active":
-      return "active";
-    case "trialing":
-      return "trial";
-    case "past_due":
-    case "unpaid":
-      return "past_due";
-    case "canceled":
-    case "incomplete_expired":
-      return "canceled";
-    case "paused":
-      return "paused";
-    default:
-      return "paused";
+    throw new Error(
+      (await insertResponse.text()) || "Subscription insert failed."
+    );
   }
 }
 
@@ -197,20 +176,10 @@ export async function POST(request: NextRequest) {
     const rawBody = await request.text();
     const signature = request.headers.get("stripe-signature");
 
-    if (!signature) {
-      return NextResponse.json(
-        { error: "Missing Stripe signature." },
-        { status: 400 }
-      );
-    }
-
-    const valid = verifyStripeSignature(
-      rawBody,
-      signature,
-      stripeWebhookSecret
-    );
-
-    if (!valid) {
+    if (
+      !signature ||
+      !verifyStripeSignature(rawBody, signature, stripeWebhookSecret)
+    ) {
       return NextResponse.json(
         { error: "Invalid Stripe signature." },
         { status: 400 }
@@ -225,47 +194,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    if (type === "checkout.session.completed") {
-      const session = object;
-
-      if (session.mode !== "subscription") {
-        return NextResponse.json({ received: true });
-      }
-
+    if (
+      type === "checkout.session.completed" &&
+      object.mode === "subscription"
+    ) {
       const restaurantId =
-        session.metadata?.restaurant_id || session.client_reference_id;
+        object.metadata?.restaurant_id || object.client_reference_id;
 
       const subscriptionId =
-        typeof session.subscription === "string"
-          ? session.subscription
-          : session.subscription?.id;
+        typeof object.subscription === "string"
+          ? object.subscription
+          : object.subscription?.id;
 
-      if (!restaurantId || !subscriptionId) {
-        return NextResponse.json({ received: true });
+      if (restaurantId && subscriptionId) {
+        const subscription = await stripeRequest(
+          stripeSecretKey,
+          `subscriptions/${subscriptionId}`
+        );
+
+        await upsertSubscription({
+          supabaseUrl,
+          serviceRoleKey,
+          restaurantId,
+          customerId:
+            typeof object.customer === "string"
+              ? object.customer
+              : object.customer?.id || null,
+          subscriptionId: subscription.id,
+          status: mapStripeStatus(subscription.status),
+          periodEnd: subscription.current_period_end
+            ? new Date(
+                subscription.current_period_end * 1000
+              ).toISOString()
+            : null,
+          trialEnd: subscription.trial_end
+            ? new Date(subscription.trial_end * 1000).toISOString()
+            : null,
+        });
       }
-
-      const subscription = await stripeRequest(
-        stripeSecretKey,
-        `subscriptions/${subscriptionId}`
-      );
-
-      await upsertSubscriptionRecord({
-        supabaseUrl,
-        serviceRoleKey,
-        restaurantId,
-        stripeCustomerId:
-          typeof session.customer === "string"
-            ? session.customer
-            : session.customer?.id || null,
-        stripeSubscriptionId: subscription.id,
-        status: mapStripeStatus(subscription.status),
-        currentPeriodEnd: subscription.current_period_end
-          ? new Date(subscription.current_period_end * 1000).toISOString()
-          : null,
-        trialEndsAt: subscription.trial_end
-          ? new Date(subscription.trial_end * 1000).toISOString()
-          : null,
-      });
     }
 
     if (
@@ -276,71 +242,68 @@ export async function POST(request: NextRequest) {
       const subscription = object;
       const restaurantId = subscription.metadata?.restaurant_id;
 
-      if (!restaurantId) {
-        return NextResponse.json({ received: true });
+      if (restaurantId) {
+        await upsertSubscription({
+          supabaseUrl,
+          serviceRoleKey,
+          restaurantId,
+          customerId:
+            typeof subscription.customer === "string"
+              ? subscription.customer
+              : subscription.customer?.id || null,
+          subscriptionId: subscription.id,
+          status: mapStripeStatus(subscription.status),
+          periodEnd: subscription.current_period_end
+            ? new Date(
+                subscription.current_period_end * 1000
+              ).toISOString()
+            : null,
+          trialEnd: subscription.trial_end
+            ? new Date(subscription.trial_end * 1000).toISOString()
+            : null,
+        });
       }
-
-      await upsertSubscriptionRecord({
-        supabaseUrl,
-        serviceRoleKey,
-        restaurantId,
-        stripeCustomerId:
-          typeof subscription.customer === "string"
-            ? subscription.customer
-            : subscription.customer?.id || null,
-        stripeSubscriptionId: subscription.id,
-        status: mapStripeStatus(subscription.status),
-        currentPeriodEnd: subscription.current_period_end
-          ? new Date(subscription.current_period_end * 1000).toISOString()
-          : null,
-        trialEndsAt: subscription.trial_end
-          ? new Date(subscription.trial_end * 1000).toISOString()
-          : null,
-      });
     }
 
     if (
       type === "invoice.payment_failed" ||
       type === "invoice.payment_action_required"
     ) {
-      const invoice = object;
       const subscriptionId =
-        typeof invoice.subscription === "string"
-          ? invoice.subscription
-          : invoice.subscription?.id;
+        typeof object.subscription === "string"
+          ? object.subscription
+          : object.subscription?.id;
 
-      if (!subscriptionId) {
-        return NextResponse.json({ received: true });
+      if (subscriptionId) {
+        const subscription = await stripeRequest(
+          stripeSecretKey,
+          `subscriptions/${subscriptionId}`
+        );
+
+        const restaurantId = subscription.metadata?.restaurant_id;
+
+        if (restaurantId) {
+          await upsertSubscription({
+            supabaseUrl,
+            serviceRoleKey,
+            restaurantId,
+            customerId:
+              typeof subscription.customer === "string"
+                ? subscription.customer
+                : subscription.customer?.id || null,
+            subscriptionId: subscription.id,
+            status: "past_due",
+            periodEnd: subscription.current_period_end
+              ? new Date(
+                  subscription.current_period_end * 1000
+                ).toISOString()
+              : null,
+            trialEnd: subscription.trial_end
+              ? new Date(subscription.trial_end * 1000).toISOString()
+              : null,
+          });
+        }
       }
-
-      const subscription = await stripeRequest(
-        stripeSecretKey,
-        `subscriptions/${subscriptionId}`
-      );
-
-      const restaurantId = subscription.metadata?.restaurant_id;
-
-      if (!restaurantId) {
-        return NextResponse.json({ received: true });
-      }
-
-      await upsertSubscriptionRecord({
-        supabaseUrl,
-        serviceRoleKey,
-        restaurantId,
-        stripeCustomerId:
-          typeof subscription.customer === "string"
-            ? subscription.customer
-            : subscription.customer?.id || null,
-        stripeSubscriptionId: subscription.id,
-        status: "past_due",
-        currentPeriodEnd: subscription.current_period_end
-          ? new Date(subscription.current_period_end * 1000).toISOString()
-          : null,
-        trialEndsAt: subscription.trial_end
-          ? new Date(subscription.trial_end * 1000).toISOString()
-          : null,
-      });
     }
 
     return NextResponse.json({ received: true });
@@ -348,7 +311,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Unexpected webhook error.",
+          error instanceof Error
+            ? error.message
+            : "Webhook processing failed.",
       },
       { status: 500 }
     );
