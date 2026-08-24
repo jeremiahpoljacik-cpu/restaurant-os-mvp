@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabase";
 type Restaurant = {
   id: string;
   name: string;
+  slug: string | null;
   cuisine_category: string | null;
   phone: string | null;
   address_line_1: string | null;
