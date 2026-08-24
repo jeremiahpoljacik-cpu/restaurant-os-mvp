@@ -3086,9 +3086,7 @@ function PizzaDealMachine({ data }: { data: SiteData }) {
     restaurant.zip,
   ].filter(Boolean).join(", ");
 
-  const categories = Array.from(
-    new Set(data.items.map((item) => item.category_name).filter(Boolean))
-  ).slice(0, 7);
+  const categories = ["Deals", "Pizza", "Wings", "Sides", "Pasta", "Desserts", "Drinks"];
 
   const featured = data.items.slice(0, 6);
 
