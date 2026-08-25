@@ -256,8 +256,17 @@ export default function AdminCommandCenterPage() {
             </p>
           </div>
 
-          <div style={roleBadgeStyle}>
-            {adminRole.replace("_", " ").toUpperCase()}
+          <div style={adminHeaderActionsStyle}>
+            <button
+              style={successManagerButtonStyle}
+              onClick={() => (window.location.href = "/admin/success-managers")}
+            >
+              SUCCESS MANAGER INBOX
+            </button>
+
+            <div style={roleBadgeStyle}>
+              {adminRole.replace("_", " ").toUpperCase()}
+            </div>
           </div>
         </header>
 
@@ -767,6 +776,27 @@ const subStyle = {
   color: "#94a3b8",
   fontSize: "16px",
   maxWidth: "760px",
+};
+
+const adminHeaderActionsStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  flexWrap: "wrap" as const,
+  justifyContent: "flex-end",
+};
+
+const successManagerButtonStyle = {
+  background: "#fbbf24",
+  color: "#07111f",
+  border: "1px solid #fbbf24",
+  borderRadius: "10px",
+  padding: "11px 14px",
+  fontSize: "10px",
+  fontWeight: 1000,
+  letterSpacing: ".5px",
+  cursor: "pointer",
+  boxShadow: "0 10px 26px rgba(251,191,36,.12)",
 };
 
 const roleBadgeStyle = {
