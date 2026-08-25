@@ -709,6 +709,29 @@ export default function OwnerDashboardPage() {
           </button>
         </section>
 
+        <section className="successPartner">
+          <div className="successPartnerIcon">OS</div>
+          <div className="successPartnerCopy">
+            <div className="kicker">YOUR HUMAN GROWTH PARTNER</div>
+            <h2>YOUR MARKETING SUCCESS MANAGER IS INSIDE THE COMMAND CENTER.</h2>
+            <p>
+              Need an offer idea, campaign help, review strategy or a second set of eyes?
+              Message your dedicated Success Manager or book a strategy call.
+            </p>
+          </div>
+          <div className="successPartnerActions">
+            <button
+              className="successPrimary"
+              onClick={() => go("/owner/success-manager")}
+            >
+              MESSAGE SUCCESS MANAGER →
+            </button>
+            <button onClick={() => go("/owner/success-manager")}>
+              BOOK STRATEGY CALL
+            </button>
+          </div>
+        </section>
+
         <section className="twoCol">
           <div className="panel">
             <div className="panelHead">
@@ -1390,6 +1413,68 @@ function Styles() {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 13px;
         margin-top: 14px;
+      }
+
+      .successPartner {
+        margin: 16px 0;
+        display: grid;
+        grid-template-columns: auto minmax(0,1fr) auto;
+        gap: 18px;
+        align-items: center;
+        padding: 20px;
+        border: 1px solid #542329;
+        border-left: 3px solid #e1222d;
+        border-radius: 14px;
+        background:
+          radial-gradient(circle at 86% 15%, rgba(225,34,45,.13), transparent 28%),
+          linear-gradient(145deg,#121212,#090909);
+        box-shadow: 0 16px 48px rgba(0,0,0,.2);
+      }
+
+      .successPartnerIcon {
+        width: 58px;
+        height: 58px;
+        display: grid;
+        place-items: center;
+        border-radius: 13px;
+        background: linear-gradient(145deg,#e1222d,#7f1018);
+        border: 1px solid #ef4c55;
+        color: #fff;
+        font-size: 17px;
+        font-weight: 1000;
+        letter-spacing: -1px;
+      }
+
+      .successPartnerCopy h2 {
+        margin: 5px 0 5px;
+        font-size: 20px;
+        line-height: 1.05;
+        letter-spacing: -.7px;
+      }
+
+      .successPartnerCopy p {
+        margin: 0;
+        color: #777;
+        font-size: 9px;
+        line-height: 1.5;
+        max-width: 720px;
+      }
+
+      .successPartnerActions {
+        display: grid;
+        gap: 8px;
+        min-width: 205px;
+      }
+
+      .successPartnerActions button {
+        width: 100%;
+      }
+
+      .successPartnerActions .successPrimary {
+        border-color: #e1222d;
+        background: #e1222d;
+        color: #fff;
+        box-shadow: 0 9px 24px rgba(225,34,45,.15);
       }
 
       .panel {
