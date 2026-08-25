@@ -146,9 +146,9 @@ export default function HomePage() {
               rgba(40,0,4,.18),
               rgba(0,0,0,.18)
             ),
-            url("https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=2000&q=88");
+            url("/restaurant-os-802-bar-hero.png");
           background-size: cover;
-          background-position: center;
+          background-position: center 52%;
           box-shadow: 0 30px 85px rgba(0,0,0,.48);
         }
 
