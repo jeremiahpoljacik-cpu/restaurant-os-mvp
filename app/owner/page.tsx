@@ -521,17 +521,17 @@ export default function OwnerDashboardPage() {
             <div className="brandline">RESTAURANT <span>OS</span></div>
             <h1>OWNER COMMAND CENTER</h1>
             <p>
-              Know what is happening. See what is working. Know what to do next.
+              See the signal. Make the move. Drive the growth.
             </p>
           </div>
 
           <div className="topActions">
             {restaurantCount > 1 && (
               <button onClick={() => (window.location.href = "/owner/restaurants")}>
-                SWITCH RESTAURANT
+                SWITCH COMMAND
               </button>
             )}
-            <button onClick={() => go("/owner/qa")}>SYSTEM CHECK</button>
+            <button className="topCommand" onClick={() => go("/owner/qa")}>RUN SYSTEM CHECK</button>
             <button onClick={signOut}>SIGN OUT</button>
           </div>
         </header>
@@ -611,7 +611,7 @@ export default function OwnerDashboardPage() {
               />
             </div>
             <button onClick={() => go("/owner/setup")}>
-              {setupReady ? "VIEW LAUNCH CHECKLIST" : "CONTINUE SETUP"}
+              {setupReady ? "OPEN READINESS CHECK" : "FINISH SYSTEM SETUP"}
             </button>
           </div>
         </section>
@@ -646,11 +646,11 @@ export default function OwnerDashboardPage() {
         <section className="metricSection">
           <div className="sectionHeader">
             <div>
-              <div className="kicker">YOUR RESTAURANT THIS MONTH</div>
+              <div className="kicker">COMMAND METRICS · THIS MONTH</div>
               <h2>THE NUMBERS THAT MATTER</h2>
             </div>
             <button onClick={() => go("/owner/campaign-results")}>
-              VIEW FULL RESULTS →
+              OPEN PERFORMANCE REPORT →
             </button>
           </div>
 
@@ -701,7 +701,11 @@ export default function OwnerDashboardPage() {
             <h2>{nextMove.title}</h2>
             <p>{nextMove.text}</p>
           </div>
-          <button onClick={() => go(nextMove.path)}>{nextMove.action} →</button>
+          <button className="executeButton" onClick={() => go(nextMove.path)}>
+            <span>EXECUTE</span>
+            <strong>{nextMove.action}</strong>
+            <span className="buttonArrow">→</span>
+          </button>
         </section>
 
         <section className="twoCol">
@@ -709,7 +713,7 @@ export default function OwnerDashboardPage() {
             <div className="panelHead">
               <div>
                 <div className="kicker">CUSTOMER ENGINE</div>
-                <h2>BUILD AN AUDIENCE YOU OWN</h2>
+                <h2>OWN THE CUSTOMER RELATIONSHIP</h2>
               </div>
               <div className="bigTiny">{metrics.vipTotal}</div>
             </div>
@@ -723,9 +727,9 @@ export default function OwnerDashboardPage() {
 
             <div className="panelActions">
               <button className="primary" onClick={() => go("/owner/vip")}>
-                VIEW CUSTOMERS
+                OPEN VIP COMMAND
               </button>
-              <button onClick={() => go("/owner/offers")}>CREATE OFFER</button>
+              <button onClick={() => go("/owner/offers")}>BUILD AN OFFER</button>
             </div>
           </div>
 
@@ -733,7 +737,7 @@ export default function OwnerDashboardPage() {
             <div className="panelHead">
               <div>
                 <div className="kicker">CAMPAIGN ENGINE</div>
-                <h2>CREATE. CLAIM. REDEEM. MEASURE.</h2>
+                <h2>LAUNCH. TRACK. REDEEM. REPEAT.</h2>
               </div>
               <div className="bigTiny">{metrics.campaignTotal}</div>
             </div>
@@ -747,10 +751,10 @@ export default function OwnerDashboardPage() {
 
             <div className="panelActions">
               <button className="primary" onClick={() => go("/owner/campaigns")}>
-                MANAGE CAMPAIGNS
+                OPEN CAMPAIGN COMMAND
               </button>
               <button onClick={() => go("/owner/campaign-results")}>
-                VIEW RESULTS
+                REVIEW PERFORMANCE
               </button>
             </div>
           </div>
@@ -759,71 +763,71 @@ export default function OwnerDashboardPage() {
         <section className="tools">
           <div className="sectionHeader">
             <div>
-              <div className="kicker">OPERATING SYSTEM</div>
-              <h2>RUN THE RESTAURANT GROWTH STACK</h2>
+              <div className="kicker">COMMAND MODULES</div>
+              <h2>DEPLOY THE RESTAURANT GROWTH ENGINE</h2>
             </div>
           </div>
 
           <div className="toolGrid">
             <ToolCard
               title="WEBSITE"
-              text="Edit your public restaurant site, pages, media and publish controls."
-              button="MANAGE WEBSITE"
+              text="Control the live site, pages, media and publishing from one place."
+              button="OPEN SITE COMMAND"
               onClick={() => go("/owner/website")}
             />
             <ToolCard
               title="MENU"
-              text={`${metrics.menuItems} menu item${metrics.menuItems === 1 ? "" : "s"} currently in Restaurant OS.`}
-              button="MANAGE MENU"
+              text={`${metrics.menuItems} menu item${metrics.menuItems === 1 ? "" : "s"} live in your menu system.`}
+              button="EDIT MENU"
               onClick={() => go("/owner/menu")}
             />
             <ToolCard
               title="VIP CUSTOMERS"
-              text="Own the list. Capture customers. Build repeat business."
-              button="VIEW CUSTOMERS"
+              text="Capture first-party customers you can reach, reward and bring back."
+              button="OPEN VIP CRM"
               onClick={() => go("/owner/vip")}
             />
             <ToolCard
               title="QR CODES"
-              text="Create downloadable VIP signup and Google review QR codes for tables, receipts, menus and takeout."
-              button="CREATE QR CODE"
+              text="Deploy scan-to-VIP and scan-to-review QR codes anywhere guests see your brand."
+              button="BUILD QR CODE"
               onClick={() => go("/owner/qr")}
             />
             <ToolCard
               title="OFFERS"
-              text="Build coupons and promotions designed to generate measurable action."
-              button="MANAGE OFFERS"
+              text="Create trackable reasons for customers to visit, claim and return."
+              button="BUILD OFFER"
               onClick={() => go("/owner/offers")}
             />
             <ToolCard
               title="CAMPAIGNS"
-              text="Attach offers, create trackable links and activate your audience."
-              button="MANAGE CAMPAIGNS"
+              text="Put offers into market, activate your audience and track response."
+              button="LAUNCH CAMPAIGN"
               onClick={() => go("/owner/campaigns")}
             />
             <ToolCard
               title="REDEMPTION"
-              text="Close the loop when a claimed offer turns into a restaurant visit."
-              button="REDEEM OFFER"
+              text="Turn claimed offers into measured restaurant visits and closed-loop results."
+              button="OPEN REDEMPTION"
               onClick={() => go("/owner/redeem")}
             />
             <ToolCard
               title="SETTINGS"
-              text="Business profile, hours, branding, ordering and restaurant details."
-              button="RESTAURANT SETTINGS"
+              text="Control business profile, hours, branding, ordering and core restaurant details."
+              button="CONFIGURE RESTAURANT"
               onClick={() => go("/owner/settings")}
             />
             <ToolCard
               title="BILLING"
-              text={`Restaurant OS ${plan} plan and subscription controls.`}
-              button="MANAGE BILLING"
+              text={`Restaurant OS ${plan} plan, access and subscription controls.`}
+              button="OPEN BILLING"
               onClick={() => go("/owner/billing")}
             />
           </div>
         </section>
 
         <section className="growthLoop">
-          <div className="kicker">THE RESTAURANT OS GROWTH LOOP</div>
+          <div className="kicker">MISSION LOOP · REPEAT THIS FOREVER</div>
           <div className="loop">
             <LoopStep number="01" label="ATTRACT" />
             <span>→</span>
@@ -889,9 +893,16 @@ function ToolCard({
 }) {
   return (
     <article className="toolCard">
+      <div className="toolTopline">
+        <span>COMMAND MODULE</span>
+        <span className="toolStatus">READY</span>
+      </div>
       <div className="toolTitle">{title}</div>
       <p>{text}</p>
-      <button onClick={onClick}>{button} →</button>
+      <button onClick={onClick}>
+        <span>{button}</span>
+        <span className="buttonArrow">→</span>
+      </button>
     </article>
   );
 }
@@ -927,14 +938,15 @@ function Styles() {
       .page {
         min-height: 100vh;
         background:
-          radial-gradient(circle at 88% 0%, rgba(225,34,45,.12), transparent 25%),
-          #050505;
+          radial-gradient(circle at 86% 0%, rgba(225,34,45,.16), transparent 25%),
+          radial-gradient(circle at 10% 55%, rgba(130,20,28,.055), transparent 30%),
+          linear-gradient(180deg, #070707 0%, #030303 100%);
         color: #fff;
-        padding: 28px;
+        padding: 30px;
       }
 
       .shell {
-        max-width: 1440px;
+        max-width: 1480px;
         margin: 0 auto;
       }
 
@@ -948,8 +960,10 @@ function Styles() {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 24px;
-        margin-bottom: 22px;
+        gap: 28px;
+        margin-bottom: 24px;
+        padding-bottom: 22px;
+        border-bottom: 1px solid #1b1b1b;
       }
 
       .brandline {
@@ -962,18 +976,20 @@ function Styles() {
       .brandline span { color: #e1222d; }
 
       .top h1 {
-        margin: 8px 0 8px;
-        font-size: clamp(45px, 6vw, 76px);
-        line-height: .9;
-        letter-spacing: -4px;
+        margin: 9px 0 10px;
+        font-size: clamp(48px, 6.1vw, 82px);
+        line-height: .88;
+        letter-spacing: -4.6px;
         font-weight: 1000;
+        text-wrap: balance;
       }
 
       .top p {
         margin: 0;
-        color: #7c7c7c;
+        color: #8c8c8c;
         font-size: 14px;
-        font-weight: 600;
+        font-weight: 700;
+        letter-spacing: .1px;
       }
 
       .topActions {
@@ -983,19 +999,34 @@ function Styles() {
       }
 
       button {
-        border: 1px solid #2a2a2a;
-        border-radius: 8px;
-        background: #111;
+        border: 1px solid #2b2b2b;
+        border-radius: 9px;
+        background: #101010;
         color: #fff;
-        padding: 10px 12px;
+        padding: 11px 13px;
         cursor: pointer;
         font-size: 9px;
         font-weight: 1000;
-        letter-spacing: .6px;
+        letter-spacing: .75px;
+        transition: transform .15s ease, border-color .15s ease, background .15s ease, color .15s ease;
       }
 
       button:hover {
-        border-color: #555;
+        transform: translateY(-1px);
+        border-color: #6b252b;
+        background: #180a0b;
+        color: #ff7d84;
+      }
+
+      .topActions button {
+        min-height: 38px;
+        padding-inline: 15px;
+      }
+
+      .topActions .topCommand {
+        border-color: #6f252b;
+        background: linear-gradient(180deg, #321014, #1f0a0d);
+        color: #ff858c;
       }
 
       .adminBanner {
@@ -1028,10 +1059,12 @@ function Styles() {
         gap: 20px;
         flex-wrap: wrap;
         margin-bottom: 16px;
-        padding: 18px 20px;
-        border: 1px solid #252525;
+        padding: 19px 21px;
+        border: 1px solid #292929;
+        border-left: 3px solid #e1222d;
         border-radius: 14px;
-        background: #0c0c0c;
+        background: linear-gradient(90deg, #101010, #090909 72%);
+        box-shadow: 0 14px 40px rgba(0,0,0,.18);
       }
 
       .restaurantName {
@@ -1087,9 +1120,10 @@ function Styles() {
 
       .growthScore,
       .launchCard {
-        border: 1px solid #252525;
+        border: 1px solid #292929;
         border-radius: 16px;
-        background: linear-gradient(145deg, #0f0f0f, #090909);
+        background: linear-gradient(145deg, #121212, #080808);
+        box-shadow: 0 16px 50px rgba(0,0,0,.2);
       }
 
       .growthScore {
@@ -1101,10 +1135,10 @@ function Styles() {
       }
 
       .kicker {
-        color: #e1222d;
+        color: #ee2a35;
         font-size: 8px;
         font-weight: 1000;
-        letter-spacing: 1.6px;
+        letter-spacing: 1.85px;
       }
 
       .scoreNumber {
@@ -1226,9 +1260,10 @@ function Styles() {
       }
 
       .sectionHeader h2 {
-        margin: 5px 0 0;
-        font-size: 29px;
-        letter-spacing: -1px;
+        margin: 6px 0 0;
+        font-size: clamp(27px, 3vw, 34px);
+        letter-spacing: -1.35px;
+        line-height: 1;
       }
 
       .sectionHeader > button {
@@ -1244,14 +1279,20 @@ function Styles() {
       }
 
       .metric {
-        min-height: 142px;
+        min-height: 148px;
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        padding: 16px;
+        padding: 17px;
+        border: 1px solid #242424;
         border-radius: 12px;
-        background: #0d0d0d;
+        background: linear-gradient(160deg, #101010, #090909);
         text-align: left;
+      }
+
+      .metric:hover {
+        border-color: #6f252b;
+        box-shadow: inset 0 -2px 0 rgba(225,34,45,.35);
       }
 
       .metricLabel {
@@ -1322,6 +1363,27 @@ function Styles() {
         padding: 13px 15px;
       }
 
+      .executeButton {
+        min-width: 185px;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 7px;
+        align-items: center;
+        text-align: left;
+        box-shadow: 0 10px 28px rgba(225,34,45,.18);
+      }
+
+      .executeButton > span:first-child {
+        font-size: 7px;
+        letter-spacing: 1.4px;
+        opacity: .72;
+      }
+
+      .executeButton strong {
+        font-size: 9px;
+        letter-spacing: .65px;
+      }
+
       .twoCol {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1330,10 +1392,11 @@ function Styles() {
       }
 
       .panel {
-        padding: 21px;
-        border: 1px solid #242424;
+        padding: 22px;
+        border: 1px solid #292929;
         border-radius: 15px;
-        background: #0c0c0c;
+        background: linear-gradient(155deg, #101010, #090909);
+        box-shadow: 0 14px 40px rgba(0,0,0,.16);
       }
 
       .panelHead {
@@ -1396,51 +1459,118 @@ function Styles() {
       .panelActions .primary {
         border: 0;
         background: #e1222d;
+        color: #fff;
+        box-shadow: 0 8px 22px rgba(225,34,45,.14);
+      }
+
+      .panelActions button {
+        min-height: 36px;
+        padding-inline: 14px;
       }
 
       .toolGrid {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 9px;
+        gap: 11px;
       }
 
       .toolCard {
-        min-height: 196px;
+        min-height: 214px;
         display: flex;
         flex-direction: column;
-        padding: 17px;
-        border: 1px solid #222;
-        border-radius: 12px;
-        background: #0c0c0c;
+        padding: 18px;
+        border: 1px solid #262626;
+        border-radius: 13px;
+        background:
+          linear-gradient(180deg, rgba(255,255,255,.018), transparent 36%),
+          #0b0b0b;
+        position: relative;
+        overflow: hidden;
+        transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+      }
+
+      .toolCard::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 3px;
+        height: 100%;
+        background: #2b2b2b;
+        transition: background .16s ease;
+      }
+
+      .toolCard:hover {
+        transform: translateY(-2px);
+        border-color: #572229;
+        box-shadow: 0 16px 36px rgba(0,0,0,.28);
+      }
+
+      .toolCard:hover::before {
+        background: #e1222d;
+      }
+
+      .toolTopline {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+        color: #5f5f5f;
+        font-size: 7px;
+        font-weight: 1000;
+        letter-spacing: 1.35px;
+      }
+
+      .toolStatus {
+        color: #6fcf97;
+        letter-spacing: 1px;
       }
 
       .toolTitle {
         color: #fff;
-        font-size: 18px;
+        font-size: 20px;
         font-weight: 1000;
+        letter-spacing: -.5px;
       }
 
       .toolCard p {
-        margin: 11px 0 20px;
-        color: #717171;
+        margin: 10px 0 22px;
+        color: #777;
         font-size: 9px;
-        line-height: 1.5;
+        line-height: 1.55;
       }
 
       .toolCard button {
         margin-top: auto;
         width: 100%;
-        color: #ff6972;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        color: #ff747c;
         border-color: #4b2327;
-        background: #14090a;
+        background: linear-gradient(180deg, #160a0b, #100708);
+        padding: 11px 12px;
+      }
+
+      .toolCard button:hover {
+        background: #e1222d;
+        border-color: #e1222d;
+        color: #fff;
+      }
+
+      .buttonArrow {
+        font-size: 14px;
+        line-height: 1;
       }
 
       .growthLoop {
-        margin-top: 14px;
+        margin-top: 16px;
         padding: 20px;
-        border: 1px solid #242424;
+        border: 1px solid #292929;
         border-radius: 14px;
-        background: #090909;
+        background: linear-gradient(90deg, #0c0c0c, #080808);
       }
 
       .loop {
@@ -1462,8 +1592,8 @@ function Styles() {
         display: flex;
         align-items: center;
         gap: 9px;
-        padding: 11px 12px;
-        border: 1px solid #242424;
+        padding: 12px 13px;
+        border: 1px solid #292929;
         border-radius: 9px;
         background: #101010;
       }
