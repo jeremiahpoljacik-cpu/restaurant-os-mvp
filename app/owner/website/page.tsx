@@ -28,7 +28,6 @@ type WebsiteSettings = {
   hero_headline: string;
   hero_subheadline: string;
   hero_image_url: string;
-  hero_video_url: string;
   logo_url: string;
   about_title: string;
   about_body: string;
@@ -45,7 +44,6 @@ const initialSettings: WebsiteSettings = {
   hero_headline: "",
   hero_subheadline: "",
   hero_image_url: "",
-  hero_video_url: "",
   logo_url: "",
   about_title: "",
   about_body: "",
@@ -71,6 +69,16 @@ type CustomRequest = {
   id: string;
   status: string;
   requested_at: string;
+};
+
+type CustomSiteBackup = {
+  id: string;
+  restaurant_id: string;
+  custom_theme_key: string;
+  label: string;
+  snapshot: Record<string, unknown> | null;
+  saved_at: string;
+  updated_at: string;
 };
 
 const THEME_CATEGORIES = [
@@ -115,34 +123,10 @@ const THEME_CATEGORIES = [
     name: "Pizza / Italian",
     themes: [
       {
-        key: "pizza-otto-editorial",
-        name: "Editorial Pizza",
-        description: "Agency-grade black-and-white pizza brand with vertical navigation, cinematic media and oversized identity.",
-        swatches: ["#050505", "#F5F2EA", "#B6182B"],
-      },
-      {
-        key: "pizza-ramuntos-heritage",
-        name: "Brick Oven Heritage",
-        description: "Established regional pizzeria feel with brick-oven craftsmanship, family history, locations, catering and community credibility.",
-        swatches: ["#7C201A", "#E8D9BA", "#1F3529"],
-      },
-      {
-        key: "pizza-coastal-local",
-        name: "Coastal Local",
-        description: "Bright local hospitality site with food photography, drinks, parties, catering, reviews and destination-town energy.",
-        swatches: ["#F3E8CF", "#1F5A62", "#D86F3D"],
-      },
-      {
-        key: "pizza-deal-machine",
-        name: "Deal Machine",
-        description: "Order-first conversion site with giant promo hero, menu category rail, featured deals, carryout/delivery focus and fast checkout energy.",
-        swatches: ["#FFFFFF", "#E31D2B", "#111111"],
-      },
-      {
-        key: "pizza-social-house",
-        name: "Social House",
-        description: "Moody destination pizzeria and bar with atmospheric photography, beer, events, waitlist energy and elevated neighborhood hospitality.",
-        swatches: ["#111715", "#E3B341", "#7A2635"],
+        key: "pizza-italian",
+        name: "Neighborhood Pizzeria",
+        description: "Warm, rustic and neighborhood-driven with strong menu presentation.",
+        swatches: ["#9F2D24", "#F5E7CE", "#163B2D"],
       },
     ],
   },
@@ -201,20 +185,20 @@ const THEME_LIBRARY = THEME_CATEGORIES.flatMap((category) => category.themes);
 
 export default function WebsiteManagerPage() {
   const [restaurantId, setRestaurantId] = useState("");
-  const [adminMode, setAdminMode] = useState(false);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [branding, setBranding] = useState<Branding | null>(null);
   const [settings, setSettings] = useState<WebsiteSettings>(initialSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [publishBusy, setPublishBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [selectedTheme, setSelectedTheme] = useState("family-casual");
   const [themeCategory, setThemeCategory] = useState("mexican");
   const [siteImages, setSiteImages] = useState<SiteImage[]>([]);
   const [uploading, setUploading] = useState("");
   const [customRequest, setCustomRequest] = useState<CustomRequest | null>(null);
+  const [customSiteBackup, setCustomSiteBackup] = useState<CustomSiteBackup | null>(null);
   const [customNotes, setCustomNotes] = useState("");
+  const [restoringCustomSite, setRestoringCustomSite] = useState(false);
 
   useEffect(() => {
     load();
@@ -242,30 +226,12 @@ export default function WebsiteManagerPage() {
       return;
     }
 
-    // Load the restaurant through RLS. Then determine whether this is
-    // normal owner access or a platform-admin override.
     const { data: restaurantData, error: restaurantError } = await supabase
       .from("restaurants")
       .select("*")
       .eq("id", id)
+      .eq("owner_user_id", user.id)
       .maybeSingle();
-
-    if (restaurantData) {
-      const isOwner = restaurantData.owner_user_id === user.id;
-
-      if (isOwner) {
-        setAdminMode(false);
-      } else {
-        const { data: adminRow } = await supabase
-          .from("platform_admins")
-          .select("user_id,active")
-          .eq("user_id", user.id)
-          .eq("active", true)
-          .maybeSingle();
-
-        setAdminMode(Boolean(adminRow));
-      }
-    }
 
     if (restaurantError || !restaurantData) {
       setMessage(restaurantError?.message || "Restaurant not found.");
@@ -281,7 +247,11 @@ export default function WebsiteManagerPage() {
     );
     if (matchingCategory) setThemeCategory(matchingCategory.key);
 
-    const [{ data: imageData }, { data: requestData }] = await Promise.all([
+    const [
+      { data: imageData },
+      { data: requestData },
+      { data: customBackupData },
+    ] = await Promise.all([
       supabase
         .from("restaurant_site_images")
         .select("id,image_url,image_type,caption,sort_order")
@@ -295,10 +265,16 @@ export default function WebsiteManagerPage() {
         .order("requested_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
+      supabase
+        .from("restaurant_custom_site_backups")
+        .select("id,restaurant_id,custom_theme_key,label,snapshot,saved_at,updated_at")
+        .eq("restaurant_id", id)
+        .maybeSingle(),
     ]);
 
     setSiteImages((imageData || []) as SiteImage[]);
     setCustomRequest((requestData || null) as CustomRequest | null);
+    setCustomSiteBackup((customBackupData || null) as CustomSiteBackup | null);
 
     const { data: brandingData } = await supabase
       .from("restaurant_branding")
@@ -326,7 +302,6 @@ export default function WebsiteManagerPage() {
         hero_headline: websiteData.hero_headline || "",
         hero_subheadline: websiteData.hero_subheadline || "",
         hero_image_url: websiteData.hero_image_url || "",
-        hero_video_url: websiteData.hero_video_url || "",
         logo_url: websiteData.logo_url || "",
         about_title: websiteData.about_title || "",
         about_body: websiteData.about_body || "",
@@ -370,6 +345,18 @@ export default function WebsiteManagerPage() {
     if (!restaurantId) return;
     setMessage("");
 
+    if (
+      restaurant?.theme_mode === "custom" &&
+      customSiteBackup &&
+      themeKey !== customSiteBackup.custom_theme_key
+    ) {
+      const confirmed = window.confirm(
+        "You are switching away from a protected custom website. Your custom website will remain saved and can be restored at any time. Continue?"
+      );
+
+      if (!confirmed) return;
+    }
+
     const { error } = await supabase
       .from("restaurants")
       .update({
@@ -387,142 +374,119 @@ export default function WebsiteManagerPage() {
     setRestaurant((current) =>
       current ? { ...current, theme_key: themeKey, theme_mode: "template" } : current
     );
-    setMessage("Theme applied. Open the public site to review it.");
+    setMessage(
+      customSiteBackup
+        ? "Template applied. Your custom website is still safely saved and can be restored anytime."
+        : "Theme applied. Open the public site to review it."
+    );
   }
 
-  async function uploadAsset(file: File | null, kind: "logo" | "hero" | "gallery" | "video") {
-    if (!file || !restaurantId) return;
+  async function restoreCustomSite() {
+    if (!restaurantId || !customSiteBackup) return;
 
-    if (kind === "video") {
-      if (!file.type.startsWith("video/")) {
-        setMessage("Please choose a video file.");
-        return;
-      }
-
-      if (file.size > 40 * 1024 * 1024) {
-        setMessage("Hero video must be smaller than 40 MB.");
-        return;
-      }
-    } else {
-      if (!file.type.startsWith("image/")) {
-        setMessage("Please choose an image file.");
-        return;
-      }
-
-      if (file.size > 8 * 1024 * 1024) {
-        setMessage("Image must be smaller than 8 MB.");
-        return;
-      }
-    }
-
-    setUploading(kind);
-    setMessage(
-      `${
-        kind === "gallery"
-          ? "Photo"
-          : kind === "logo"
-          ? "Logo"
-          : kind === "video"
-          ? "Hero video"
-          : "Hero image"
-      } uploading...`
+    const confirmed = window.confirm(
+      `Restore "${customSiteBackup.label}" as the active website design?`
     );
 
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+    if (!confirmed) return;
 
-      if (!session?.access_token) {
-        throw new Error("Your login session expired. Sign in again.");
-      }
-
-      const form = new FormData();
-      form.append("restaurant_id", restaurantId);
-      form.append("kind", kind);
-      form.append("file", file);
-
-      const response = await fetch("/api/owner/media", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: form,
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Image upload failed.");
-      }
-
-      if (kind === "logo") {
-        setSettings((current) => ({ ...current, logo_url: result.publicUrl }));
-        setMessage("Logo uploaded and saved.");
-      } else if (kind === "hero") {
-        setSettings((current) => ({ ...current, hero_image_url: result.publicUrl }));
-        setMessage("Hero image uploaded and saved.");
-      } else if (kind === "video") {
-        setSettings((current) => ({ ...current, hero_video_url: result.publicUrl }));
-        setMessage("Hero video uploaded and saved.");
-      } else if (result.image) {
-        setSiteImages((current) =>
-          [...current, result.image as SiteImage].sort(
-            (a, b) => a.sort_order - b.sort_order
-          )
-        );
-        setMessage("Restaurant photo uploaded.");
-      }
-    } catch (error) {
-      setMessage(
-        error instanceof Error ? error.message : "Image upload failed."
-      );
-    } finally {
-      setUploading("");
-    }
-  }
-
-  async function removeSiteAsset(kind: "logo" | "hero" | "video") {
-    if (!restaurantId) return;
-
-    const column =
-      kind === "logo"
-        ? "logo_url"
-        : kind === "hero"
-        ? "hero_image_url"
-        : "hero_video_url";
+    setRestoringCustomSite(true);
+    setMessage("");
 
     const { error } = await supabase
-      .from("restaurant_website_settings")
+      .from("restaurants")
       .update({
-        [column]: null,
-        updated_at: new Date().toISOString(),
+        theme_key: customSiteBackup.custom_theme_key,
+        theme_mode: "custom",
       })
-      .eq("restaurant_id", restaurantId);
+      .eq("id", restaurantId);
+
+    setRestoringCustomSite(false);
 
     if (error) {
       setMessage(error.message);
       return;
     }
 
-    setSettings((current) => ({
-      ...current,
-      [
-        kind === "logo"
-          ? "logo_url"
-          : kind === "hero"
-          ? "hero_image_url"
-          : "hero_video_url"
-      ]: "",
-    }));
-
-    setMessage(
-      kind === "logo"
-        ? "Logo removed."
-        : kind === "hero"
-        ? "Hero image removed."
-        : "Hero video removed."
+    setSelectedTheme(customSiteBackup.custom_theme_key);
+    setRestaurant((current) =>
+      current
+        ? {
+            ...current,
+            theme_key: customSiteBackup.custom_theme_key,
+            theme_mode: "custom",
+          }
+        : current
     );
+    setMessage("Custom website restored. Your saved custom design is active again.");
+  }
+
+  async function uploadAsset(file: File | null, kind: "logo" | "hero" | "gallery") {
+    if (!file || !restaurantId) return;
+
+    if (!file.type.startsWith("image/")) {
+      setMessage("Please choose an image file.");
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      setMessage("Image must be smaller than 8 MB.");
+      return;
+    }
+
+    setUploading(kind);
+    setMessage("");
+
+    try {
+      const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const safeKind = kind === "gallery" ? "gallery" : kind;
+      const path = `${restaurantId}/${safeKind}-${Date.now()}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("restaurant-assets")
+        .upload(path, file, {
+          upsert: false,
+          contentType: file.type || undefined,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const publicUrl = supabase.storage
+        .from("restaurant-assets")
+        .getPublicUrl(path).data.publicUrl;
+
+      if (kind === "logo") {
+        setSettings((current) => ({ ...current, logo_url: publicUrl }));
+        setMessage("Logo uploaded. Click SAVE WEBSITE SETTINGS to finish.");
+      } else if (kind === "hero") {
+        setSettings((current) => ({ ...current, hero_image_url: publicUrl }));
+        setMessage("Hero image uploaded. Click SAVE WEBSITE SETTINGS to finish.");
+      } else {
+        const { data, error } = await supabase
+          .from("restaurant_site_images")
+          .insert({
+            restaurant_id: restaurantId,
+            image_url: publicUrl,
+            image_type: "gallery",
+            sort_order: siteImages.length,
+            active: true,
+          })
+          .select("id,image_url,image_type,caption,sort_order")
+          .single();
+
+        if (error) throw error;
+        setSiteImages((current) => [...current, data as SiteImage]);
+        setMessage("Photo added to the site gallery.");
+      }
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Image upload failed. Confirm the restaurant-assets storage bucket is installed."
+      );
+    } finally {
+      setUploading("");
+    }
   }
 
   async function deleteGalleryImage(image: SiteImage) {
@@ -578,80 +542,6 @@ export default function WebsiteManagerPage() {
     setMessage("Custom website request submitted to Restaurant OS.");
   }
 
-
-  async function setFeaturedImage(image: SiteImage) {
-    setSettings((current) => ({
-      ...current,
-      hero_image_url: image.image_url,
-    }));
-    setMessage("Featured image selected. Click SAVE WEBSITE SETTINGS to finish.");
-  }
-
-  async function moveImage(image: SiteImage, direction: "up" | "down") {
-    const sorted = [...siteImages].sort((a, b) => a.sort_order - b.sort_order);
-    const index = sorted.findIndex((item) => item.id === image.id);
-    if (index < 0) return;
-
-    const targetIndex = direction === "up" ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= sorted.length) return;
-
-    const target = sorted[targetIndex];
-
-    const [{ error: firstError }, { error: secondError }] = await Promise.all([
-      supabase
-        .from("restaurant_site_images")
-        .update({ sort_order: target.sort_order })
-        .eq("id", image.id)
-        .eq("restaurant_id", restaurantId),
-      supabase
-        .from("restaurant_site_images")
-        .update({ sort_order: image.sort_order })
-        .eq("id", target.id)
-        .eq("restaurant_id", restaurantId),
-    ]);
-
-    if (firstError || secondError) {
-      setMessage(firstError?.message || secondError?.message || "Unable to reorder images.");
-      return;
-    }
-
-    const next = sorted.map((item) => {
-      if (item.id === image.id) return { ...item, sort_order: target.sort_order };
-      if (item.id === target.id) return { ...item, sort_order: image.sort_order };
-      return item;
-    }).sort((a, b) => a.sort_order - b.sort_order);
-
-    setSiteImages(next);
-    setMessage("Photo order updated.");
-  }
-
-  async function updateGalleryCaption(image: SiteImage, caption: string) {
-    setSiteImages((current) =>
-      current.map((item) =>
-        item.id === image.id ? { ...item, caption } : item
-      )
-    );
-  }
-
-  async function saveGalleryCaption(image: SiteImage) {
-    const current = siteImages.find((item) => item.id === image.id);
-    const { error } = await supabase
-      .from("restaurant_site_images")
-      .update({
-        caption: current?.caption || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", image.id)
-      .eq("restaurant_id", restaurantId);
-
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
-
-    setMessage("Photo caption saved.");
-  }
-
   async function save() {
     if (!restaurantId) return;
 
@@ -671,45 +561,6 @@ export default function WebsiteManagerPage() {
 
     setSaving(false);
     setMessage(error ? error.message : "Website settings saved.");
-  }
-
-  async function setPublished(nextPublished: boolean) {
-    if (!restaurantId) return;
-
-    setPublishBusy(true);
-    setMessage("");
-
-    // Save all current website content first so the public site never launches
-    // with stale edits, then explicitly set the publish state.
-    const { error } = await supabase
-      .from("restaurant_website_settings")
-      .upsert(
-        {
-          restaurant_id: restaurantId,
-          ...settings,
-          published: nextPublished,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "restaurant_id" }
-      );
-
-    setPublishBusy(false);
-
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
-
-    setSettings((current) => ({
-      ...current,
-      published: nextPublished,
-    }));
-
-    setMessage(
-      nextPublished
-        ? "Website published. Public visitors can now access the restaurant site."
-        : "Website returned to draft. Public access is now disabled."
-    );
   }
 
   if (loading) {
@@ -764,21 +615,6 @@ export default function WebsiteManagerPage() {
           </div>
         </header>
 
-        {adminMode && (
-          <div style={adminAccessBannerStyle}>
-            SUPER ADMIN VIEW · Managing this restaurant website
-            <button
-              type="button"
-              style={adminAccessButtonStyle}
-              onClick={() =>
-                (window.location.href = `/admin/restaurant?restaurant=${restaurantId}`)
-              }
-            >
-              RETURN TO ADMIN
-            </button>
-          </div>
-        )}
-
         {message && <div style={messageStyle}>{message}</div>}
 
         <section style={quickControlStyle}>
@@ -801,6 +637,89 @@ export default function WebsiteManagerPage() {
             MANAGE PAGES & SOCIALS →
           </button>
         </section>
+
+        {customSiteBackup && (
+          <section style={customSiteProtectedStyle}>
+            <div style={customSiteProtectedHeaderStyle}>
+              <div>
+                <div style={eyebrowStyle}>CUSTOM WEBSITE</div>
+                <h2 style={quickControlTitleStyle}>{customSiteBackup.label}</h2>
+                <p style={quickControlTextStyle}>
+                  Your custom-designed Restaurant OS website is protected here. You can
+                  try any standard theme without losing this design, then restore it
+                  with one click.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  ...customSiteStatusPillStyle,
+                  ...(restaurant.theme_mode === "custom" &&
+                  restaurant.theme_key === customSiteBackup.custom_theme_key
+                    ? customSiteActivePillStyle
+                    : customSiteSavedPillStyle),
+                }}
+              >
+                {restaurant.theme_mode === "custom" &&
+                restaurant.theme_key === customSiteBackup.custom_theme_key
+                  ? "CUSTOM SITE ACTIVE"
+                  : "CUSTOM SITE SAVED"}
+              </div>
+            </div>
+
+            <div style={customSiteMetaGridStyle}>
+              <div style={customSiteMetaCardStyle}>
+                <div style={customSiteMetaLabelStyle}>SAVED DESIGN</div>
+                <div style={customSiteMetaValueStyle}>{customSiteBackup.label}</div>
+              </div>
+              <div style={customSiteMetaCardStyle}>
+                <div style={customSiteMetaLabelStyle}>PROTECTED THEME KEY</div>
+                <div style={customSiteMetaValueStyle}>{customSiteBackup.custom_theme_key}</div>
+              </div>
+              <div style={customSiteMetaCardStyle}>
+                <div style={customSiteMetaLabelStyle}>CURRENT WEBSITE TYPE</div>
+                <div style={customSiteMetaValueStyle}>
+                  {restaurant.theme_mode === "custom" ? "Custom Website" : "Template Website"}
+                </div>
+              </div>
+            </div>
+
+            <div style={themeActionRowStyle}>
+              <button
+                type="button"
+                style={customButtonStyle}
+                disabled={
+                  restoringCustomSite ||
+                  (restaurant.theme_mode === "custom" &&
+                    restaurant.theme_key === customSiteBackup.custom_theme_key)
+                }
+                onClick={restoreCustomSite}
+              >
+                {restoringCustomSite
+                  ? "RESTORING..."
+                  : restaurant.theme_mode === "custom" &&
+                    restaurant.theme_key === customSiteBackup.custom_theme_key
+                  ? "CUSTOM WEBSITE ACTIVE"
+                  : "RESTORE CUSTOM WEBSITE"}
+              </button>
+
+              {restaurant.slug && (
+                <button
+                  type="button"
+                  style={primaryOutlineButtonStyle}
+                  onClick={() => window.open(`/r/${restaurant.slug}`, "_blank")}
+                >
+                  OPEN SITE PREVIEW
+                </button>
+              )}
+            </div>
+
+            <div style={customSiteProtectionNoteStyle}>
+              Switching templates changes only the active theme selection. This saved
+              custom website reference stays protected and is not overwritten.
+            </div>
+          </section>
+        )}
 
         <section style={themeSectionStyle}>
           <div style={themeHeaderStyle}>
@@ -894,6 +813,7 @@ export default function WebsiteManagerPage() {
             )}
           </div>
 
+          {!customSiteBackup && (
           <div style={customUpsellStyle}>
             <div>
               <div style={eyebrowStyle}>CUSTOM WEBSITE UPGRADE</div>
@@ -922,6 +842,7 @@ export default function WebsiteManagerPage() {
               </button>
             </div>
           </div>
+          )}
         </section>
 
         <section style={assetSectionStyle}>
@@ -939,61 +860,17 @@ export default function WebsiteManagerPage() {
             <input
               type="file"
               accept="image/*"
-              multiple
               disabled={Boolean(uploading)}
               style={{ display: "none" }}
-              onChange={async (event) => {
-                const files = Array.from(event.target.files || []);
-                for (const file of files) {
-                  await uploadAsset(file, "gallery");
-                }
-                event.currentTarget.value = "";
-              }}
+              onChange={(event) => uploadAsset(event.target.files?.[0] || null, "gallery")}
             />
           </label>
 
           {siteImages.length > 0 && (
             <div style={galleryGridStyle}>
-              {siteImages.map((image, index) => (
+              {siteImages.map((image) => (
                 <div key={image.id} style={galleryCardStyle}>
-                  <img src={image.image_url} alt={image.caption || ""} style={galleryImageStyle} />
-
-                  <div style={galleryControlPanelStyle}>
-                    <div style={galleryButtonRowStyle}>
-                      <button
-                        type="button"
-                        style={galleryMiniButtonStyle}
-                        disabled={index === 0}
-                        onClick={() => moveImage(image, "up")}
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        style={galleryMiniButtonStyle}
-                        disabled={index === siteImages.length - 1}
-                        onClick={() => moveImage(image, "down")}
-                      >
-                        ↓
-                      </button>
-                      <button
-                        type="button"
-                        style={galleryFeatureButtonStyle}
-                        onClick={() => setFeaturedImage(image)}
-                      >
-                        FEATURE
-                      </button>
-                    </div>
-
-                    <input
-                      value={image.caption || ""}
-                      onChange={(event) => updateGalleryCaption(image, event.target.value)}
-                      onBlur={() => saveGalleryCaption(image)}
-                      placeholder="Photo caption"
-                      style={galleryCaptionInputStyle}
-                    />
-                  </div>
-
+                  <img src={image.image_url} alt="" style={galleryImageStyle} />
                   <button
                     type="button"
                     style={galleryDeleteStyle}
@@ -1001,10 +878,6 @@ export default function WebsiteManagerPage() {
                   >
                     REMOVE
                   </button>
-
-                  {settings.hero_image_url === image.image_url && (
-                    <div style={featuredBadgeStyle}>FEATURED</div>
-                  )}
                 </div>
               ))}
             </div>
@@ -1036,7 +909,6 @@ export default function WebsiteManagerPage() {
                 imageUrl={settings.logo_url}
                 disabled={Boolean(uploading)}
                 onFile={(file) => uploadAsset(file, "logo")}
-                onRemove={() => removeSiteAsset("logo")}
               />
 
               <AssetUpload
@@ -1045,21 +917,6 @@ export default function WebsiteManagerPage() {
                 imageUrl={settings.hero_image_url}
                 disabled={Boolean(uploading)}
                 onFile={(file) => uploadAsset(file, "hero")}
-                onRemove={() => removeSiteAsset("hero")}
-              />
-
-              <VideoUpload
-                videoUrl={settings.hero_video_url}
-                disabled={Boolean(uploading)}
-                uploading={uploading === "video"}
-                onFile={(file) => uploadAsset(file, "video")}
-                onRemove={() => removeSiteAsset("video")}
-                onUrlChange={(value) =>
-                  setSettings((current) => ({
-                    ...current,
-                    hero_video_url: value,
-                  }))
-                }
               />
             </section>
 
@@ -1121,75 +978,13 @@ export default function WebsiteManagerPage() {
                 checked={settings.show_vip}
                 onChange={(value) => update("show_vip", value)}
               />
+
+              <Toggle
+                label="PUBLISH WEBSITE"
+                checked={settings.published}
+                onChange={(value) => update("published", value)}
+              />
             </section>
-
-            <section
-              style={{
-                ...launchControlStyle,
-                borderColor: settings.published ? "#2f855a" : "#7c5c16",
-                background: settings.published ? "#0f2b20" : "#2e250d",
-              }}
-            >
-              <div style={launchControlTopStyle}>
-                <div>
-                  <div style={eyebrowStyle}>PUBLIC WEBSITE STATUS</div>
-                  <div style={launchControlTitleStyle}>
-                    {settings.published ? "LIVE ON THE WEB" : "DRAFT / NOT PUBLIC"}
-                  </div>
-                  <p style={launchControlTextStyle}>
-                    {settings.published
-                      ? "Your public restaurant website is currently available to visitors."
-                      : "Your restaurant website is hidden from public visitors until you explicitly publish it."}
-                  </p>
-                </div>
-
-                <div
-                  style={{
-                    ...launchStatusBadgeStyle,
-                    background: settings.published ? "#173d2c" : "#46340b",
-                    color: settings.published ? "#86efac" : "#fde68a",
-                    borderColor: settings.published ? "#34785a" : "#8a691b",
-                  }}
-                >
-                  {settings.published ? "PUBLISHED" : "DRAFT"}
-                </div>
-              </div>
-
-              <div style={launchControlActionsStyle}>
-                {restaurant.slug && settings.published && (
-                  <button
-                    style={previewLiveButtonStyle}
-                    onClick={() =>
-                      window.open(`/r/${restaurant.slug}`, "_blank", "noopener,noreferrer")
-                    }
-                  >
-                    VIEW LIVE SITE
-                  </button>
-                )}
-
-                <button
-                  style={
-                    settings.published
-                      ? unpublishButtonStyle
-                      : publishButtonStyle
-                  }
-                  disabled={publishBusy}
-                  onClick={() => setPublished(!settings.published)}
-                >
-                  {publishBusy
-                    ? "UPDATING..."
-                    : settings.published
-                    ? "RETURN SITE TO DRAFT"
-                    : "PUBLISH WEBSITE NOW"}
-                </button>
-              </div>
-
-              <div style={launchControlNoteStyle}>
-                Publishing saves the current website settings first. Returning to draft
-                immediately disables normal public access while keeping all website content intact.
-              </div>
-            </section>
-
 
             <button
               style={saveButtonStyle}
@@ -1353,96 +1148,18 @@ function Textarea({
 }
 
 
-function VideoUpload({
-  videoUrl,
-  disabled,
-  uploading,
-  onFile,
-  onRemove,
-  onUrlChange,
-}: {
-  videoUrl: string;
-  disabled: boolean;
-  uploading: boolean;
-  onFile: (file: File | null) => void;
-  onRemove: () => void;
-  onUrlChange: (value: string) => void;
-}) {
-  return (
-    <div style={assetUploadCardStyle}>
-      <div>
-        <label style={labelStyle}>HERO VIDEO (OPTIONAL)</label>
-        <div style={assetHelpStyle}>
-          MP4 / MOV · up to 40 MB · muted looping background
-        </div>
-      </div>
-
-      {videoUrl && (
-        <video
-          src={videoUrl}
-          muted
-          loop
-          playsInline
-          controls
-          style={videoPreviewStyle}
-        />
-      )}
-
-      <div style={assetActionRowStyle}>
-        <label style={uploadButtonStyle}>
-          {uploading
-            ? "UPLOADING..."
-            : videoUrl
-            ? "REPLACE VIDEO"
-            : "UPLOAD HERO VIDEO"}
-          <input
-            type="file"
-            accept="video/mp4,video/quicktime,video/webm,video/*"
-            disabled={disabled}
-            style={{ display: "none" }}
-            onChange={(event) => onFile(event.target.files?.[0] || null)}
-          />
-        </label>
-
-        {videoUrl && (
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={onRemove}
-            style={removeAssetButtonStyle}
-          >
-            REMOVE VIDEO
-          </button>
-        )}
-      </div>
-
-      <div style={{ display: "grid", gap: "7px" }}>
-        <label style={labelStyle}>OR USE A HOSTED VIDEO URL</label>
-        <input
-          value={videoUrl}
-          onChange={(event) => onUrlChange(event.target.value)}
-          placeholder="https://...mp4"
-          style={inputStyle}
-        />
-      </div>
-    </div>
-  );
-}
-
 function AssetUpload({
   label,
   button,
   imageUrl,
   disabled,
   onFile,
-  onRemove,
 }: {
   label: string;
   button: string;
   imageUrl: string;
   disabled: boolean;
   onFile: (file: File | null) => void;
-  onRemove?: () => void;
 }) {
   return (
     <div style={assetUploadCardStyle}>
@@ -1457,29 +1174,16 @@ function AssetUpload({
         <img src={imageUrl} alt="" style={assetPreviewStyle} />
       )}
 
-      <div style={assetActionRowStyle}>
-        <label style={uploadButtonStyle}>
-          {imageUrl ? "REPLACE IMAGE" : button}
-          <input
-            type="file"
-            accept="image/*"
-            disabled={disabled}
-            style={{ display: "none" }}
-            onChange={(event) => onFile(event.target.files?.[0] || null)}
-          />
-        </label>
-
-        {imageUrl && onRemove && (
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={onRemove}
-            style={removeAssetButtonStyle}
-          >
-            REMOVE IMAGE
-          </button>
-        )}
-      </div>
+      <label style={uploadButtonStyle}>
+        {button}
+        <input
+          type="file"
+          accept="image/*"
+          disabled={disabled}
+          style={{ display: "none" }}
+          onChange={(event) => onFile(event.target.files?.[0] || null)}
+        />
+      </label>
     </div>
   );
 }
@@ -1504,6 +1208,82 @@ function Toggle({
     </label>
   );
 }
+
+const customSiteProtectedStyle = {
+  background: "linear-gradient(135deg,#0b1b2f,#13263b)",
+  border: "1px solid #f5b82e",
+  borderRadius: "18px",
+  padding: "24px",
+  marginBottom: "20px",
+  boxShadow: "0 0 0 1px rgba(245,184,46,.08), 0 18px 50px rgba(0,0,0,.22)",
+};
+
+const customSiteProtectedHeaderStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: "20px",
+  alignItems: "flex-start",
+  flexWrap: "wrap" as const,
+};
+
+const customSiteStatusPillStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  borderRadius: "999px",
+  padding: "8px 11px",
+  fontSize: "10px",
+  fontWeight: 900,
+  letterSpacing: "1px",
+  whiteSpace: "nowrap" as const,
+};
+
+const customSiteActivePillStyle = {
+  color: "#86efac",
+  border: "1px solid #22c55e",
+  background: "rgba(34,197,94,.10)",
+};
+
+const customSiteSavedPillStyle = {
+  color: "#f5b82e",
+  border: "1px solid #f5b82e",
+  background: "rgba(245,184,46,.08)",
+};
+
+const customSiteMetaGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))",
+  gap: "12px",
+  marginTop: "20px",
+};
+
+const customSiteMetaCardStyle = {
+  background: "#08111f",
+  border: "1px solid #2d4661",
+  borderRadius: "12px",
+  padding: "14px",
+};
+
+const customSiteMetaLabelStyle = {
+  color: "#64748b",
+  fontSize: "9px",
+  fontWeight: 900,
+  letterSpacing: "1.2px",
+  marginBottom: "6px",
+};
+
+const customSiteMetaValueStyle = {
+  color: "#ffffff",
+  fontSize: "14px",
+  fontWeight: 900,
+  overflowWrap: "anywhere" as const,
+};
+
+const customSiteProtectionNoteStyle = {
+  marginTop: "14px",
+  color: "#94a3b8",
+  fontSize: "12px",
+  lineHeight: 1.5,
+};
 
 const themeSectionStyle = {
   background: "#102238",
@@ -1687,24 +1467,6 @@ const galleryDeleteStyle = {
   cursor: "pointer",
 };
 
-const assetActionRowStyle = {
-  display: "flex",
-  gap: "8px",
-  flexWrap: "wrap" as const,
-  alignItems: "center",
-};
-
-const removeAssetButtonStyle = {
-  border: "1px solid #8f3e47",
-  borderRadius: "9px",
-  background: "#311922",
-  color: "#ffd6da",
-  padding: "11px 13px",
-  fontSize: "10px",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
 const assetUploadCardStyle = {
   border: "1px dashed #3d5875",
   borderRadius: "12px",
@@ -1718,14 +1480,6 @@ const assetHelpStyle = {
   color: "#64748b",
   fontSize: "11px",
   marginTop: "5px",
-};
-
-const videoPreviewStyle = {
-  width: "100%",
-  maxHeight: "260px",
-  objectFit: "cover" as const,
-  borderRadius: "9px",
-  background: "#02060b",
 };
 
 const assetPreviewStyle = {
@@ -1745,93 +1499,6 @@ const uploadButtonStyle = {
   color: "#ffffff",
   padding: "11px 13px",
   fontSize: "10px",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const galleryControlPanelStyle = {
-  display: "grid",
-  gap: "8px",
-  padding: "10px",
-  background: "#0b1b2d",
-  borderTop: "1px solid #2d4661",
-};
-
-const galleryButtonRowStyle = {
-  display: "flex",
-  gap: "6px",
-  flexWrap: "wrap" as const,
-};
-
-const galleryMiniButtonStyle = {
-  minWidth: "34px",
-  border: "1px solid #3d5875",
-  borderRadius: "7px",
-  background: "#17314a",
-  color: "#fff",
-  fontWeight: 900,
-  padding: "7px 9px",
-  cursor: "pointer",
-};
-
-const galleryFeatureButtonStyle = {
-  marginLeft: "auto",
-  border: "1px solid #f5b82e",
-  borderRadius: "7px",
-  background: "transparent",
-  color: "#f5b82e",
-  fontWeight: 900,
-  padding: "7px 10px",
-  cursor: "pointer",
-  fontSize: "9px",
-};
-
-const galleryCaptionInputStyle = {
-  width: "100%",
-  background: "#08111f",
-  border: "1px solid #2d4661",
-  borderRadius: "7px",
-  color: "#fff",
-  padding: "9px 10px",
-  fontSize: "11px",
-};
-
-const featuredBadgeStyle = {
-  position: "absolute" as const,
-  left: "7px",
-  top: "7px",
-  background: "#f5b82e",
-  color: "#07101c",
-  borderRadius: "999px",
-  padding: "6px 8px",
-  fontSize: "8px",
-  fontWeight: 900,
-};
-
-const adminAccessBannerStyle = {
-  background: "#123d2d",
-  border: "1px solid #2d7a59",
-  color: "#baf4d3",
-  borderRadius: "11px",
-  padding: "10px 12px",
-  marginBottom: "14px",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "10px",
-  flexWrap: "wrap" as const,
-  fontSize: "9px",
-  fontWeight: 900,
-  letterSpacing: "1px",
-};
-
-const adminAccessButtonStyle = {
-  background: "#22c55e",
-  color: "#052e16",
-  border: 0,
-  borderRadius: "8px",
-  padding: "8px 10px",
-  fontSize: "9px",
   fontWeight: 900,
   cursor: "pointer",
 };
@@ -2132,93 +1799,6 @@ const miniCardStyle = {
 const hintStyle = {
   color: "#64748b",
   fontSize: "12px",
-  lineHeight: 1.5,
-  marginTop: "14px",
-};
-
-
-const launchControlStyle = {
-  border: "1px solid",
-  borderRadius: "16px",
-  padding: "20px",
-  marginTop: "18px",
-  marginBottom: "14px",
-};
-
-const launchControlTopStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: "16px",
-  flexWrap: "wrap" as const,
-};
-
-const launchControlTitleStyle = {
-  marginTop: "6px",
-  fontSize: "25px",
-  fontWeight: 900,
-};
-
-const launchControlTextStyle = {
-  color: "#a8b7c8",
-  fontSize: "12px",
-  lineHeight: 1.6,
-  maxWidth: "620px",
-  margin: "7px 0 0",
-};
-
-const launchStatusBadgeStyle = {
-  border: "1px solid",
-  borderRadius: "999px",
-  padding: "8px 10px",
-  fontSize: "8px",
-  fontWeight: 900,
-  letterSpacing: "1px",
-};
-
-const launchControlActionsStyle = {
-  display: "flex",
-  gap: "10px",
-  flexWrap: "wrap" as const,
-  marginTop: "18px",
-};
-
-const publishButtonStyle = {
-  background: "#22c55e",
-  color: "#052e16",
-  border: 0,
-  borderRadius: "9px",
-  padding: "12px 15px",
-  fontSize: "9px",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const unpublishButtonStyle = {
-  background: "#7f1d1d",
-  color: "#fecaca",
-  border: "1px solid #b91c1c",
-  borderRadius: "9px",
-  padding: "12px 15px",
-  fontSize: "9px",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const previewLiveButtonStyle = {
-  background: "#10253a",
-  color: "#dbeafe",
-  border: "1px solid #36516d",
-  borderRadius: "9px",
-  padding: "12px 15px",
-  fontSize: "9px",
-  fontWeight: 900,
-  cursor: "pointer",
-};
-
-const launchControlNoteStyle = {
-  color: "#74879b",
-  fontSize: "10px",
   lineHeight: 1.5,
   marginTop: "14px",
 };
