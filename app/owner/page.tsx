@@ -532,6 +532,7 @@ export default function OwnerDashboardPage() {
               </button>
             )}
             <button className="topCommand" onClick={() => go("/owner/qa")}>RUN SYSTEM CHECK</button>
+            <button onClick={() => go("/owner/profile")}>ACCOUNT</button>
             <button onClick={signOut}>SIGN OUT</button>
           </div>
         </header>
