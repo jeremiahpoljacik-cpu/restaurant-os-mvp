@@ -1,372 +1,789 @@
-"use client";
+\"use client\";
 
 export default function HomePage() {
   function goSignup() {
     window.location.href = "/signup";
   }
 
+  function goLogin() {
+    window.location.href = "/login";
+  }
+
   return (
     <main className="page">
       <style jsx global>{`
-        * { box-sizing: border-box; }
-        html, body {
+        * {
+          box-sizing: border-box;
+        }
+        html,
+        body {
           margin: 0;
           padding: 0;
           background: #050505;
+          color: #ffffff;
           font-family: Arial, Helvetica, sans-serif;
         }
-        button { font: inherit; }
+        a {
+          color: inherit;
+          text-decoration: none;
+        }
+        button {
+          font: inherit;
+        }
       `}</style>
 
       <style jsx>{`
         .page {
           min-height: 100vh;
-          color: #fff;
           background:
-            radial-gradient(circle at 88% 0%, rgba(225,34,45,.15), transparent 28%),
+            radial-gradient(circle at 78% 12%, rgba(173, 16, 27, 0.22), transparent 28%),
+            radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.03), transparent 18%),
             #050505;
-          padding: 0 0 80px;
         }
 
         .shell {
-          max-width: 1180px;
+          max-width: 1240px;
           margin: 0 auto;
-          padding: 28px 24px;
+          padding: 0 24px 90px;
         }
 
         .nav {
           display: flex;
-          justify-content: space-between;
           align-items: center;
+          justify-content: space-between;
           gap: 20px;
-          padding-bottom: 40px;
+          padding: 28px 0 10px;
         }
 
         .brand {
-          font-size: 21px;
+          font-size: 22px;
           font-weight: 1000;
           letter-spacing: -1px;
         }
 
         .brand span {
-          color: #e1222d;
+          color: #e31d2c;
         }
 
         .navActions {
           display: flex;
-          align-items: center;
           gap: 10px;
+          align-items: center;
         }
 
-        .ghost {
-          border: 1px solid #303030;
-          border-radius: 8px;
-          background: #111;
-          color: #fff;
-          padding: 10px 13px;
-          cursor: pointer;
-          font-size: 9px;
+        .ghostBtn,
+        .primaryBtn,
+        .secondaryBtn {
+          border-radius: 10px;
+          padding: 12px 16px;
+          font-size: 10px;
           font-weight: 1000;
+          letter-spacing: 0.3px;
+          cursor: pointer;
+          transition: 0.2s ease;
         }
 
-        .primary {
-          border: 0;
-          border-radius: 8px;
-          background: #e1222d;
-          color: #fff;
-          padding: 11px 15px;
-          cursor: pointer;
-          font-size: 9px;
-          font-weight: 1000;
+        .ghostBtn {
+          background: rgba(255, 255, 255, 0.02);
+          color: #ffffff;
+          border: 1px solid #2e2e2e;
+        }
+
+        .ghostBtn:hover {
+          border-color: #525252;
+          transform: translateY(-1px);
+        }
+
+        .primaryBtn {
+          background: #e31d2c;
+          color: #ffffff;
+          border: 1px solid #e31d2c;
+          box-shadow: 0 14px 40px rgba(227, 29, 44, 0.22);
+        }
+
+        .primaryBtn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 18px 44px rgba(227, 29, 44, 0.3);
+        }
+
+        .secondaryBtn {
+          background: transparent;
+          color: #ffffff;
+          border: 1px solid #343434;
+        }
+
+        .secondaryBtn:hover {
+          border-color: #5b5b5b;
+          transform: translateY(-1px);
         }
 
         .hero {
-          display: grid;
-          grid-template-columns: 1.15fr .85fr;
-          gap: 40px;
-          align-items: center;
-          min-height: 620px;
-          padding: 70px 0 40px;
+          position: relative;
+          min-height: 760px;
+          overflow: hidden;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          border-radius: 26px;
+          background:
+            linear-gradient(90deg, rgba(5, 5, 5, 0.95) 0%, rgba(5, 5, 5, 0.88) 34%, rgba(5, 5, 5, 0.56) 70%, rgba(5, 5, 5, 0.78) 100%),
+            linear-gradient(180deg, rgba(227, 29, 44, 0.08), transparent 30%);
+          box-shadow: 0 30px 90px rgba(0, 0, 0, 0.4);
+          margin-top: 18px;
+        }
+
+        .heroContent {
+          position: relative;
+          z-index: 3;
+          max-width: 640px;
+          padding: 92px 54px 84px;
         }
 
         .eyebrow {
-          color: #e1222d;
+          color: #ff4250;
           font-size: 10px;
           font-weight: 1000;
           letter-spacing: 2px;
+          text-transform: uppercase;
         }
 
-        h1 {
-          margin: 12px 0 18px;
-          font-size: clamp(58px,8vw,105px);
-          line-height: .84;
+        .hero h1 {
+          margin: 14px 0 18px;
+          font-size: clamp(66px, 9vw, 118px);
+          line-height: 0.88;
           letter-spacing: -6px;
           font-weight: 1000;
           text-transform: uppercase;
         }
 
-        h1 span {
-          color: #e1222d;
+        .hero h1 span {
+          color: #e31d2c;
         }
 
-        .lead {
-          max-width: 720px;
+        .heroLead {
+          max-width: 560px;
           margin: 0;
-          color: #929292;
-          font-size: 16px;
-          line-height: 1.6;
+          color: #c9c9c9;
+          font-size: 20px;
+          line-height: 1.55;
+        }
+
+        .heroSub {
+          max-width: 580px;
+          margin: 18px 0 0;
+          color: #8f8f8f;
+          font-size: 13px;
+          line-height: 1.7;
         }
 
         .heroActions {
           display: flex;
-          gap: 10px;
           flex-wrap: wrap;
-          margin-top: 24px;
-        }
-
-        .heroActions button {
-          padding: 14px 18px;
-          font-size: 10px;
-        }
-
-        .priceCard {
-          border: 1px solid #6d272c;
-          border-radius: 18px;
-          padding: 28px;
-          background:
-            linear-gradient(145deg, #190a0b, #0b0b0b 70%);
-          box-shadow: 0 30px 90px rgba(225,34,45,.08);
-        }
-
-        .priceLabel {
-          color: #ff787f;
-          font-size: 9px;
-          font-weight: 1000;
-          letter-spacing: 1.5px;
-        }
-
-        .price {
-          margin-top: 10px;
-          font-size: 88px;
-          line-height: .9;
-          letter-spacing: -6px;
-          font-weight: 1000;
-        }
-
-        .price span {
-          color: #777;
-          font-size: 12px;
-          letter-spacing: 0;
-        }
-
-        .weekly {
-          margin-top: 8px;
-          color: #e1222d;
-          font-size: 11px;
-          font-weight: 1000;
-        }
-
-        .priceCopy {
-          margin: 20px 0 0;
-          color: #8a8a8a;
-          font-size: 11px;
-          line-height: 1.55;
-        }
-
-        .priceCard button {
-          width: 100%;
-          margin-top: 20px;
-          padding: 15px;
-          border: 0;
-          border-radius: 9px;
-          background: #e1222d;
-          color: #fff;
-          font-size: 11px;
-          font-weight: 1000;
-          cursor: pointer;
-        }
-
-        .section {
-          padding: 80px 0 10px;
-        }
-
-        .section h2 {
-          margin: 8px 0 10px;
-          font-size: clamp(36px,5vw,64px);
-          line-height: .95;
-          letter-spacing: -3px;
-          font-weight: 1000;
-          text-transform: uppercase;
-        }
-
-        .sectionLead {
-          max-width: 760px;
-          color: #858585;
-          font-size: 13px;
-          line-height: 1.6;
-        }
-
-        .grid {
-          display: grid;
-          grid-template-columns: repeat(3,minmax(0,1fr));
           gap: 12px;
           margin-top: 28px;
         }
 
-        .card {
-          min-height: 190px;
-          padding: 20px;
-          border: 1px solid #242424;
-          border-radius: 12px;
-          background: #0c0c0c;
+        .barScene {
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          pointer-events: none;
         }
 
-        .num {
-          color: #e1222d;
-          font-size: 9px;
+        .barGlow {
+          position: absolute;
+          inset: 0;
+          background:
+            radial-gradient(circle at 72% 24%, rgba(191, 24, 34, 0.24), transparent 22%),
+            radial-gradient(circle at 76% 60%, rgba(255, 255, 255, 0.05), transparent 20%),
+            radial-gradient(circle at 84% 18%, rgba(246, 194, 78, 0.08), transparent 10%);
+        }
+
+        .barTop {
+          position: absolute;
+          left: 52%;
+          right: 0;
+          top: 11%;
+          height: 45%;
+          background:
+            linear-gradient(180deg, rgba(45, 0, 4, 0.45), rgba(9, 9, 9, 0.05)),
+            linear-gradient(90deg, rgba(11, 11, 11, 0.25), rgba(31, 0, 3, 0.22));
+          border-left: 1px solid rgba(255, 255, 255, 0.05);
+          clip-path: polygon(8% 0, 100% 0, 100% 100%, 0 100%);
+          filter: blur(0.1px);
+        }
+
+        .shelf {
+          position: absolute;
+          left: 58%;
+          right: 3%;
+          height: 14px;
+          background: rgba(18, 18, 18, 0.95);
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .shelfOne {
+          top: 24%;
+        }
+
+        .shelfTwo {
+          top: 36%;
+        }
+
+        .shelfThree {
+          top: 48%;
+        }
+
+        .bottle {
+          position: absolute;
+          bottom: 14px;
+          width: 18px;
+          border-radius: 5px 5px 2px 2px;
+          background: linear-gradient(180deg, rgba(33, 33, 33, 0.95), rgba(8, 8, 8, 0.95));
+          box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+        }
+
+        .bottle:before {
+          content: "";
+          position: absolute;
+          top: -9px;
+          left: 5px;
+          width: 8px;
+          height: 9px;
+          border-radius: 2px 2px 0 0;
+          background: rgba(26, 26, 26, 0.95);
+        }
+
+        .bottle.red:after,
+        .bottle.gold:after {
+          content: "";
+          position: absolute;
+          left: 2px;
+          right: 2px;
+          top: 14px;
+          height: 28px;
+          border-radius: 4px;
+          opacity: 0.8;
+        }
+
+        .bottle.red:after {
+          background: rgba(227, 29, 44, 0.24);
+        }
+
+        .bottle.gold:after {
+          background: rgba(245, 187, 74, 0.18);
+        }
+
+        .light {
+          position: absolute;
+          width: 4px;
+          background: rgba(60, 60, 60, 0.95);
+          top: 0;
+          height: 115px;
+        }
+
+        .light:after {
+          content: "";
+          position: absolute;
+          left: -26px;
+          top: 110px;
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(245, 191, 83, 0.4), rgba(245, 191, 83, 0.12) 38%, transparent 70%);
+          box-shadow: 0 0 90px rgba(245, 191, 83, 0.16);
+        }
+
+        .counter {
+          position: absolute;
+          left: 45%;
+          right: -3%;
+          bottom: 7%;
+          height: 104px;
+          background:
+            linear-gradient(180deg, rgba(46, 18, 10, 0.88), rgba(12, 12, 12, 0.98)),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.03), transparent 25%);
+          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.35);
+        }
+
+        .counterFront {
+          position: absolute;
+          left: 52%;
+          right: 0;
+          bottom: 0;
+          height: 130px;
+          background:
+            linear-gradient(180deg, rgba(16, 16, 16, 0.2), rgba(7, 7, 7, 0.95)),
+            linear-gradient(90deg, rgba(67, 19, 23, 0.44), rgba(18, 18, 18, 0.82));
+        }
+
+        .guest {
+          position: absolute;
+          bottom: 104px;
+          width: 116px;
+          height: 230px;
+          background: linear-gradient(180deg, rgba(20, 20, 20, 0.98), rgba(7, 7, 7, 0.98));
+          clip-path: polygon(40% 0, 62% 0, 74% 10%, 80% 24%, 78% 38%, 72% 52%, 70% 74%, 100% 100%, 0 100%, 28% 76%, 24% 56%, 18% 40%, 22% 24%, 28% 10%);
+          opacity: 0.9;
+          filter: blur(0.3px);
+        }
+
+        .guest:before {
+          content: "";
+          position: absolute;
+          top: -28px;
+          left: 33px;
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: rgba(12, 12, 12, 0.98);
+        }
+
+        .glass {
+          position: absolute;
+          bottom: 120px;
+          width: 84px;
+          height: 120px;
+          opacity: 0.28;
+        }
+
+        .glass:before {
+          content: "";
+          position: absolute;
+          left: 0;
+          right: 0;
+          margin: auto;
+          top: 0;
+          width: 84px;
+          height: 54px;
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          border-top: 0;
+          clip-path: polygon(0 0, 100% 0, 62% 100%, 38% 100%);
+        }
+
+        .glass:after {
+          content: "";
+          position: absolute;
+          left: 40px;
+          top: 54px;
+          width: 3px;
+          height: 44px;
+          background: rgba(255, 255, 255, 0.16);
+          box-shadow: 0 48px 0 18px rgba(255, 255, 255, 0.04);
+        }
+
+        .valueStrip {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 0;
+          margin-top: 16px;
+          border: 1px solid #1f1f1f;
+          border-radius: 18px;
+          overflow: hidden;
+          background: #0b0b0b;
+        }
+
+        .valueItem {
+          padding: 24px 18px;
+          border-right: 1px solid #1f1f1f;
+          text-align: center;
+        }
+
+        .valueItem:last-child {
+          border-right: 0;
+        }
+
+        .valueItem strong {
+          display: block;
+          color: #ffffff;
+          font-size: 13px;
+          margin-top: 8px;
+          line-height: 1.3;
+        }
+
+        .valueItem span {
+          display: block;
+          color: #7f7f7f;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.7px;
+          text-transform: uppercase;
+        }
+
+        .valueIcon {
+          color: #e31d2c;
+          font-size: 21px;
+          line-height: 1;
+        }
+
+        .section {
+          padding-top: 88px;
+        }
+
+        .sectionTitle {
+          margin: 12px 0 14px;
+          font-size: clamp(40px, 6vw, 76px);
+          line-height: 0.96;
+          letter-spacing: -4px;
           font-weight: 1000;
+          text-transform: uppercase;
+        }
+
+        .sectionTitle.tight {
+          max-width: 1000px;
+        }
+
+        .sectionLead {
+          max-width: 820px;
+          color: #8e8e8e;
+          font-size: 15px;
+          line-height: 1.7;
+          margin: 0;
+        }
+
+        .problemGrid,
+        .stepsGrid,
+        .featureGrid {
+          display: grid;
+          gap: 14px;
+          margin-top: 28px;
+        }
+
+        .problemGrid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .stepsGrid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .featureGrid {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .card {
+          border: 1px solid #212121;
+          border-radius: 16px;
+          background: linear-gradient(180deg, #0b0b0b, #090909);
+          padding: 22px;
+          min-height: 190px;
+        }
+
+        .card .num {
+          color: #e31d2c;
+          font-size: 10px;
+          font-weight: 1000;
+          letter-spacing: 1px;
         }
 
         .card h3 {
-          margin: 12px 0 8px;
-          font-size: 22px;
+          margin: 12px 0 10px;
+          font-size: 28px;
+          line-height: 1.02;
           letter-spacing: -1px;
         }
 
         .card p {
           margin: 0;
-          color: #777;
-          font-size: 10px;
-          line-height: 1.5;
-        }
-
-        .features {
-          display: grid;
-          grid-template-columns: repeat(3,minmax(0,1fr));
-          gap: 9px;
-          margin-top: 26px;
+          color: #7f7f7f;
+          font-size: 13px;
+          line-height: 1.65;
         }
 
         .feature {
-          padding: 13px;
-          border: 1px solid #242424;
-          border-radius: 9px;
-          background: #0c0c0c;
-          color: #bcbcbc;
-          font-size: 9px;
-          font-weight: 800;
+          border: 1px solid #212121;
+          border-radius: 14px;
+          background: #0b0b0b;
+          padding: 18px 16px;
         }
 
         .feature strong {
-          color: #e1222d;
-          margin-right: 6px;
+          display: block;
+          color: #ffffff;
+          font-size: 15px;
+          margin-bottom: 8px;
         }
 
-        .scoreCard {
-          margin-top: 22px;
-          padding: 26px;
-          border: 1px solid #282828;
-          border-radius: 16px;
-          background: linear-gradient(135deg,#101010,#090909);
-        }
-
-        .scoreCard h3 {
-          margin: 7px 0 6px;
-          font-size: 30px;
-        }
-
-        .scoreCard p {
+        .feature p {
           margin: 0;
-          color: #7d7d7d;
-          font-size: 11px;
-          line-height: 1.5;
-          max-width: 740px;
+          color: #757575;
+          font-size: 12px;
+          line-height: 1.6;
         }
 
-        .scoreCard button {
-          margin-top: 18px;
-          border: 1px solid #6b252b;
-          border-radius: 8px;
-          background: #1b0b0d;
-          color: #ff7e85;
-          padding: 12px 14px;
-          font-size: 9px;
-          font-weight: 1000;
-          cursor: pointer;
+        .reveal {
+          margin-top: 34px;
+          display: grid;
+          grid-template-columns: 1.1fr 0.9fr;
+          gap: 18px;
+          align-items: stretch;
         }
 
-        .final {
-          margin-top: 80px;
-          padding: 34px;
-          border: 1px solid #6f282d;
-          border-radius: 18px;
-          background: linear-gradient(135deg,#1a0a0c,#0c0c0c 70%);
-          text-align: center;
+        .revealCopy,
+        .revealPrice {
+          border-radius: 22px;
+          padding: 30px;
         }
 
-        .final h2 {
-          margin: 8px auto 12px;
-          max-width: 900px;
-          font-size: clamp(40px,6vw,76px);
-          line-height: .92;
-          letter-spacing: -4px;
+        .revealCopy {
+          border: 1px solid #232323;
+          background: linear-gradient(180deg, #0c0c0c, #090909);
+        }
+
+        .revealCopy h3 {
+          margin: 10px 0 12px;
+          font-size: 42px;
+          line-height: 0.96;
+          letter-spacing: -2px;
           text-transform: uppercase;
         }
 
-        .final p {
-          max-width: 720px;
-          margin: 0 auto;
-          color: #888;
-          font-size: 12px;
-          line-height: 1.55;
+        .revealCopy p {
+          margin: 0;
+          color: #8a8a8a;
+          font-size: 14px;
+          line-height: 1.7;
         }
 
-        .final button {
-          margin-top: 22px;
-          padding: 15px 24px;
-          border: 0;
-          border-radius: 9px;
-          background: #e1222d;
-          color: #fff;
+        .bulletList {
+          margin: 20px 0 0;
+          padding: 0;
+          list-style: none;
+          display: grid;
+          gap: 10px;
+        }
+
+        .bulletList li {
+          color: #d2d2d2;
+          font-size: 13px;
+          line-height: 1.5;
+          display: flex;
+          gap: 10px;
+        }
+
+        .bulletList li:before {
+          content: "✓";
+          color: #e31d2c;
+          font-weight: 1000;
+        }
+
+        .revealPrice {
+          border: 1px solid rgba(227, 29, 44, 0.35);
+          background:
+            radial-gradient(circle at 80% 10%, rgba(227, 29, 44, 0.18), transparent 28%),
+            linear-gradient(145deg, #15090b, #090909 68%);
+          box-shadow: 0 30px 90px rgba(227, 29, 44, 0.08);
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+        }
+
+        .revealPrice .label {
+          color: #ff7680;
           font-size: 10px;
           font-weight: 1000;
-          cursor: pointer;
+          letter-spacing: 1.8px;
+          text-transform: uppercase;
         }
 
-        @media(max-width: 900px) {
-          .hero {
+        .revealPrice .money {
+          margin-top: 10px;
+          font-size: 108px;
+          line-height: 0.9;
+          letter-spacing: -7px;
+          font-weight: 1000;
+        }
+
+        .revealPrice .money span {
+          font-size: 14px;
+          letter-spacing: 0;
+          color: #8e8e8e;
+        }
+
+        .revealPrice .week {
+          margin-top: 8px;
+          color: #e31d2c;
+          font-size: 14px;
+          font-weight: 1000;
+        }
+
+        .revealPrice p {
+          margin: 16px 0 0;
+          color: #8f8f8f;
+          font-size: 13px;
+          line-height: 1.65;
+        }
+
+        .revealPrice button {
+          margin-top: 20px;
+        }
+
+        .footerCTA {
+          margin-top: 84px;
+          border: 1px solid #252525;
+          border-radius: 24px;
+          padding: 36px 24px;
+          text-align: center;
+          background:
+            radial-gradient(circle at 50% 0%, rgba(227, 29, 44, 0.12), transparent 40%),
+            linear-gradient(180deg, #0c0c0c, #090909);
+        }
+
+        .footerCTA h2 {
+          margin: 10px auto 12px;
+          max-width: 940px;
+          font-size: clamp(42px, 5.8vw, 76px);
+          line-height: 0.95;
+          letter-spacing: -4px;
+          font-weight: 1000;
+          text-transform: uppercase;
+        }
+
+        .footerCTA p {
+          max-width: 780px;
+          margin: 0 auto;
+          color: #8b8b8b;
+          font-size: 14px;
+          line-height: 1.7;
+        }
+
+        .footerCTA .actions {
+          display: flex;
+          justify-content: center;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin-top: 22px;
+        }
+
+        @media (max-width: 1100px) {
+          .problemGrid,
+          .stepsGrid {
             grid-template-columns: 1fr;
-            min-height: auto;
           }
 
-          .grid,
-          .features {
-            grid-template-columns: repeat(2,minmax(0,1fr));
+          .featureGrid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .reveal {
+            grid-template-columns: 1fr;
+          }
+
+          .heroContent {
+            padding: 78px 28px 72px;
+            max-width: 640px;
+          }
+
+          .barTop,
+          .counter,
+          .counterFront,
+          .shelf,
+          .light,
+          .guest,
+          .glass {
+            opacity: 0.7;
           }
         }
 
-        @media(max-width: 620px) {
-          .shell { padding: 20px 16px; }
-          .nav {
-            align-items: flex-start;
-            flex-direction: column;
+        @media (max-width: 860px) {
+          .valueStrip {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
+
+          .valueItem:nth-child(2) {
+            border-right: 0;
+          }
+
+          .valueItem:nth-child(1),
+          .valueItem:nth-child(2) {
+            border-bottom: 1px solid #1f1f1f;
+          }
+
+          .hero {
+            min-height: 680px;
+          }
+
+          .heroLead {
+            font-size: 18px;
+          }
+
+          .barTop {
+            left: 48%;
+          }
+
+          .counter,
+          .counterFront {
+            left: 35%;
+          }
+        }
+
+        @media (max-width: 680px) {
+          .shell {
+            padding: 0 16px 72px;
+          }
+
+          .nav {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
           .navActions {
             width: 100%;
           }
+
           .navActions button {
             flex: 1;
           }
-          h1 {
+
+          .hero {
+            min-height: 640px;
+          }
+
+          .heroContent {
+            padding: 72px 18px 48px;
+          }
+
+          .hero h1 {
             font-size: 58px;
             letter-spacing: -4px;
           }
-          .grid,
-          .features {
+
+          .valueStrip,
+          .featureGrid {
             grid-template-columns: 1fr;
           }
-          .price {
-            font-size: 72px;
+
+          .valueItem {
+            border-right: 0;
+            border-bottom: 1px solid #1f1f1f;
+          }
+
+          .valueItem:last-child {
+            border-bottom: 0;
+          }
+
+          .card h3 {
+            font-size: 24px;
+          }
+
+          .sectionTitle {
+            letter-spacing: -2px;
+          }
+
+          .revealPrice .money {
+            font-size: 82px;
+            letter-spacing: -5px;
+          }
+
+          .barTop,
+          .shelf,
+          .light,
+          .counter,
+          .counterFront,
+          .guest,
+          .glass {
+            display: none;
           }
         }
       `}</style>
@@ -378,173 +795,300 @@ export default function HomePage() {
           </div>
 
           <div className="navActions">
-            <button
-              className="ghost"
-              onClick={() => (window.location.href = "/login")}
-            >
+            <button className="ghostBtn" onClick={goLogin}>
               OWNER LOGIN
             </button>
-            <button className="primary" onClick={goSignup}>
+            <button className="primaryBtn" onClick={goSignup}>
               START RESTAURANT OS
             </button>
           </div>
         </nav>
 
         <section className="hero">
-          <div>
-            <div className="eyebrow">THE OPERATING SYSTEM FOR RESTAURANT GROWTH</div>
+          <div className="barScene">
+            <div className="barGlow" />
+            <div className="barTop" />
+
+            <div className="shelf shelfOne">
+              <div className="bottle red" style={{ left: "6%" }} />
+              <div className="bottle gold" style={{ left: "15%" }} />
+              <div className="bottle red" style={{ left: "26%", height: "68px" }} />
+              <div className="bottle gold" style={{ left: "37%", width: "24px", height: "74px" }} />
+              <div className="bottle red" style={{ left: "49%" }} />
+              <div className="bottle gold" style={{ left: "61%", height: "72px" }} />
+              <div className="bottle red" style={{ left: "73%" }} />
+              <div className="bottle gold" style={{ left: "85%", width: "22px", height: "66px" }} />
+            </div>
+
+            <div className="shelf shelfTwo">
+              <div className="bottle gold" style={{ left: "10%" }} />
+              <div className="bottle red" style={{ left: "22%", width: "22px", height: "74px" }} />
+              <div className="bottle gold" style={{ left: "35%" }} />
+              <div className="bottle red" style={{ left: "46%" }} />
+              <div className="bottle gold" style={{ left: "58%", width: "24px", height: "76px" }} />
+              <div className="bottle red" style={{ left: "71%" }} />
+              <div className="bottle gold" style={{ left: "84%" }} />
+            </div>
+
+            <div className="shelf shelfThree">
+              <div className="bottle red" style={{ left: "8%", width: "22px", height: "78px" }} />
+              <div className="bottle gold" style={{ left: "21%" }} />
+              <div className="bottle red" style={{ left: "33%" }} />
+              <div className="bottle gold" style={{ left: "47%" }} />
+              <div className="bottle red" style={{ left: "60%", width: "24px", height: "74px" }} />
+              <div className="bottle gold" style={{ left: "73%" }} />
+              <div className="bottle red" style={{ left: "86%" }} />
+            </div>
+
+            <div className="light" style={{ left: "63%" }} />
+            <div className="light" style={{ left: "76%" }} />
+            <div className="light" style={{ left: "89%" }} />
+
+            <div className="glass" style={{ right: "16%", bottom: "220px" }} />
+            <div className="glass" style={{ right: "28%", bottom: "158px", transform: "scale(0.84)" }} />
+
+            <div className="guest" style={{ right: "31%", height: "244px", width: "124px" }} />
+            <div className="guest" style={{ right: "11%", height: "252px", width: "130px" }} />
+            <div className="guest" style={{ right: "47%", height: "208px", width: "108px" }} />
+
+            <div className="counter" />
+            <div className="counterFront" />
+          </div>
+
+          <div className="heroContent">
+            <div className="eyebrow">A SMARTER GROWTH SYSTEM FOR INDEPENDENT RESTAURANTS</div>
             <h1>
-              OWN YOUR <span>GROWTH.</span>
+              TURN SLOW NIGHTS INTO <span>FULL TABLES.</span>
             </h1>
-            <p className="lead">
-              Stop piecing together websites, loyalty apps, QR codes, email tools,
-              text platforms and marketing vendors. Restaurant OS gives independent
-              restaurants one system to attract customers, capture them, bring them
-              back and measure what works.
+            <p className="heroLead">
+              Restaurant OS helps restaurants attract more guests, capture customer
+              data, launch better offers, grow repeat business, and finally operate
+              from one command center instead of ten disconnected tools.
+            </p>
+            <p className="heroSub">
+              Websites. VIP growth. QR offers. Loyalty. Text and email campaigns.
+              Review growth. Performance tracking. Built to help local restaurants
+              win more often — without tech chaos.
             </p>
 
             <div className="heroActions">
-              <button className="primary" onClick={goSignup}>
+              <button className="primaryBtn" onClick={goSignup}>
                 START RESTAURANT OS →
               </button>
               <button
-                className="ghost"
-                onClick={() => {
-                  document
-                    .getElementById("included")
-                    ?.scrollIntoView({ behavior: "smooth" });
-                }}
+                className="secondaryBtn"
+                onClick={() =>
+                  document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })
+                }
               >
-                SEE WHAT'S INCLUDED
+                SEE HOW IT WORKS
               </button>
             </div>
           </div>
+        </section>
 
-          <aside className="priceCard">
-            <div className="priceLabel">ONE SIMPLE PRICE</div>
-            <div className="price">
-              $375 <span>/ MONTH</span>
-            </div>
-            <div className="weekly">ABOUT $87/WEEK</div>
-
-            <p className="priceCopy">
-              Full Restaurant OS access. No feature maze. No three-tier pricing.
-              No setup fee.
-            </p>
-
-            <button onClick={goSignup}>GET STARTED →</button>
-          </aside>
+        <section className="valueStrip">
+          <div className="valueItem">
+            <div className="valueIcon">🍸</div>
+            <strong>Fill slower nights</strong>
+            <span>Campaigns + offers that move traffic</span>
+          </div>
+          <div className="valueItem">
+            <div className="valueIcon">📲</div>
+            <strong>Own your audience</strong>
+            <span>Build a real VIP customer list</span>
+          </div>
+          <div className="valueItem">
+            <div className="valueIcon">🎯</div>
+            <strong>Bring guests back</strong>
+            <span>Text + email follow-up built in</span>
+          </div>
+          <div className="valueItem">
+            <div className="valueIcon">📈</div>
+            <strong>Know what is working</strong>
+            <span>Track claims, redemptions and growth</span>
+          </div>
         </section>
 
         <section className="section">
-          <div className="eyebrow">THE PROBLEM</div>
-          <h2>Most restaurants don't have a food problem. They have a system problem.</h2>
+          <div className="eyebrow">THE REAL PROBLEM</div>
+          <h2 className="sectionTitle tight">
+            Most restaurants don't have a food problem. They have a growth system problem.
+          </h2>
           <p className="sectionLead">
-            Slow days, one-time guests, weak follow-up, too few reviews, no owned
-            customer list and scattered marketing tools all create lost revenue and
-            lost momentum.
+            Great food alone does not guarantee full dining rooms. Owners fight empty seats
+            on slow nights, one-time guests who never return, scattered marketing tools,
+            weak follow-up, poor data visibility, and no real customer retention machine.
+            That creates stress, inconsistent revenue, wasted ad spend and too much guessing.
           </p>
 
-          <div className="grid">
+          <div className="problemGrid">
             <div className="card">
               <div className="num">01</div>
-              <h3>Too many one-time guests</h3>
+              <h3>One-time guests</h3>
               <p>
-                Great customers walk out the door and the restaurant has no system
-                to bring them back.
+                Too many people visit once, enjoy the food, then disappear because there is
+                no structured system to capture them and bring them back.
               </p>
             </div>
 
             <div className="card">
               <div className="num">02</div>
-              <h3>No audience you own</h3>
+              <h3>Slow night pain</h3>
               <p>
-                Social followers are rented. Restaurant OS helps build a real VIP
-                customer database.
+                Monday, Tuesday and mid-afternoon traffic gaps quietly eat profit. Empty tables
+                still cost rent, labor, utilities and opportunity.
               </p>
             </div>
 
             <div className="card">
               <div className="num">03</div>
-              <h3>Marketing is scattered</h3>
+              <h3>Tool overload</h3>
               <p>
-                Website, offers, reviews, campaigns and customer data should work
-                together instead of living in separate tools.
+                Website on one platform. Offers somewhere else. Reviews somewhere else. Email,
+                texting and analytics all separate. Owners end up managing tools instead of growth.
               </p>
             </div>
           </div>
         </section>
 
-        <section className="section" id="included">
-          <div className="eyebrow">ONE SYSTEM. FULL FIREPOWER.</div>
-          <h2>Everything you need to build repeat business.</h2>
+        <section className="section">
+          <div className="eyebrow">THE SOLUTION</div>
+          <h2 className="sectionTitle">One operating system. One playbook. One place to run growth.</h2>
+          <p className="sectionLead">
+            Restaurant OS pulls the critical growth pieces under one roof, so owners can focus on
+            offers, follow-up, repeat business and smarter execution instead of patching together
+            apps and vendors.
+          </p>
 
-          <div className="features">
-            {[
-              "Restaurant website",
-              "Online menu management",
-              "VIP / loyalty database",
-              "QR codes",
-              "Coupons + digital offers",
-              "Text campaigns",
-              "Email campaigns",
-              "Campaign tracking",
-              "Offer claim tracking",
-              "Redemption tracking",
-              "Review-growth tools",
-              "Catering campaign tools",
-              "Owner Command Center",
-              "Growth Score",
-              "Next Best Move recommendations",
-            ].map((feature) => (
-              <div className="feature" key={feature}>
-                <strong>✓</strong>
-                {feature}
-              </div>
-            ))}
+          <div className="featureGrid">
+            <div className="feature">
+              <strong>Restaurant Website</strong>
+              <p>Modern public site with menus, offers, calls-to-action and customer-facing pages.</p>
+            </div>
+            <div className="feature">
+              <strong>VIP / Loyalty Database</strong>
+              <p>Capture guest info and build an audience you actually own.</p>
+            </div>
+            <div className="feature">
+              <strong>QR + Offer Engine</strong>
+              <p>Promote offers, track claims, and drive traffic without complicated systems.</p>
+            </div>
+            <div className="feature">
+              <strong>Text + Email Campaigns</strong>
+              <p>Stay in touch with customers and drive repeat visits from one dashboard.</p>
+            </div>
+            <div className="feature">
+              <strong>Review Growth Tools</strong>
+              <p>Generate more customer reviews and strengthen local reputation.</p>
+            </div>
+            <div className="feature">
+              <strong>Owner Command Center</strong>
+              <p>See the score, track what matters and know your next best move.</p>
+            </div>
+            <div className="feature">
+              <strong>Catering Campaign Tools</strong>
+              <p>Promote larger tickets and special-event opportunities from the same system.</p>
+            </div>
+            <div className="feature">
+              <strong>Simple Execution</strong>
+              <p>Less confusion. Less vendor sprawl. More consistent local growth.</p>
+            </div>
           </div>
         </section>
 
         <section className="section">
-          <div className="eyebrow">THE RESTAURANT OS GROWTH LOOP</div>
-          <h2>Attract. Capture. Follow up. Bring them back. Grow.</h2>
+          <div className="eyebrow">HOW RESTAURANT OS HELPS</div>
+          <h2 className="sectionTitle">Attract. Capture. Follow up. Bring them back.</h2>
 
-          <div className="grid">
-            {[
-              ["ATTRACT", "Use a strong website, offers, reviews and local campaigns to get attention."],
-              ["CAPTURE", "Turn traffic and guests into VIP customers you can reach again."],
-              ["FOLLOW UP", "Use text and email to stay connected instead of hoping they return."],
-              ["BRING BACK", "Launch offers and campaigns designed to create repeat visits."],
-              ["MEASURE", "Track claims, redemptions and campaign activity inside the Command Center."],
-              ["IMPROVE", "Use Restaurant OS recommendations to know what to do next."],
-            ].map(([title, copy], index) => (
-              <div className="card" key={title}>
-                <div className="num">{String(index + 1).padStart(2, "0")}</div>
-                <h3>{title}</h3>
-                <p>{copy}</p>
-              </div>
-            ))}
-          </div>
+          <div className="stepsGrid">
+            <div className="card">
+              <div className="num">STEP 01</div>
+              <h3>Attract attention</h3>
+              <p>
+                Use a stronger website, better offers, local campaign tools and review growth to
+                get more eyes on the restaurant.
+              </p>
+            </div>
 
-          <div className="scoreCard">
-            <div className="eyebrow">FREE RESTAURANT GROWTH SCORE™</div>
-            <h3>See where your growth system is leaking.</h3>
-            <p>
-              Quickly identify weaknesses in customer capture, repeat business,
-              offers, reviews and local growth — then see what to fix first.
-            </p>
-            <button onClick={goSignup}>GET YOUR GROWTH SCORE →</button>
+            <div className="card">
+              <div className="num">STEP 02</div>
+              <h3>Capture customers</h3>
+              <p>
+                Turn foot traffic and visits into VIP customers by using QR tools, offers and
+                loyalty capture instead of hoping people come back on their own.
+              </p>
+            </div>
+
+            <div className="card">
+              <div className="num">STEP 03</div>
+              <h3>Drive repeat business</h3>
+              <p>
+                Follow up through text and email, launch promotions intentionally, and track what
+                gets claimed and redeemed so you can keep improving.
+              </p>
+            </div>
           </div>
         </section>
 
-        <section className="final">
-          <div className="eyebrow">ONE SYSTEM. ONE PRICE.</div>
-          <h2>Restaurant OS. $375/month.</h2>
+        <section className="section" id="pricing">
+          <div className="eyebrow">THE OFFER</div>
+          <h2 className="sectionTitle">Simple pricing after the value is clear.</h2>
+
+          <div className="reveal">
+            <div className="revealCopy">
+              <div className="eyebrow">WHAT YOU GET</div>
+              <h3>Everything in one system.</h3>
+              <p>
+                No confusing package ladder. No “good / better / best” maze. Restaurant OS is one
+                straightforward platform designed to help independent restaurants grow smarter.
+              </p>
+
+              <ul className="bulletList">
+                <li>Restaurant website + public pages</li>
+                <li>Menu management + customer-facing menu</li>
+                <li>VIP / loyalty capture tools</li>
+                <li>Digital coupons + QR code offers</li>
+                <li>Text message campaigns</li>
+                <li>Email campaigns</li>
+                <li>Review-growth tools</li>
+                <li>Catering and local promotion support tools</li>
+                <li>Owner Command Center dashboard</li>
+              </ul>
+            </div>
+
+            <div className="revealPrice">
+              <div className="label">ONE SIMPLE MONTHLY PRICE</div>
+              <div className="money">
+                $375 <span>/ MONTH</span>
+              </div>
+              <div className="week">ABOUT $87 / WEEK</div>
+              <p>
+                One low monthly price to run the growth system. Clean, simple and built for serious
+                operators who want a real platform instead of another patchwork stack.
+              </p>
+              <button className="primaryBtn" onClick={goSignup}>
+                START RESTAURANT OS →
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="footerCTA">
+          <div className="eyebrow">READY TO GROW SMARTER?</div>
+          <h2>Own your customers. Own your offers. Own your growth.</h2>
           <p>
-            Your website. Your customers. Your VIP list. Your offers. Your loyalty.
-            Your campaigns. Your data. One Restaurant OS.
+            Restaurant OS gives local restaurants the system to operate stronger, market smarter and
+            build repeat business with more consistency.
           </p>
-          <button onClick={goSignup}>START RESTAURANT OS →</button>
+          <div className="actions">
+            <button className="primaryBtn" onClick={goSignup}>
+              START RESTAURANT OS →
+            </button>
+            <button className="secondaryBtn" onClick={goLogin}>
+              OWNER LOGIN
+            </button>
+          </div>
         </section>
       </div>
     </main>
