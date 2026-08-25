@@ -27,8 +27,12 @@ export default function OwnerProfilePage() {
   const [loading, setLoading] = useState(true);
   const [savingBusiness, setSavingBusiness] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [businessMessage, setBusinessMessage] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
 
   useEffect(() => {
     loadProfile();
@@ -151,6 +155,39 @@ export default function OwnerProfilePage() {
     setSavingEmail(false);
   }
 
+  async function savePassword(event: React.FormEvent) {
+    event.preventDefault();
+
+    setPasswordMessage("");
+
+    if (newPassword.length < 8) {
+      setPasswordMessage("Password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage("Passwords do not match.");
+      return;
+    }
+
+    setSavingPassword(true);
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) {
+      setPasswordMessage(error.message);
+      setSavingPassword(false);
+      return;
+    }
+
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordMessage("Password updated successfully.");
+    setSavingPassword(false);
+  }
+
   if (loading) {
     return (
       <main style={pageStyle}>
@@ -164,11 +201,10 @@ export default function OwnerProfilePage() {
       <div style={shellStyle}>
         <header style={headerStyle}>
           <div>
-            <div style={eyebrowStyle}>RESTAURANT OS</div>
-            <h1 style={titleStyle}>Profile & Account</h1>
+            <div style={eyebrowStyle}>RESTAURANT OS · ACCOUNT COMMAND</div>
+            <h1 style={titleStyle}>PROFILE & ACCOUNT</h1>
             <p style={subStyle}>
-              Update the restaurant information customers see and the email used
-              to sign into Restaurant OS.
+              Control restaurant identity, owner login credentials and account security.
             </p>
           </div>
 
@@ -181,14 +217,14 @@ export default function OwnerProfilePage() {
               window.location.href = `/owner${suffix}`;
             }}
           >
-            BACK TO DASHBOARD
+            BACK TO COMMAND CENTER
           </button>
         </header>
 
         <section style={gridStyle}>
           <form onSubmit={saveBusinessProfile} style={cardStyle}>
-            <div style={cardEyebrowStyle}>RESTAURANT PROFILE</div>
-            <h2 style={cardTitleStyle}>Business Information</h2>
+            <div style={cardEyebrowStyle}>RESTAURANT IDENTITY</div>
+            <h2 style={cardTitleStyle}>Business Profile</h2>
 
             <Field
               label="RESTAURANT NAME"
@@ -239,46 +275,86 @@ export default function OwnerProfilePage() {
               disabled={savingBusiness}
               style={primaryButtonStyle}
             >
-              {savingBusiness ? "SAVING..." : "SAVE RESTAURANT PROFILE"}
+              {savingBusiness ? "SAVING..." : "SAVE BUSINESS PROFILE"}
             </button>
           </form>
 
-          <form onSubmit={saveAccountEmail} style={cardStyle}>
+          <section style={cardStyle}>
             <div style={cardEyebrowStyle}>OWNER ACCOUNT</div>
-            <h2 style={cardTitleStyle}>Login Email</h2>
+            <h2 style={cardTitleStyle}>Login & Security</h2>
 
-            <p style={helpStyle}>
-              This is the email used to log into the Restaurant OS owner
-              dashboard.
-            </p>
-
-            <Field
-              label="ACCOUNT EMAIL"
-              type="email"
-              value={accountEmail}
-              onChange={setAccountEmail}
-            />
-
-            {emailMessage && (
-              <div style={messageStyle}>{emailMessage}</div>
-            )}
-
-            <button
-              type="submit"
-              disabled={savingEmail}
-              style={primaryButtonStyle}
-            >
-              {savingEmail ? "UPDATING..." : "UPDATE LOGIN EMAIL"}
-            </button>
-
-            <div style={securityBoxStyle}>
-              <div style={securityTitleStyle}>ACCOUNT SECURITY</div>
-              <div style={securityTextStyle}>
-                Password changes can continue through Supabase authentication.
-                We can add a dedicated Change Password control here next.
+            <div style={accountStatusStyle}>
+              <span style={accountStatusDotStyle} />
+              <div>
+                <div style={accountStatusTitleStyle}>OWNER ACCESS ACTIVE</div>
+                <div style={accountStatusTextStyle}>
+                  Update the email and password used to enter Restaurant OS.
+                </div>
               </div>
             </div>
-          </form>
+
+            <form onSubmit={saveAccountEmail} style={accountFormStyle}>
+              <div style={sectionLabelStyle}>LOGIN EMAIL</div>
+
+              <p style={helpStyle}>
+                This email is your Restaurant OS username and login credential.
+              </p>
+
+              <Field
+                label="ACCOUNT EMAIL"
+                type="email"
+                value={accountEmail}
+                onChange={setAccountEmail}
+              />
+
+              {emailMessage && (
+                <div style={messageStyle}>{emailMessage}</div>
+              )}
+
+              <button
+                type="submit"
+                disabled={savingEmail}
+                style={primaryButtonStyle}
+              >
+                {savingEmail ? "UPDATING..." : "UPDATE LOGIN EMAIL"}
+              </button>
+            </form>
+
+            <div style={securityBoxStyle}>
+              <div style={securityTitleStyle}>PASSWORD SECURITY</div>
+              <div style={securityTextStyle}>
+                Create a new password for this owner account. Minimum 8 characters.
+              </div>
+
+              <form onSubmit={savePassword} style={passwordFormStyle}>
+                <Field
+                  label="NEW PASSWORD"
+                  type="password"
+                  value={newPassword}
+                  onChange={setNewPassword}
+                />
+
+                <Field
+                  label="CONFIRM NEW PASSWORD"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={setConfirmPassword}
+                />
+
+                {passwordMessage && (
+                  <div style={messageStyle}>{passwordMessage}</div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={savingPassword}
+                  style={secondaryFullButtonStyle}
+                >
+                  {savingPassword ? "UPDATING..." : "CHANGE PASSWORD"}
+                </button>
+              </form>
+            </div>
+          </section>
         </section>
       </div>
     </main>
@@ -311,14 +387,15 @@ function Field({
 
 const pageStyle = {
   minHeight: "100vh",
-  background: "#f5f7fa",
-  color: "#111827",
+  background:
+    "radial-gradient(circle at 88% 0%, rgba(225,34,45,.15), transparent 26%), linear-gradient(180deg,#070707,#030303)",
+  color: "#ffffff",
   padding: "30px",
   fontFamily: "Arial, Helvetica, sans-serif",
 };
 
 const shellStyle = {
-  maxWidth: "1180px",
+  maxWidth: "1240px",
   margin: "0 auto",
 };
 
@@ -326,55 +403,63 @@ const headerStyle = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "flex-start",
-  gap: "20px",
+  gap: "24px",
   flexWrap: "wrap" as const,
   marginBottom: "24px",
+  paddingBottom: "22px",
+  borderBottom: "1px solid #1f1f1f",
 };
 
 const eyebrowStyle = {
-  color: "#0b513e",
-  fontSize: "10px",
-  fontWeight: 900,
-  letterSpacing: "2px",
+  color: "#ee2a35",
+  fontSize: "9px",
+  fontWeight: 1000,
+  letterSpacing: "1.9px",
 };
 
 const titleStyle = {
-  margin: "7px 0 8px",
-  fontSize: "clamp(42px,6vw,68px)",
-  lineHeight: ".95",
-  letterSpacing: "-3px",
+  margin: "8px 0 9px",
+  fontSize: "clamp(46px,6vw,76px)",
+  lineHeight: ".9",
+  letterSpacing: "-4px",
+  fontWeight: 1000,
 };
 
 const subStyle = {
-  color: "#6b7280",
+  color: "#858585",
   maxWidth: "680px",
   lineHeight: 1.55,
+  margin: 0,
+  fontWeight: 600,
 };
 
 const gridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(360px,1fr))",
+  gridTemplateColumns: "repeat(auto-fit,minmax(380px,1fr))",
   gap: "18px",
+  alignItems: "start",
 };
 
 const cardStyle = {
-  background: "#ffffff",
-  border: "1px solid #e5e7eb",
-  borderRadius: "18px",
+  background: "linear-gradient(155deg,#111111,#090909)",
+  border: "1px solid #292929",
+  borderRadius: "16px",
   padding: "24px",
-  boxShadow: "0 10px 30px rgba(15,23,42,.05)",
+  boxShadow: "0 16px 46px rgba(0,0,0,.22)",
 };
 
 const cardEyebrowStyle = {
-  color: "#0b513e",
-  fontSize: "9px",
-  fontWeight: 900,
-  letterSpacing: "1.5px",
+  color: "#ee2a35",
+  fontSize: "8px",
+  fontWeight: 1000,
+  letterSpacing: "1.7px",
 };
 
 const cardTitleStyle = {
-  margin: "6px 0 18px",
-  fontSize: "28px",
+  margin: "7px 0 20px",
+  fontSize: "30px",
+  lineHeight: 1,
+  letterSpacing: "-1.2px",
 };
 
 const fieldWrapStyle = {
@@ -384,20 +469,22 @@ const fieldWrapStyle = {
 };
 
 const labelStyle = {
-  color: "#6b7280",
-  fontSize: "9px",
-  fontWeight: 900,
-  letterSpacing: "1px",
+  color: "#7f7f7f",
+  fontSize: "8px",
+  fontWeight: 1000,
+  letterSpacing: "1.2px",
 };
 
 const inputStyle = {
   width: "100%",
-  border: "1px solid #d1d5db",
-  borderRadius: "10px",
-  padding: "12px 13px",
+  boxSizing: "border-box" as const,
+  border: "1px solid #333333",
+  borderRadius: "9px",
+  padding: "13px 14px",
   fontSize: "14px",
-  background: "#fff",
-  color: "#111827",
+  background: "#080808",
+  color: "#ffffff",
+  outline: "none",
 };
 
 const threeColumnStyle = {
@@ -409,62 +496,132 @@ const threeColumnStyle = {
 const primaryButtonStyle = {
   width: "100%",
   marginTop: "4px",
-  background: "#0b513e",
-  color: "#fff",
-  border: 0,
-  borderRadius: "10px",
+  background: "#e1222d",
+  color: "#ffffff",
+  border: "1px solid #e1222d",
+  borderRadius: "9px",
   padding: "13px",
-  fontSize: "10px",
-  fontWeight: 900,
+  fontSize: "9px",
+  fontWeight: 1000,
+  letterSpacing: ".8px",
   cursor: "pointer",
+  boxShadow: "0 9px 24px rgba(225,34,45,.16)",
 };
 
 const secondaryButtonStyle = {
-  background: "#fff",
-  color: "#111827",
-  border: "1px solid #d1d5db",
-  borderRadius: "10px",
+  background: "#101010",
+  color: "#ffffff",
+  border: "1px solid #343434",
+  borderRadius: "9px",
   padding: "11px 14px",
-  fontSize: "10px",
-  fontWeight: 900,
+  fontSize: "9px",
+  fontWeight: 1000,
+  letterSpacing: ".7px",
   cursor: "pointer",
 };
 
 const messageStyle = {
-  background: "#eef7f3",
-  color: "#0b513e",
-  border: "1px solid #b7dbc9",
-  borderRadius: "10px",
+  background: "#181011",
+  color: "#ff969c",
+  border: "1px solid #5d252a",
+  borderRadius: "9px",
   padding: "11px",
-  fontSize: "12px",
+  fontSize: "11px",
   marginBottom: "12px",
+  lineHeight: 1.45,
 };
 
 const helpStyle = {
-  color: "#6b7280",
-  fontSize: "13px",
+  color: "#777777",
+  fontSize: "12px",
   lineHeight: 1.55,
+  margin: "0 0 17px",
+};
+
+const accountStatusStyle = {
+  display: "flex",
+  gap: "11px",
+  alignItems: "center",
+  background: "#0b160f",
+  border: "1px solid #21492f",
+  borderRadius: "10px",
+  padding: "12px",
   marginBottom: "20px",
 };
 
+const accountStatusDotStyle = {
+  width: "9px",
+  height: "9px",
+  borderRadius: "999px",
+  background: "#46c978",
+  boxShadow: "0 0 0 4px rgba(70,201,120,.08)",
+  flex: "0 0 auto",
+};
+
+const accountStatusTitleStyle = {
+  color: "#7de3a1",
+  fontSize: "8px",
+  fontWeight: 1000,
+  letterSpacing: "1.2px",
+};
+
+const accountStatusTextStyle = {
+  color: "#779181",
+  fontSize: "10px",
+  marginTop: "4px",
+  lineHeight: 1.4,
+};
+
+const accountFormStyle = {
+  margin: 0,
+};
+
+const sectionLabelStyle = {
+  color: "#b6b6b6",
+  fontSize: "9px",
+  fontWeight: 1000,
+  letterSpacing: "1.2px",
+  marginBottom: "7px",
+};
+
 const securityBoxStyle = {
-  marginTop: "18px",
-  background: "#f8fafc",
-  border: "1px solid #e5e7eb",
-  borderRadius: "12px",
-  padding: "14px",
+  marginTop: "20px",
+  background: "#0b0b0b",
+  border: "1px solid #2a2a2a",
+  borderLeft: "3px solid #e1222d",
+  borderRadius: "11px",
+  padding: "16px",
 };
 
 const securityTitleStyle = {
-  fontSize: "9px",
-  fontWeight: 900,
-  letterSpacing: "1px",
-  color: "#374151",
+  fontSize: "8px",
+  fontWeight: 1000,
+  letterSpacing: "1.3px",
+  color: "#ee2a35",
 };
 
 const securityTextStyle = {
-  marginTop: "6px",
-  color: "#6b7280",
-  fontSize: "12px",
+  marginTop: "7px",
+  color: "#777777",
+  fontSize: "11px",
   lineHeight: 1.5,
+};
+
+const passwordFormStyle = {
+  display: "grid",
+  gap: "2px",
+  marginTop: "15px",
+};
+
+const secondaryFullButtonStyle = {
+  width: "100%",
+  background: "#151515",
+  color: "#ff747c",
+  border: "1px solid #542329",
+  borderRadius: "9px",
+  padding: "12px",
+  fontSize: "9px",
+  fontWeight: 1000,
+  letterSpacing: ".8px",
+  cursor: "pointer",
 };
