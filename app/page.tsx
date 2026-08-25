@@ -1,8 +1,5 @@
 "use client";
 
-import { useMemo, useState } from "react";
-
-type BillingMode = "monthly" | "weekly";
 
 const problems = [
   ["Too many one-time guests", "You work hard to get people in the door, but most never come back."],
@@ -29,16 +26,8 @@ const managerTasks = [
 ];
 
 export default function HomePage() {
-  const [billingMode, setBillingMode] = useState<BillingMode>("monthly");
-
-  const price = useMemo(() => {
-    return billingMode === "weekly"
-      ? { amount: "$87", cadence: "/ WEEK", note: "Weekly billing" }
-      : { amount: "$375", cadence: "/ MONTH", note: "About $87/week" };
-  }, [billingMode]);
-
   const goSignup = () => {
-    window.location.href = `/signup?billing=${billingMode}`;
+    window.location.href = "/signup";
   };
 
   const goLogin = () => {
@@ -515,10 +504,7 @@ export default function HomePage() {
         }
 
         .pricingTop {
-          display: grid;
-          grid-template-columns: 1fr auto;
-          gap: 30px;
-          align-items: end;
+          display: block;
         }
 
         .pricing h2 {
@@ -537,31 +523,6 @@ export default function HomePage() {
           color: #aaa;
           font-size: 16px;
           line-height: 1.62;
-        }
-
-        .toggle {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          overflow: hidden;
-          border: 1px solid #3a3a3a;
-          border-radius: 9px;
-          background: #080808;
-        }
-
-        .toggle button {
-          min-width: 112px;
-          min-height: 45px;
-          border: 0;
-          background: transparent;
-          color: #aaa;
-          font-size: 12px;
-          font-weight: 1000;
-          cursor: pointer;
-        }
-
-        .toggle button.active {
-          background: #ed1c2e;
-          color: #fff;
         }
 
         .pricePanel {
@@ -656,7 +617,6 @@ export default function HomePage() {
           .solutionGrid,
           .manager,
           .pricePanel { grid-template-columns: 1fr; }
-          .pricingTop { grid-template-columns: 1fr; }
           .managerPhoto {
             min-height: 320px;
             border-right: 0;
@@ -716,8 +676,6 @@ export default function HomePage() {
             letter-spacing: -5px;
           }
 
-          .toggle { width: 100%; }
-          .toggle button { width: 100%; }
         }
       `}</style>
 
@@ -900,29 +858,15 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="toggle">
-              <button
-                className={billingMode === "monthly" ? "active" : ""}
-                onClick={() => setBillingMode("monthly")}
-              >
-                MONTHLY
-              </button>
-              <button
-                className={billingMode === "weekly" ? "active" : ""}
-                onClick={() => setBillingMode("weekly")}
-              >
-                WEEKLY
-              </button>
-            </div>
           </div>
 
           <div className="pricePanel">
             <div>
               <div className="money">
-                {price.amount}
-                <span>{price.cadence}</span>
+                $375
+                <span>/ MONTH</span>
               </div>
-              <div className="priceNote">{price.note}</div>
+              <div className="priceNote">About $87/week</div>
             </div>
 
             <div className="benefits">
