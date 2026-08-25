@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 
 type Restaurant = {
   id: string;
+  owner_user_id?: string | null;
   name: string;
+  slug: string | null;
   cuisine_category: string | null;
   phone: string | null;
   address_line_1: string | null;
@@ -15,23 +17,62 @@ type Restaurant = {
   status: string;
 };
 
+type Blocker = {
+  label: string;
+  path: string;
+  action: string;
+};
+
+type Metrics = {
+  vipTotal: number;
+  vipNewMonth: number;
+  offerTotal: number;
+  campaignTotal: number;
+  activeCampaigns: number;
+  claimTotal: number;
+  claimMonth: number;
+  redeemedTotal: number;
+  redemptionRate: number;
+  menuItems: number;
+  growthScore: number;
+};
+
+const emptyMetrics: Metrics = {
+  vipTotal: 0,
+  vipNewMonth: 0,
+  offerTotal: 0,
+  campaignTotal: 0,
+  activeCampaigns: 0,
+  claimTotal: 0,
+  claimMonth: 0,
+  redeemedTotal: 0,
+  redemptionRate: 0,
+  menuItems: 0,
+  growthScore: 0,
+};
+
 export default function OwnerDashboardPage() {
   const [restaurantId, setRestaurantId] = useState("");
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
+  const [restaurantCount, setRestaurantCount] = useState(1);
+  const [adminMode, setAdminMode] = useState(false);
+  const [sitePublished, setSitePublished] = useState(false);
   const [setupPercent, setSetupPercent] = useState(0);
   const [setupReady, setSetupReady] = useState(false);
-  const [restaurantCount, setRestaurantCount] = useState(1);
-  const [blockers, setBlockers] = useState<
-    { label: string; path: string; action: string }[]
-  >([]);
+  const [blockers, setBlockers] = useState<Blocker[]>([]);
+  const [metrics, setMetrics] = useState<Metrics>(emptyMetrics);
+  const [plan, setPlan] = useState("STARTER");
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     load();
   }, []);
 
   async function load() {
+    setLoading(true);
+    setMessage("");
+
     const params = new URLSearchParams(window.location.search);
     const id = params.get("restaurant");
 
@@ -52,27 +93,60 @@ export default function OwnerDashboardPage() {
       return;
     }
 
-    const { data, error } = await supabase
+    let restaurantData: Restaurant | null = null;
+    let isAdmin = false;
+
+    const { data: ownedRestaurant } = await supabase
       .from("restaurants")
       .select("*")
       .eq("id", id)
       .eq("owner_user_id", user.id)
       .maybeSingle();
 
-    if (error || !data) {
-      setMessage(error?.message || "Restaurant not found.");
+    if (ownedRestaurant) {
+      restaurantData = ownedRestaurant as Restaurant;
+    } else {
+      const { data: adminRow } = await supabase
+        .from("platform_admins")
+        .select("user_id,active")
+        .eq("user_id", user.id)
+        .eq("active", true)
+        .maybeSingle();
+
+      if (adminRow) {
+        const { data: adminRestaurant } = await supabase
+          .from("restaurants")
+          .select("*")
+          .eq("id", id)
+          .maybeSingle();
+
+        if (adminRestaurant) {
+          restaurantData = adminRestaurant as Restaurant;
+          isAdmin = true;
+        }
+      }
+    }
+
+    if (!restaurantData) {
+      setMessage("Restaurant not found or access denied.");
       setLoading(false);
       return;
     }
 
-    setRestaurant(data);
+    setRestaurant(restaurantData);
+    setAdminMode(isAdmin);
 
-    const { count: ownerRestaurantCount } = await supabase
+    const { count: ownerCount } = await supabase
       .from("restaurants")
       .select("id", { count: "exact", head: true })
       .eq("owner_user_id", user.id);
 
-    setRestaurantCount(ownerRestaurantCount || 1);
+    setRestaurantCount(ownerCount || 1);
+
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthStartIso = monthStart.toISOString();
 
     const [
       brandingResult,
@@ -80,6 +154,12 @@ export default function OwnerDashboardPage() {
       websiteResult,
       menuResult,
       subscriptionResult,
+      vipResult,
+      vipMonthResult,
+      offersResult,
+      campaignsResult,
+      claimsResult,
+      claimsMonthResult,
     ] = await Promise.all([
       supabase
         .from("restaurant_branding")
@@ -102,32 +182,68 @@ export default function OwnerDashboardPage() {
       supabase
         .from("restaurant_menu_items")
         .select("id")
-        .eq("restaurant_id", id)
-        .limit(1),
+        .eq("restaurant_id", id),
 
       supabase
         .from("restaurant_subscriptions")
-        .select("status,trial_ends_at")
+        .select("status,trial_ends_at,plan")
         .eq("restaurant_id", id)
         .maybeSingle(),
+
+      supabase
+        .from("restaurant_vip_members")
+        .select("id", { count: "exact" })
+        .eq("restaurant_id", id),
+
+      supabase
+        .from("restaurant_vip_members")
+        .select("id", { count: "exact" })
+        .eq("restaurant_id", id)
+        .gte("created_at", monthStartIso),
+
+      supabase
+        .from("restaurant_vip_offers")
+        .select("*")
+        .eq("restaurant_id", id),
+
+      supabase
+        .from("restaurant_campaigns")
+        .select("*")
+        .eq("restaurant_id", id)
+        .order("created_at", { ascending: false }),
+
+      supabase
+        .from("restaurant_offer_claims")
+        .select("*")
+        .eq("restaurant_id", id)
+        .order("created_at", { ascending: false }),
+
+      supabase
+        .from("restaurant_offer_claims")
+        .select("id")
+        .eq("restaurant_id", id)
+        .gte("created_at", monthStartIso),
     ]);
 
+    const branding = brandingResult.data;
+    const hours = hoursResult.data;
+    const website = websiteResult.data;
+    const subscription = subscriptionResult.data as any;
+
     const businessComplete = Boolean(
-      data.phone &&
-        data.address_line_1 &&
-        data.city &&
-        data.state &&
-        data.zip
+      restaurantData.phone &&
+        restaurantData.address_line_1 &&
+        restaurantData.city &&
+        restaurantData.state &&
+        restaurantData.zip
     );
 
-    const branding = brandingResult.data;
     const brandingComplete = Boolean(
       branding?.primary_color &&
         branding?.secondary_color &&
         (branding?.tagline || branding?.short_description)
     );
 
-    const hours = hoursResult.data;
     const hoursComplete = Boolean(
       hours &&
         [
@@ -141,14 +257,15 @@ export default function OwnerDashboardPage() {
         ].some(Boolean)
     );
 
-    const website = websiteResult.data;
     const websiteComplete = Boolean(
       website?.hero_headline && website?.about_body
     );
 
-    const menuComplete = Boolean(menuResult.data?.length);
+    const menuItems = menuResult.data?.length || 0;
+    const menuComplete = menuItems > 0;
+    const published = Boolean(website?.published);
+    setSitePublished(published);
 
-    const subscription = subscriptionResult.data;
     const subscriptionComplete = Boolean(
       subscription &&
         (subscription.status === "active" ||
@@ -157,6 +274,10 @@ export default function OwnerDashboardPage() {
               new Date(subscription.trial_ends_at).getTime() > Date.now())))
     );
 
+    if (subscription?.plan) {
+      setPlan(String(subscription.plan).toUpperCase());
+    }
+
     const checks = [
       businessComplete,
       brandingComplete,
@@ -164,7 +285,7 @@ export default function OwnerDashboardPage() {
       websiteComplete,
       menuComplete,
       subscriptionComplete,
-      Boolean(website?.published),
+      published,
     ];
 
     const completeCount = checks.filter(Boolean).length;
@@ -173,38 +294,28 @@ export default function OwnerDashboardPage() {
     setSetupPercent(percent);
     setSetupReady(completeCount === checks.length);
 
-    const nextBlockers: {
-      label: string;
-      path: string;
-      action: string;
-    }[] = [];
+    const nextBlockers: Blocker[] = [];
 
     if (!subscriptionComplete) {
-      if (subscription?.status === "past_due") {
-        nextBlockers.push({
-          label: "Billing is past due.",
-          path: "/owner/billing",
-          action: "FIX BILLING",
-        });
-      } else if (subscription?.status === "canceled") {
-        nextBlockers.push({
-          label: "Subscription is canceled.",
-          path: "/owner/billing",
-          action: "REACTIVATE",
-        });
-      } else if (subscription?.status === "paused") {
-        nextBlockers.push({
-          label: "Subscription is paused.",
-          path: "/owner/billing",
-          action: "RESUME",
-        });
-      } else {
-        nextBlockers.push({
-          label: "Subscription access is not active.",
-          path: "/owner/billing",
-          action: "VIEW BILLING",
-        });
-      }
+      nextBlockers.push({
+        label:
+          subscription?.status === "past_due"
+            ? "Billing is past due."
+            : subscription?.status === "canceled"
+            ? "Subscription is canceled."
+            : subscription?.status === "paused"
+            ? "Subscription is paused."
+            : "Subscription access is not active.",
+        path: "/owner/billing",
+        action:
+          subscription?.status === "past_due"
+            ? "FIX BILLING"
+            : subscription?.status === "canceled"
+            ? "REACTIVATE"
+            : subscription?.status === "paused"
+            ? "RESUME"
+            : "VIEW BILLING",
+      });
     }
 
     if (!menuComplete) {
@@ -223,7 +334,7 @@ export default function OwnerDashboardPage() {
       });
     }
 
-    if (!website?.published) {
+    if (!published) {
       nextBlockers.push({
         label: "Public website is not published.",
         path: "/owner/website",
@@ -240,7 +351,62 @@ export default function OwnerDashboardPage() {
     }
 
     setBlockers(nextBlockers);
+
+    const campaigns = (campaignsResult.data || []) as any[];
+    const claims = (claimsResult.data || []) as any[];
+    const offers = (offersResult.data || []) as any[];
+
+    const redeemed = claims.filter(
+      (claim) => String(claim.status || "").toLowerCase() === "redeemed"
+    ).length;
+
+    const activeCampaigns = campaigns.filter((campaign) => {
+      const status = String(campaign.status || "").toLowerCase();
+      return status === "active" || status === "live" || status === "running";
+    }).length;
+
+    const vipTotal = vipResult.count ?? vipResult.data?.length ?? 0;
+    const vipNewMonth =
+      vipMonthResult.count ?? vipMonthResult.data?.length ?? 0;
+    const claimTotal = claims.length;
+    const claimMonth = claimsMonthResult.data?.length || 0;
+    const redemptionRate =
+      claimTotal > 0 ? Math.round((redeemed / claimTotal) * 100) : 0;
+
+    // Founders-launch Growth Score uses only first-party Restaurant OS data.
+    // No fake traffic or revenue attribution.
+    const growthChecks = [
+      published,
+      menuComplete,
+      vipTotal >= 10,
+      offers.length > 0,
+      campaigns.length > 0,
+      redeemed > 0,
+    ];
+
+    const growthScore = Math.round(
+      (growthChecks.filter(Boolean).length / growthChecks.length) * 100
+    );
+
+    setMetrics({
+      vipTotal,
+      vipNewMonth,
+      offerTotal: offers.length,
+      campaignTotal: campaigns.length,
+      activeCampaigns,
+      claimTotal,
+      claimMonth,
+      redeemedTotal: redeemed,
+      redemptionRate,
+      menuItems,
+      growthScore,
+    });
+
     setLoading(false);
+  }
+
+  function go(path: string) {
+    window.location.href = `${path}?restaurant=${restaurantId}`;
   }
 
   async function signOut() {
@@ -248,22 +414,90 @@ export default function OwnerDashboardPage() {
     window.location.href = "/login";
   }
 
-  function go(path: string) {
-    window.location.href = `${path}?restaurant=${restaurantId}`;
-  }
+  const nextMove = useMemo(() => {
+    if (blockers.length > 0) {
+      return {
+        eyebrow: "SYSTEM PRIORITY",
+        title: blockers[0].label,
+        text: "Finish this first so Restaurant OS can operate from a clean foundation.",
+        action: blockers[0].action,
+        path: blockers[0].path,
+      };
+    }
+
+    if (metrics.vipTotal < 10) {
+      return {
+        eyebrow: "NEXT BEST MOVE",
+        title: "Build your customer list.",
+        text: "Your most valuable growth asset is a customer audience you can reach again. Push VIP signup in-store and online.",
+        action: "VIEW VIP CUSTOMERS",
+        path: "/owner/vip",
+      };
+    }
+
+    if (metrics.offerTotal === 0) {
+      return {
+        eyebrow: "NEXT BEST MOVE",
+        title: "Create an offer worth claiming.",
+        text: "Give customers a clear reason to act and something Restaurant OS can track.",
+        action: "CREATE OFFER",
+        path: "/owner/offers",
+      };
+    }
+
+    if (metrics.campaignTotal === 0) {
+      return {
+        eyebrow: "NEXT BEST MOVE",
+        title: "Launch your first campaign.",
+        text: "You have the foundation. Now activate it with a trackable promotion.",
+        action: "BUILD CAMPAIGN",
+        path: "/owner/campaigns",
+      };
+    }
+
+    if (metrics.claimTotal === 0) {
+      return {
+        eyebrow: "NEXT BEST MOVE",
+        title: "Drive traffic to your active offer.",
+        text: "Your campaign is built. Now put the offer in front of customers and start generating measurable claims.",
+        action: "MANAGE CAMPAIGNS",
+        path: "/owner/campaigns",
+      };
+    }
+
+    if (metrics.redeemedTotal === 0) {
+      return {
+        eyebrow: "NEXT BEST MOVE",
+        title: "Turn claims into redeemed visits.",
+        text: "Customers have claimed offers. Make redemption easy at the restaurant and start closing the loop.",
+        action: "OPEN REDEMPTION CENTER",
+        path: "/owner/redeem",
+      };
+    }
+
+    return {
+      eyebrow: "NEXT BEST MOVE",
+      title: "Keep the growth loop moving.",
+      text: "Your system is operating. Review results, identify the strongest offer and launch the next campaign.",
+      action: "VIEW CAMPAIGN RESULTS",
+      path: "/owner/campaign-results",
+    };
+  }, [blockers, metrics]);
 
   if (loading) {
     return (
-      <main style={pageStyle}>
-        <div style={shellStyle}>Loading owner command center...</div>
+      <main className="page">
+        <div className="shell loading">Loading Restaurant OS Command Center...</div>
+        <Styles />
       </main>
     );
   }
 
   if (!restaurant) {
     return (
-      <main style={pageStyle}>
-        <div style={shellStyle}>{message || "Restaurant not found."}</div>
+      <main className="page">
+        <div className="shell loading">{message || "Restaurant not found."}</div>
+        <Styles />
       </main>
     );
   }
@@ -278,261 +512,328 @@ export default function OwnerDashboardPage() {
     .join(", ");
 
   return (
-    <main style={pageStyle}>
-      <div style={shellStyle}>
-        <header style={headerStyle}>
+    <main className="page">
+      <Styles />
+
+      <div className="shell">
+        <header className="top">
           <div>
-            <div style={eyebrowStyle}>RESTAURANT OS</div>
-            <h1 style={titleStyle}>Owner Command Center</h1>
-            <p style={subStyle}>
-              Run the restaurant website, menu, VIP growth and campaign engine from one place.
+            <div className="brandline">RESTAURANT <span>OS</span></div>
+            <h1>OWNER COMMAND CENTER</h1>
+            <p>
+              Know what is happening. See what is working. Know what to do next.
             </p>
           </div>
 
-          <div style={headerButtonGroupStyle}>
+          <div className="topActions">
             {restaurantCount > 1 && (
-              <button
-                style={secondaryButtonStyle}
-                onClick={() => {
-                  window.location.href = "/owner/restaurants";
-                }}
-              >
+              <button onClick={() => (window.location.href = "/owner/restaurants")}>
                 SWITCH RESTAURANT
               </button>
             )}
-
-            <button
-              style={secondaryButtonStyle}
-              onClick={() => go("/owner/qa")}
-            >
-              SYSTEM CHECK
-            </button>
-
-            <button style={secondaryButtonStyle} onClick={signOut}>
-              SIGN OUT
-            </button>
+            <button onClick={() => go("/owner/qa")}>SYSTEM CHECK</button>
+            <button onClick={signOut}>SIGN OUT</button>
           </div>
         </header>
 
-        {message && <div style={messageStyle}>{message}</div>}
+        {adminMode && (
+          <div className="adminBanner">
+            <span>SUPER ADMIN VIEW · {restaurant.name}</span>
+            <button
+              onClick={() =>
+                (window.location.href = `/admin/restaurant?restaurant=${restaurant.id}`)
+              }
+            >
+              RETURN TO ADMIN
+            </button>
+          </div>
+        )}
 
-        <section style={restaurantPanelStyle}>
+        <section className="restaurantBar">
           <div>
-            <div style={restaurantNameStyle}>{restaurant.name}</div>
-            <div style={restaurantMetaStyle}>
-              {restaurant.cuisine_category || "RESTAURANT"}
+            <div className="restaurantName">{restaurant.name}</div>
+            <div className="restaurantMeta">
+              {restaurant.cuisine_category || "RESTAURANT"} · {plan}
             </div>
           </div>
 
-          <div style={restaurantDetailsStyle}>
+          <div className="restaurantRight">
             {restaurant.phone && <span>{restaurant.phone}</span>}
             {address && <span>{address}</span>}
-            <span style={statusPillStyle}>
-              {restaurant.status.toUpperCase()}
+            <span className={`status ${sitePublished ? "live" : ""}`}>
+              {sitePublished ? "SITE LIVE" : "DRAFT"}
             </span>
+            {sitePublished && restaurant.slug && (
+              <button
+                className="miniRed"
+                onClick={() =>
+                  window.open(`/r/${restaurant.slug}`, "_blank", "noopener,noreferrer")
+                }
+              >
+                VIEW SITE ↗
+              </button>
+            )}
+          </div>
+        </section>
+
+        <section className="scoreRow">
+          <div className="growthScore">
+            <div>
+              <div className="kicker">RESTAURANT GROWTH SCORE</div>
+              <div className="scoreNumber">
+                {metrics.growthScore}<span>/100</span>
+              </div>
+            </div>
+
+            <div className="scoreCopy">
+              <strong>
+                {metrics.growthScore >= 84
+                  ? "YOUR GROWTH SYSTEM IS OPERATING."
+                  : metrics.growthScore >= 50
+                  ? "GOOD FOUNDATION. MORE FIREPOWER AVAILABLE."
+                  : "BIG GROWTH OPPORTUNITY."}
+              </strong>
+              <span>
+                Built from first-party Restaurant OS activity — not vanity metrics.
+              </span>
+            </div>
+          </div>
+
+          <div className="launchCard">
+            <div className="kicker">SYSTEM READINESS</div>
+            <div className="launchNumber">
+              {setupReady ? "READY" : `${setupPercent}%`}
+            </div>
+            <div className="progressTrack">
+              <div
+                className="progressFill"
+                style={{ width: `${setupPercent}%` }}
+              />
+            </div>
+            <button onClick={() => go("/owner/setup")}>
+              {setupReady ? "VIEW LAUNCH CHECKLIST" : "CONTINUE SETUP"}
+            </button>
           </div>
         </section>
 
         {blockers.length > 0 && (
-          <section style={alertPanelStyle}>
-            <div style={alertTopStyle}>
+          <section className="blockers">
+            <div className="blockerHead">
               <div>
-                <div style={alertEyebrowStyle}>ACTION REQUIRED</div>
-                <div style={alertTitleStyle}>
-                  {blockers.length} launch blocker{blockers.length === 1 ? "" : "s"}
-                </div>
+                <div className="kicker danger">ACTION REQUIRED</div>
+                <h2>
+                  {blockers.length} system blocker
+                  {blockers.length === 1 ? "" : "s"}
+                </h2>
               </div>
-
-              <button
-                style={alertButtonStyle}
-                onClick={() => go("/owner/setup")}
-              >
-                VIEW FULL CHECKLIST
-              </button>
+              <button onClick={() => go("/owner/setup")}>FULL CHECKLIST</button>
             </div>
 
-            <div style={alertListStyle}>
+            <div className="blockerList">
               {blockers.map((blocker) => (
                 <button
                   key={`${blocker.path}-${blocker.label}`}
-                  style={alertItemButtonStyle}
                   onClick={() => go(blocker.path)}
                 >
-                  <span style={alertItemLeftStyle}>
-                    <span style={alertDotStyle}>!</span>
-                    <span>{blocker.label}</span>
-                  </span>
-
-                  <span style={alertItemActionStyle}>
-                    {blocker.action} →
-                  </span>
+                  <span>{blocker.label}</span>
+                  <strong>{blocker.action} →</strong>
                 </button>
               ))}
             </div>
           </section>
         )}
 
-        <section style={launchPanelStyle}>
-          <div>
-            <div style={eyebrowStyle}>LAUNCH STATUS</div>
-            <div style={launchTitleStyle}>
-              {setupReady ? "READY TO OPERATE" : `${setupPercent}% COMPLETE`}
+        <section className="metricSection">
+          <div className="sectionHeader">
+            <div>
+              <div className="kicker">YOUR RESTAURANT THIS MONTH</div>
+              <h2>THE NUMBERS THAT MATTER</h2>
             </div>
-            <p style={launchTextStyle}>
-              {setupReady
-                ? "Core Restaurant OS setup is complete."
-                : "Finish the remaining setup items before launch."}
-            </p>
-          </div>
-
-          <div style={launchActionsStyle}>
-            <div style={launchProgressTrackStyle}>
-              <div
-                style={{
-                  ...launchProgressBarStyle,
-                  width: `${setupPercent}%`,
-                }}
-              />
-            </div>
-
-            <button
-              style={setupButtonStyle}
-              onClick={() => go("/owner/setup")}
-            >
-              {setupReady ? "VIEW CHECKLIST" : "CONTINUE SETUP"}
+            <button onClick={() => go("/owner/campaign-results")}>
+              VIEW FULL RESULTS →
             </button>
           </div>
-        </section>
 
-        <section style={sectionHeadingStyle}>
-          <div>
-            <div style={eyebrowStyle}>CORE OPERATIONS</div>
-            <h2 style={sectionTitleStyle}>Manage the Business</h2>
+          <div className="metricGrid">
+            <MetricCard
+              label="VIP CUSTOMERS"
+              value={metrics.vipTotal}
+              sub={`+${metrics.vipNewMonth} this month`}
+              action={() => go("/owner/vip")}
+            />
+            <MetricCard
+              label="ACTIVE OFFERS"
+              value={metrics.offerTotal}
+              sub="trackable promotions"
+              action={() => go("/owner/offers")}
+            />
+            <MetricCard
+              label="CAMPAIGNS"
+              value={metrics.campaignTotal}
+              sub={`${metrics.activeCampaigns} active now`}
+              action={() => go("/owner/campaigns")}
+            />
+            <MetricCard
+              label="OFFER CLAIMS"
+              value={metrics.claimTotal}
+              sub={`+${metrics.claimMonth} this month`}
+              action={() => go("/owner/campaign-results")}
+            />
+            <MetricCard
+              label="REDEMPTIONS"
+              value={metrics.redeemedTotal}
+              sub="measured visits"
+              action={() => go("/owner/redeem")}
+            />
+            <MetricCard
+              label="REDEMPTION RATE"
+              value={`${metrics.redemptionRate}%`}
+              sub="claims converted"
+              action={() => go("/owner/campaign-results")}
+            />
           </div>
         </section>
 
-        <section style={cardGridStyle}>
-          <DashboardCard
-            kicker="WEBSITE"
-            title="Website Manager"
-            text="Hero, branding, page visibility and public site controls."
-            button="MANAGE SITE"
-            onClick={() => go("/owner/website")}
-          />
-
-          <DashboardCard
-            kicker="MENU"
-            title="Menu Manager"
-            text="Categories, items, pricing, availability and featured dishes."
-            button="MANAGE MENU"
-            onClick={() => go("/owner/menu")}
-          />
-
-          <DashboardCard
-            kicker="VIP CUSTOMERS"
-            title="Customer List"
-            text="Search VIPs, filter opt-ins, birthdays and export customer data."
-            button="VIEW VIPS"
-            onClick={() => go("/owner/vip")}
-          />
-
-          <DashboardCard
-            kicker="OFFERS"
-            title="Offer Manager"
-            text="Create promotions, expiration rules and customer-facing offers."
-            button="CREATE OFFER"
-            onClick={() => go("/owner/offers")}
-          />
-
-          <DashboardCard
-            kicker="ORDERING"
-            title="Ordering Settings"
-            text="Online ordering, delivery links and catering contact settings."
-            button="ORDERING SETTINGS"
-            onClick={() => go("/owner/settings")}
-          />
-
-          <DashboardCard
-            kicker="BUSINESS SETTINGS"
-            title="Restaurant Settings"
-            text="Business details, hours, branding and restaurant profile."
-            button="EDIT SETTINGS"
-            onClick={() => go("/owner/settings")}
-          />
-
-          <DashboardCard
-            kicker="BILLING"
-            title="Subscription"
-            text="Manage Restaurant OS billing, trial access and payment settings."
-            button="MANAGE BILLING"
-            onClick={() => go("/owner/billing")}
-          />
-
-          <DashboardCard
-            kicker="FOUNDER QA"
-            title="System Check"
-            text="Run automated checks across setup, billing, website, growth tools and attribution."
-            button="RUN SYSTEM CHECK"
-            onClick={() => go("/owner/qa")}
-          />
+        <section className="nextMove">
+          <div className="nextIcon">→</div>
+          <div className="nextCopy">
+            <div className="kicker">{nextMove.eyebrow}</div>
+            <h2>{nextMove.title}</h2>
+            <p>{nextMove.text}</p>
+          </div>
+          <button onClick={() => go(nextMove.path)}>{nextMove.action} →</button>
         </section>
 
-        <section style={growthHeaderStyle}>
-          <div>
-            <div style={eyebrowStyle}>GROWTH ENGINE</div>
-            <h2 style={sectionTitleStyle}>Capture, Campaigns & Attribution</h2>
-            <p style={growthTextStyle}>
-              Capture customers with QR codes, run trackable promotions, measure claims and close the loop with redemptions.
-            </p>
+        <section className="twoCol">
+          <div className="panel">
+            <div className="panelHead">
+              <div>
+                <div className="kicker">CUSTOMER ENGINE</div>
+                <h2>BUILD AN AUDIENCE YOU OWN</h2>
+              </div>
+              <div className="bigTiny">{metrics.vipTotal}</div>
+            </div>
+
+            <div className="miniGrid">
+              <MiniStat label="TOTAL VIPS" value={metrics.vipTotal} />
+              <MiniStat label="NEW THIS MONTH" value={metrics.vipNewMonth} />
+              <MiniStat label="OFFER CLAIMS" value={metrics.claimTotal} />
+              <MiniStat label="REDEEMED" value={metrics.redeemedTotal} />
+            </div>
+
+            <div className="panelActions">
+              <button className="primary" onClick={() => go("/owner/vip")}>
+                VIEW CUSTOMERS
+              </button>
+              <button onClick={() => go("/owner/offers")}>CREATE OFFER</button>
+            </div>
+          </div>
+
+          <div className="panel">
+            <div className="panelHead">
+              <div>
+                <div className="kicker">CAMPAIGN ENGINE</div>
+                <h2>CREATE. CLAIM. REDEEM. MEASURE.</h2>
+              </div>
+              <div className="bigTiny">{metrics.campaignTotal}</div>
+            </div>
+
+            <div className="miniGrid">
+              <MiniStat label="CAMPAIGNS" value={metrics.campaignTotal} />
+              <MiniStat label="ACTIVE" value={metrics.activeCampaigns} />
+              <MiniStat label="CLAIMS" value={metrics.claimTotal} />
+              <MiniStat label="REDEMPTION" value={`${metrics.redemptionRate}%`} />
+            </div>
+
+            <div className="panelActions">
+              <button className="primary" onClick={() => go("/owner/campaigns")}>
+                MANAGE CAMPAIGNS
+              </button>
+              <button onClick={() => go("/owner/campaign-results")}>
+                VIEW RESULTS
+              </button>
+            </div>
           </div>
         </section>
 
-        <section style={growthGridStyle}>
-          <GrowthCard
-            number="01"
-            title="QR Code Generator"
-            text="Create downloadable QR codes that grow the VIP customer list or send guests directly to the restaurant's Google review page."
-            button="CREATE QR CODE"
-            onClick={() => go("/owner/qr")}
-          />
+        <section className="tools">
+          <div className="sectionHeader">
+            <div>
+              <div className="kicker">OPERATING SYSTEM</div>
+              <h2>RUN THE RESTAURANT GROWTH STACK</h2>
+            </div>
+          </div>
 
-          <GrowthCard
-            number="02"
-            title="Campaigns"
-            text="Create campaigns by channel and audience, attach an offer and generate a trackable claim link."
-            button="MANAGE CAMPAIGNS"
-            onClick={() => go("/owner/campaigns")}
-          />
-
-          <GrowthCard
-            number="03"
-            title="Campaign Results"
-            text="See claims, redemptions, unique customers and redemption rate by campaign."
-            button="VIEW RESULTS"
-            onClick={() => go("/owner/campaign-results")}
-          />
-
-          <GrowthCard
-            number="04"
-            title="Redemption Center"
-            text="Enter a customer's unique code and mark the offer redeemed at the restaurant."
-            button="REDEEM OFFERS"
-            onClick={() => go("/owner/redeem")}
-          />
+          <div className="toolGrid">
+            <ToolCard
+              title="WEBSITE"
+              text="Edit your public restaurant site, pages, media and publish controls."
+              button="MANAGE WEBSITE"
+              onClick={() => go("/owner/website")}
+            />
+            <ToolCard
+              title="MENU"
+              text={`${metrics.menuItems} menu item${metrics.menuItems === 1 ? "" : "s"} currently in Restaurant OS.`}
+              button="MANAGE MENU"
+              onClick={() => go("/owner/menu")}
+            />
+            <ToolCard
+              title="VIP CUSTOMERS"
+              text="Own the list. Capture customers. Build repeat business."
+              button="VIEW CUSTOMERS"
+              onClick={() => go("/owner/vip")}
+            />
+            <ToolCard
+              title="QR CODES"
+              text="Create downloadable VIP signup and Google review QR codes for tables, receipts, menus and takeout."
+              button="CREATE QR CODE"
+              onClick={() => go("/owner/qr")}
+            />
+            <ToolCard
+              title="OFFERS"
+              text="Build coupons and promotions designed to generate measurable action."
+              button="MANAGE OFFERS"
+              onClick={() => go("/owner/offers")}
+            />
+            <ToolCard
+              title="CAMPAIGNS"
+              text="Attach offers, create trackable links and activate your audience."
+              button="MANAGE CAMPAIGNS"
+              onClick={() => go("/owner/campaigns")}
+            />
+            <ToolCard
+              title="REDEMPTION"
+              text="Close the loop when a claimed offer turns into a restaurant visit."
+              button="REDEEM OFFER"
+              onClick={() => go("/owner/redeem")}
+            />
+            <ToolCard
+              title="SETTINGS"
+              text="Business profile, hours, branding, ordering and restaurant details."
+              button="RESTAURANT SETTINGS"
+              onClick={() => go("/owner/settings")}
+            />
+            <ToolCard
+              title="BILLING"
+              text={`Restaurant OS ${plan} plan and subscription controls.`}
+              button="MANAGE BILLING"
+              onClick={() => go("/owner/billing")}
+            />
+          </div>
         </section>
 
-        <section style={flowPanelStyle}>
-          <div style={eyebrowStyle}>RESTAURANT OS GROWTH LOOP</div>
-          <div style={flowStyle}>
-            <FlowStep number="1" text="CAPTURE CUSTOMER" />
-            <FlowArrow />
-            <FlowStep number="2" text="CREATE CAMPAIGN" />
-            <FlowArrow />
-            <FlowStep number="3" text="ATTACH OFFER" />
-            <FlowArrow />
-            <FlowStep number="4" text="SEND TRACKABLE LINK" />
-            <FlowArrow />
-            <FlowStep number="5" text="CLAIM + REDEEM" />
+        <section className="growthLoop">
+          <div className="kicker">THE RESTAURANT OS GROWTH LOOP</div>
+          <div className="loop">
+            <LoopStep number="01" label="ATTRACT" />
+            <span>→</span>
+            <LoopStep number="02" label="CAPTURE" />
+            <span>→</span>
+            <LoopStep number="03" label="FOLLOW UP" />
+            <span>→</span>
+            <LoopStep number="04" label="BRING BACK" />
+            <span>→</span>
+            <LoopStep number="05" label="MEASURE" />
           </div>
         </section>
       </div>
@@ -540,468 +841,734 @@ export default function OwnerDashboardPage() {
   );
 }
 
-function DashboardCard({
-  kicker,
-  title,
-  text,
-  button,
-  onClick,
+function MetricCard({
+  label,
+  value,
+  sub,
+  action,
 }: {
-  kicker: string;
-  title: string;
-  text: string;
-  button: string;
-  onClick: () => void;
+  label: string;
+  value: string | number;
+  sub: string;
+  action: () => void;
 }) {
   return (
-    <article style={cardStyle}>
-      <div style={eyebrowStyle}>{kicker}</div>
-      <h3 style={cardTitleStyle}>{title}</h3>
-      <p style={cardTextStyle}>{text}</p>
-      <button style={primaryButtonStyle} onClick={onClick}>
-        {button}
-      </button>
-    </article>
+    <button className="metric" onClick={action}>
+      <span className="metricLabel">{label}</span>
+      <strong>{value}</strong>
+      <span className="metricSub">{sub}</span>
+    </button>
   );
 }
 
-function GrowthCard({
-  number,
-  title,
-  text,
-  button,
-  onClick,
+function MiniStat({
+  label,
+  value,
 }: {
-  number: string;
-  title: string;
-  text: string;
-  button: string;
-  onClick: () => void;
+  label: string;
+  value: string | number;
 }) {
   return (
-    <article style={growthCardStyle}>
-      <div style={growthNumberStyle}>{number}</div>
-      <h3 style={growthCardTitleStyle}>{title}</h3>
-      <p style={cardTextStyle}>{text}</p>
-      <button style={growthButtonStyle} onClick={onClick}>
-        {button}
-      </button>
-    </article>
-  );
-}
-
-function FlowStep({ number, text }: { number: string; text: string }) {
-  return (
-    <div style={flowStepStyle}>
-      <span style={flowNumberStyle}>{number}</span>
-      <span>{text}</span>
+    <div className="miniStat">
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }
 
-function FlowArrow() {
-  return <div style={flowArrowStyle}>→</div>;
+function ToolCard({
+  title,
+  text,
+  button,
+  onClick,
+}: {
+  title: string;
+  text: string;
+  button: string;
+  onClick: () => void;
+}) {
+  return (
+    <article className="toolCard">
+      <div className="toolTitle">{title}</div>
+      <p>{text}</p>
+      <button onClick={onClick}>{button} →</button>
+    </article>
+  );
 }
 
-const pageStyle = {
-  minHeight: "100vh",
-  background: "#08111f",
-  color: "#ffffff",
-  padding: "28px",
-  fontFamily: "Arial, Helvetica, sans-serif",
-};
+function LoopStep({
+  number,
+  label,
+}: {
+  number: string;
+  label: string;
+}) {
+  return (
+    <div className="loopStep">
+      <span>{number}</span>
+      <strong>{label}</strong>
+    </div>
+  );
+}
 
-const shellStyle = {
-  maxWidth: "1240px",
-  margin: "0 auto",
-};
+function Styles() {
+  return (
+    <style jsx global>{`
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #050505;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+      button { font: inherit; }
+      button:focus-visible { outline: 2px solid #e1222d; outline-offset: 2px; }
 
-const headerStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: "20px",
-  flexWrap: "wrap" as const,
-  marginBottom: "24px",
-};
+      .page {
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 88% 0%, rgba(225,34,45,.12), transparent 25%),
+          #050505;
+        color: #fff;
+        padding: 28px;
+      }
 
-const eyebrowStyle = {
-  color: "#f5b82e",
-  fontSize: "11px",
-  fontWeight: 900,
-  letterSpacing: "2px",
-};
+      .shell {
+        max-width: 1440px;
+        margin: 0 auto;
+      }
 
-const titleStyle = {
-  fontSize: "clamp(46px,7vw,78px)",
-  lineHeight: ".92",
-  margin: "8px 0",
-  fontWeight: 900,
-  letterSpacing: "-3px",
-};
+      .loading {
+        padding: 70px 0;
+        color: #999;
+        font-size: 14px;
+      }
 
-const subStyle = {
-  color: "#94a3b8",
-  fontSize: "16px",
-  maxWidth: "760px",
-  lineHeight: 1.5,
-};
+      .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 24px;
+        margin-bottom: 22px;
+      }
 
-const restaurantPanelStyle = {
-  background: "#0f1d2e",
-  border: "1px solid #23364d",
-  borderRadius: "18px",
-  padding: "22px",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "20px",
-  flexWrap: "wrap" as const,
-  marginBottom: "28px",
-};
+      .brandline {
+        color: #fff;
+        font-size: 11px;
+        font-weight: 1000;
+        letter-spacing: 2px;
+      }
 
-const restaurantNameStyle = {
-  fontSize: "28px",
-  fontWeight: 900,
-};
+      .brandline span { color: #e1222d; }
 
-const restaurantMetaStyle = {
-  color: "#f5b82e",
-  fontSize: "11px",
-  fontWeight: 900,
-  letterSpacing: "1px",
-  marginTop: "5px",
-};
+      .top h1 {
+        margin: 8px 0 8px;
+        font-size: clamp(45px, 6vw, 76px);
+        line-height: .9;
+        letter-spacing: -4px;
+        font-weight: 1000;
+      }
 
-const restaurantDetailsStyle = {
-  display: "flex",
-  gap: "14px",
-  alignItems: "center",
-  flexWrap: "wrap" as const,
-  color: "#94a3b8",
-  fontSize: "13px",
-};
+      .top p {
+        margin: 0;
+        color: #7c7c7c;
+        font-size: 14px;
+        font-weight: 600;
+      }
 
-const statusPillStyle = {
-  border: "1px solid #334155",
-  borderRadius: "999px",
-  padding: "7px 10px",
-  fontSize: "10px",
-  fontWeight: 900,
-  color: "#cbd5e1",
-};
+      .topActions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
 
-const headerButtonGroupStyle = {
-  display: "flex",
-  gap: "10px",
-  flexWrap: "wrap" as const,
-};
+      button {
+        border: 1px solid #2a2a2a;
+        border-radius: 8px;
+        background: #111;
+        color: #fff;
+        padding: 10px 12px;
+        cursor: pointer;
+        font-size: 9px;
+        font-weight: 1000;
+        letter-spacing: .6px;
+      }
 
-const alertPanelStyle = {
-  background: "#3a1717",
-  border: "1px solid #7f3333",
-  borderRadius: "18px",
-  padding: "20px",
-  marginBottom: "18px",
-};
+      button:hover {
+        border-color: #555;
+      }
 
-const alertTopStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "16px",
-  flexWrap: "wrap" as const,
-};
+      .adminBanner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+        padding: 10px 12px;
+        border: 1px solid #276648;
+        border-radius: 10px;
+        background: #102b20;
+        color: #a4e8bf;
+        font-size: 9px;
+        font-weight: 1000;
+        letter-spacing: 1px;
+      }
 
-const alertEyebrowStyle = {
-  color: "#fca5a5",
-  fontSize: "10px",
-  fontWeight: 900,
-  letterSpacing: "1.5px",
-};
+      .adminBanner button {
+        background: #22c55e;
+        border: 0;
+        color: #052e16;
+      }
 
-const alertTitleStyle = {
-  color: "#ffffff",
-  fontSize: "26px",
-  fontWeight: 900,
-  marginTop: "4px",
-};
+      .restaurantBar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+        padding: 18px 20px;
+        border: 1px solid #252525;
+        border-radius: 14px;
+        background: #0c0c0c;
+      }
 
-const alertButtonStyle = {
-  background: "#f5b82e",
-  color: "#08111f",
-  border: 0,
-  borderRadius: "10px",
-  padding: "11px 14px",
-  fontWeight: 900,
-  cursor: "pointer",
-};
+      .restaurantName {
+        font-size: 25px;
+        font-weight: 1000;
+        letter-spacing: -1px;
+      }
 
-const alertListStyle = {
-  display: "grid",
-  gap: "8px",
-  marginTop: "16px",
-};
+      .restaurantMeta {
+        margin-top: 4px;
+        color: #e1222d;
+        font-size: 8px;
+        font-weight: 1000;
+        letter-spacing: 1px;
+      }
 
-const alertItemButtonStyle = {
-  width: "100%",
-  background: "#2c1515",
-  border: "1px solid #633030",
-  borderRadius: "10px",
-  padding: "12px 13px",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: "14px",
-  color: "#fecaca",
-  cursor: "pointer",
-  textAlign: "left" as const,
-};
+      .restaurantRight {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        color: #777;
+        font-size: 10px;
+      }
 
-const alertItemLeftStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "10px",
-  minWidth: 0,
-};
+      .status {
+        border: 1px solid #333;
+        border-radius: 999px;
+        padding: 6px 8px;
+        color: #888;
+        font-size: 8px;
+        font-weight: 1000;
+      }
 
-const alertItemActionStyle = {
-  color: "#f5b82e",
-  fontSize: "10px",
-  fontWeight: 900,
-  letterSpacing: ".5px",
-  whiteSpace: "nowrap" as const,
-};
+      .status.live {
+        border-color: #245e42;
+        color: #77d69d;
+        background: #10251a;
+      }
 
-const alertItemStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "10px",
-  color: "#fecaca",
-  fontSize: "13px",
-};
+      .miniRed {
+        border-color: #7e242a;
+        background: #311013;
+        color: #ff8e94;
+      }
 
-const alertDotStyle = {
-  display: "inline-grid",
-  placeItems: "center",
-  width: "22px",
-  height: "22px",
-  borderRadius: "999px",
-  background: "#7f1d1d",
-  color: "#ffffff",
-  fontSize: "11px",
-  fontWeight: 900,
-  flexShrink: 0,
-};
+      .scoreRow {
+        display: grid;
+        grid-template-columns: 1.3fr .7fr;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
 
-const launchPanelStyle = {
-  background: "linear-gradient(135deg,#13263b,#0f1d2e)",
-  border: "1px solid #2d4661",
-  borderRadius: "18px",
-  padding: "22px",
-  display: "grid",
-  gridTemplateColumns: "minmax(0,1fr) minmax(280px,.6fr)",
-  gap: "24px",
-  alignItems: "center",
-  marginBottom: "28px",
-};
+      .growthScore,
+      .launchCard {
+        border: 1px solid #252525;
+        border-radius: 16px;
+        background: linear-gradient(145deg, #0f0f0f, #090909);
+      }
 
-const launchTitleStyle = {
-  fontSize: "32px",
-  fontWeight: 900,
-  marginTop: "6px",
-};
+      .growthScore {
+        display: grid;
+        grid-template-columns: .58fr 1.42fr;
+        gap: 24px;
+        align-items: center;
+        padding: 24px;
+      }
 
-const launchTextStyle = {
-  color: "#94a3b8",
-  margin: "8px 0 0",
-};
+      .kicker {
+        color: #e1222d;
+        font-size: 8px;
+        font-weight: 1000;
+        letter-spacing: 1.6px;
+      }
 
-const launchActionsStyle = {
-  display: "grid",
-  gap: "12px",
-};
+      .scoreNumber {
+        margin-top: 10px;
+        color: #e1222d;
+        font-size: 78px;
+        line-height: .8;
+        letter-spacing: -5px;
+        font-weight: 1000;
+      }
 
-const launchProgressTrackStyle = {
-  height: "12px",
-  background: "#08111f",
-  border: "1px solid #23364d",
-  borderRadius: "999px",
-  overflow: "hidden",
-};
+      .scoreNumber span {
+        color: #555;
+        font-size: 19px;
+        letter-spacing: -1px;
+      }
 
-const launchProgressBarStyle = {
-  height: "100%",
-  background: "#f5b82e",
-  borderRadius: "999px",
-};
+      .scoreCopy strong {
+        display: block;
+        font-size: 23px;
+        line-height: 1;
+        font-weight: 1000;
+      }
 
-const setupButtonStyle = {
-  background: "#f5b82e",
-  color: "#08111f",
-  border: 0,
-  borderRadius: "10px",
-  padding: "12px 15px",
-  fontWeight: 900,
-  cursor: "pointer",
-};
+      .scoreCopy span {
+        display: block;
+        max-width: 520px;
+        margin-top: 9px;
+        color: #707070;
+        font-size: 10px;
+        line-height: 1.5;
+      }
 
-const sectionHeadingStyle = {
-  margin: "6px 0 14px",
-};
+      .launchCard {
+        padding: 22px;
+      }
 
-const sectionTitleStyle = {
-  fontSize: "32px",
-  margin: "6px 0 0",
-};
+      .launchNumber {
+        margin-top: 9px;
+        font-size: 36px;
+        font-weight: 1000;
+      }
 
-const cardGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
-  gap: "16px",
-};
+      .progressTrack {
+        height: 8px;
+        margin: 14px 0;
+        border-radius: 999px;
+        overflow: hidden;
+        background: #242424;
+      }
 
-const cardStyle = {
-  background: "#0f1d2e",
-  border: "1px solid #23364d",
-  borderRadius: "18px",
-  padding: "22px",
-  minHeight: "220px",
-  display: "flex",
-  flexDirection: "column" as const,
-};
+      .progressFill {
+        height: 100%;
+        border-radius: 999px;
+        background: #e1222d;
+      }
 
-const cardTitleStyle = {
-  fontSize: "24px",
-  margin: "8px 0 10px",
-};
+      .launchCard button {
+        width: 100%;
+        border: 0;
+        background: #e1222d;
+      }
 
-const cardTextStyle = {
-  color: "#94a3b8",
-  lineHeight: 1.55,
-  margin: "0 0 20px",
-};
+      .blockers {
+        margin-bottom: 14px;
+        padding: 18px;
+        border: 1px solid #6e292e;
+        border-radius: 14px;
+        background: #240e10;
+      }
 
-const primaryButtonStyle = {
-  marginTop: "auto",
-  background: "#f5b82e",
-  color: "#08111f",
-  border: 0,
-  borderRadius: "10px",
-  padding: "12px 15px",
-  fontWeight: 900,
-  cursor: "pointer",
-};
+      .danger { color: #ff8b92; }
 
-const secondaryButtonStyle = {
-  background: "transparent",
-  color: "#ffffff",
-  border: "1px solid #334155",
-  borderRadius: "10px",
-  padding: "12px 16px",
-  fontWeight: 900,
-  cursor: "pointer",
-};
+      .blockerHead {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
 
-const growthHeaderStyle = {
-  background: "linear-gradient(135deg,#13263b,#0f1d2e)",
-  border: "1px solid #2d4661",
-  borderRadius: "18px 18px 0 0",
-  padding: "24px",
-  marginTop: "30px",
-};
+      .blockerHead h2 {
+        margin: 4px 0 0;
+        font-size: 22px;
+      }
 
-const growthTextStyle = {
-  color: "#94a3b8",
-  maxWidth: "780px",
-  lineHeight: 1.5,
-  marginBottom: 0,
-};
+      .blockerList {
+        display: grid;
+        gap: 7px;
+        margin-top: 14px;
+      }
 
-const growthGridStyle = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
-  gap: "0",
-  borderLeft: "1px solid #2d4661",
-  borderRight: "1px solid #2d4661",
-  borderBottom: "1px solid #2d4661",
-  borderRadius: "0 0 18px 18px",
-  overflow: "hidden",
-};
+      .blockerList button {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        border-color: #54272a;
+        background: #190b0c;
+        text-align: left;
+        color: #e9b7ba;
+      }
 
-const growthCardStyle = {
-  background: "#0a1522",
-  padding: "24px",
-  minHeight: "250px",
-  display: "flex",
-  flexDirection: "column" as const,
-  borderRight: "1px solid #23364d",
-};
+      .blockerList strong {
+        color: #ff858d;
+        white-space: nowrap;
+      }
 
-const growthNumberStyle = {
-  color: "#f5b82e",
-  fontSize: "14px",
-  fontWeight: 900,
-  letterSpacing: "2px",
-};
+      .metricSection,
+      .tools {
+        margin-top: 34px;
+      }
 
-const growthCardTitleStyle = {
-  fontSize: "28px",
-  margin: "9px 0 10px",
-};
+      .sectionHeader {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 16px;
+        margin-bottom: 13px;
+      }
 
-const growthButtonStyle = {
-  marginTop: "auto",
-  background: "transparent",
-  color: "#f5b82e",
-  border: "1px solid #f5b82e",
-  borderRadius: "10px",
-  padding: "12px 15px",
-  fontWeight: 900,
-  cursor: "pointer",
-};
+      .sectionHeader h2 {
+        margin: 5px 0 0;
+        font-size: 29px;
+        letter-spacing: -1px;
+      }
 
-const flowPanelStyle = {
-  background: "#0f1d2e",
-  border: "1px solid #23364d",
-  borderRadius: "18px",
-  padding: "22px",
-  marginTop: "22px",
-};
+      .sectionHeader > button {
+        color: #ff6c74;
+        border-color: #54272a;
+        background: #17090a;
+      }
 
-const flowStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "10px",
-  flexWrap: "wrap" as const,
-  marginTop: "14px",
-};
+      .metricGrid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 9px;
+      }
 
-const flowStepStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "8px",
-  background: "#08111f",
-  border: "1px solid #23364d",
-  borderRadius: "10px",
-  padding: "10px 12px",
-  fontSize: "11px",
-  fontWeight: 900,
-};
+      .metric {
+        min-height: 142px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 16px;
+        border-radius: 12px;
+        background: #0d0d0d;
+        text-align: left;
+      }
 
-const flowNumberStyle = {
-  color: "#f5b82e",
-};
+      .metricLabel {
+        color: #777;
+        font-size: 7px;
+        font-weight: 1000;
+        letter-spacing: .9px;
+      }
 
-const flowArrowStyle = {
-  color: "#64748b",
-  fontWeight: 900,
-};
+      .metric strong {
+        margin-top: 19px;
+        color: #fff;
+        font-size: 34px;
+        line-height: .9;
+        letter-spacing: -2px;
+      }
 
-const messageStyle = {
-  background: "#13263b",
-  border: "1px solid #2d4661",
-  borderRadius: "10px",
-  padding: "14px",
-  marginBottom: "18px",
-};
+      .metricSub {
+        margin-top: auto;
+        padding-top: 12px;
+        color: #666;
+        font-size: 8px;
+        line-height: 1.3;
+      }
+
+      .nextMove {
+        display: grid;
+        grid-template-columns: 62px 1fr auto;
+        gap: 18px;
+        align-items: center;
+        margin-top: 14px;
+        padding: 21px;
+        border: 1px solid #77262c;
+        border-radius: 15px;
+        background:
+          linear-gradient(110deg, #210c0e, #0c0c0c 65%);
+        box-shadow: 0 20px 60px rgba(225,34,45,.08);
+      }
+
+      .nextIcon {
+        width: 54px;
+        height: 54px;
+        display: grid;
+        place-items: center;
+        border-radius: 11px;
+        background: #e1222d;
+        font-size: 26px;
+        font-weight: 1000;
+      }
+
+      .nextCopy h2 {
+        margin: 5px 0 4px;
+        font-size: 25px;
+        letter-spacing: -.8px;
+      }
+
+      .nextCopy p {
+        margin: 0;
+        max-width: 720px;
+        color: #818181;
+        font-size: 10px;
+        line-height: 1.45;
+      }
+
+      .nextMove > button {
+        border: 0;
+        background: #e1222d;
+        padding: 13px 15px;
+      }
+
+      .twoCol {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 13px;
+        margin-top: 14px;
+      }
+
+      .panel {
+        padding: 21px;
+        border: 1px solid #242424;
+        border-radius: 15px;
+        background: #0c0c0c;
+      }
+
+      .panelHead {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: start;
+      }
+
+      .panelHead h2 {
+        margin: 6px 0 0;
+        max-width: 480px;
+        font-size: 23px;
+        line-height: 1;
+        letter-spacing: -1px;
+      }
+
+      .bigTiny {
+        color: #e1222d;
+        font-size: 38px;
+        line-height: 1;
+        font-weight: 1000;
+        letter-spacing: -2px;
+      }
+
+      .miniGrid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 7px;
+        margin-top: 19px;
+      }
+
+      .miniStat {
+        padding: 12px;
+        border: 1px solid #222;
+        border-radius: 9px;
+        background: #090909;
+      }
+
+      .miniStat span {
+        display: block;
+        color: #666;
+        font-size: 7px;
+        font-weight: 1000;
+      }
+
+      .miniStat strong {
+        display: block;
+        margin-top: 7px;
+        font-size: 20px;
+      }
+
+      .panelActions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 17px;
+      }
+
+      .panelActions .primary {
+        border: 0;
+        background: #e1222d;
+      }
+
+      .toolGrid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 9px;
+      }
+
+      .toolCard {
+        min-height: 196px;
+        display: flex;
+        flex-direction: column;
+        padding: 17px;
+        border: 1px solid #222;
+        border-radius: 12px;
+        background: #0c0c0c;
+      }
+
+      .toolTitle {
+        color: #fff;
+        font-size: 18px;
+        font-weight: 1000;
+      }
+
+      .toolCard p {
+        margin: 11px 0 20px;
+        color: #717171;
+        font-size: 9px;
+        line-height: 1.5;
+      }
+
+      .toolCard button {
+        margin-top: auto;
+        width: 100%;
+        color: #ff6972;
+        border-color: #4b2327;
+        background: #14090a;
+      }
+
+      .growthLoop {
+        margin-top: 14px;
+        padding: 20px;
+        border: 1px solid #242424;
+        border-radius: 14px;
+        background: #090909;
+      }
+
+      .loop {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        overflow-x: auto;
+        margin-top: 13px;
+        padding-bottom: 3px;
+      }
+
+      .loop > span {
+        color: #555;
+        font-weight: 1000;
+      }
+
+      .loopStep {
+        min-width: 155px;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 11px 12px;
+        border: 1px solid #242424;
+        border-radius: 9px;
+        background: #101010;
+      }
+
+      .loopStep span {
+        color: #e1222d;
+        font-size: 8px;
+        font-weight: 1000;
+      }
+
+      .loopStep strong {
+        font-size: 9px;
+        letter-spacing: .6px;
+      }
+
+      @media (max-width: 1150px) {
+        .metricGrid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .toolGrid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 850px) {
+        .page { padding: 18px; }
+
+        .top,
+        .scoreRow,
+        .twoCol {
+          grid-template-columns: 1fr;
+          display: grid;
+        }
+
+        .growthScore {
+          grid-template-columns: 1fr;
+        }
+
+        .nextMove {
+          grid-template-columns: 50px 1fr;
+        }
+
+        .nextMove > button {
+          grid-column: 1 / -1;
+          width: 100%;
+        }
+
+        .miniGrid {
+          grid-template-columns: repeat(2, minmax(0,1fr));
+        }
+      }
+
+      @media (max-width: 600px) {
+        .top h1 {
+          font-size: 45px;
+          letter-spacing: -2.5px;
+        }
+
+        .topActions,
+        .topActions button {
+          width: 100%;
+        }
+
+        .restaurantRight {
+          align-items: stretch;
+          flex-direction: column;
+          width: 100%;
+        }
+
+        .restaurantRight button {
+          width: 100%;
+        }
+
+        .metricGrid,
+        .toolGrid {
+          grid-template-columns: 1fr;
+        }
+
+        .metric {
+          min-height: 115px;
+        }
+
+        .scoreNumber {
+          font-size: 66px;
+        }
+
+        .nextMove {
+          grid-template-columns: 1fr;
+        }
+
+        .nextIcon {
+          width: 44px;
+          height: 44px;
+        }
+
+        .sectionHeader {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .sectionHeader > button {
+          width: 100%;
+        }
+      }
+    `}</style>
+  );
+}
